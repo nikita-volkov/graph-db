@@ -1,0 +1,64 @@
+name:
+  tpm-graph-db
+version:
+  0.1.0
+author:
+  Nikita Volkov
+maintainer:
+  nikita.y.volkov@mail.ru
+build-type:
+  Simple
+cabal-version:
+  >=1.10
+
+
+
+library
+  hs-source-dirs:
+    src
+  exposed-modules:
+  other-modules:
+  build-depends:
+    hashable == 1.2.*,
+    unordered-containers,
+    lens,
+    vector,
+    safecopy >= 0.8.3,
+    cereal,
+    tpm-prelude == 0.1.*,
+    text,
+    containers,
+    base >= 4.5 && < 5
+  default-extensions:
+    Arrows
+    DeriveGeneric
+    ImpredicativeTypes
+    BangPatterns
+    PatternGuards
+    GADTs
+    StandaloneDeriving
+    MultiParamTypeClasses
+    ScopedTypeVariables
+    FlexibleInstances
+    TypeFamilies
+    TypeOperators
+    FlexibleContexts
+    NoImplicitPrelude
+    EmptyDataDecls
+    DataKinds
+    NoMonomorphismRestriction
+    RankNTypes
+    ConstraintKinds
+    DefaultSignatures
+    TupleSections
+    OverloadedStrings
+    TemplateHaskell
+    QuasiQuotes
+    DeriveDataTypeable
+    GeneralizedNewtypeDeriving
+    RecordWildCards
+    MultiWayIf
+  default-language:
+    Haskell2010
+
+
