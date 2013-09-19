@@ -18,7 +18,9 @@ library
     src
   exposed-modules:
   other-modules:
+    TPM.GraphDB.Dispatcher
   build-depends:
+    SafeSemaphore == 0.9.*,
     hashable == 1.2.*,
     unordered-containers,
     lens,
