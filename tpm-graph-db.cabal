@@ -17,7 +17,11 @@ library
   hs-source-dirs:
     src
   exposed-modules:
+    TPM.GraphDB
   other-modules:
+    TPM.GraphDB.DB
+    TPM.GraphDB.Transaction
+    TPM.GraphDB.Node
     TPM.GraphDB.Dispatcher
   build-depends:
     SafeSemaphore == 0.9.*,
