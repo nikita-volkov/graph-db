@@ -20,10 +20,14 @@ library
     TPM.GraphDB
   other-modules:
     TPM.GraphDB.DB
-    TPM.GraphDB.Transaction
     TPM.GraphDB.Node
     TPM.GraphDB.Dispatcher
+    TPM.GraphDB.Transaction
+    TPM.GraphDB.Transaction.Tag
+    TPM.GraphDB.Transaction.NodeRef
+    TPM.GraphDB.Transaction.NodeRefRegistry
   build-depends:
+    hashtables == 1.1.*,
     SafeSemaphore == 0.9.*,
     hashable == 1.2.*,
     unordered-containers,
@@ -64,7 +68,64 @@ library
     GeneralizedNewtypeDeriving
     RecordWildCards
     MultiWayIf
+    LiberalTypeSynonyms
   default-language:
     Haskell2010
 
+
+
+executable demo
+  hs-source-dirs:
+    src
+  main-is:
+    Demo.hs
+  ghc-options:
+    -O2 
+    -threaded 
+    "-with-rtsopts=-N"
+  build-depends:
+    hashtables == 1.1.*,
+    SafeSemaphore == 0.9.*,
+    hashable == 1.2.*,
+    unordered-containers,
+    lens,
+    vector,
+    safecopy >= 0.8.3,
+    cereal,
+    tpm-prelude == 0.1.*,
+    text,
+    containers,
+    base >= 4.5 && < 5
+  default-extensions:
+    Arrows
+    DeriveGeneric
+    ImpredicativeTypes
+    BangPatterns
+    PatternGuards
+    GADTs
+    StandaloneDeriving
+    MultiParamTypeClasses
+    ScopedTypeVariables
+    FlexibleInstances
+    TypeFamilies
+    TypeOperators
+    FlexibleContexts
+    NoImplicitPrelude
+    EmptyDataDecls
+    DataKinds
+    NoMonomorphismRestriction
+    RankNTypes
+    ConstraintKinds
+    DefaultSignatures
+    TupleSections
+    OverloadedStrings
+    TemplateHaskell
+    QuasiQuotes
+    DeriveDataTypeable
+    GeneralizedNewtypeDeriving
+    RecordWildCards
+    MultiWayIf
+    LiberalTypeSynonyms
+  default-language:
+    Haskell2010
 
