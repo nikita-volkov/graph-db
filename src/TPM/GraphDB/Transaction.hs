@@ -118,7 +118,8 @@ setValue value ref = do
     node <- NodeRef.getNode ref
     Node.setValue value node
 
-insertEdge :: Node.Edge a b -> NodeRef s a -> NodeRef s b -> Write s ()
+insertEdge :: (Hashable (Node.Edge a b), Eq (Node.Edge a b), Typeable b) =>
+              Node.Edge a b -> NodeRef s a -> NodeRef s b -> Write s ()
 insertEdge edge refA refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA

@@ -21,6 +21,7 @@ library
   other-modules:
     TPM.GraphDB.DB
     TPM.GraphDB.Node
+    TPM.GraphDB.Node.EdgesTable
     TPM.GraphDB.Dispatcher
     TPM.GraphDB.Transaction
     TPM.GraphDB.Transaction.Tag
