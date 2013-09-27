@@ -7,12 +7,12 @@ import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
 
 
 
-data DB = DB {
-  root :: Node (),
+data DB tag = DB {
+  root :: Node tag (),
   dispatcher :: Dispatcher
 }
 
-new :: IO DB
+new :: IO (DB tag)
 new = DB <$> Node.new () <*> Dispatcher.new
 
 

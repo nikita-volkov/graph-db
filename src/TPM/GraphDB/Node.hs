@@ -5,39 +5,39 @@ import qualified TPM.GraphDB.Node.EdgesTable as EdgesTable
 
 
 
-insertEdge :: (Hashable (Edge s t), Eq (Edge s t), Typeable t) 
-           => Edge s t -> Node t -> Node s -> IO ()
+insertEdge :: (Hashable (Edge tag a b), Eq (Edge tag a b), Typeable b) 
+           => Edge tag a b -> Node tag b -> Node tag a -> IO ()
 insertEdge edge target source = do
   EdgesTable.insert (edges source) edge target
 
-deleteEdge :: Edge s t -> Node t -> Node s -> IO ()
+deleteEdge :: Edge tag a b -> Node tag b -> Node tag a -> IO ()
 deleteEdge = undefined
 
-new :: v -> IO (Node v)
+new :: a -> IO (Node tag a)
 new value = Node <$> newIORef value <*> EdgesTable.new
 
-getValue :: Node v -> IO v
+getValue :: Node tag a -> IO a
 getValue (Node ref _) = readIORef ref
 
-setValue :: v -> Node v -> IO ()
+setValue :: a -> Node tag a -> IO ()
 setValue = undefined
 
-getTargets :: Edge s t -> Node s -> IO [Node t]
+getTargets :: Edge tag a b -> Node tag a -> IO [Node tag b]
 getTargets edge (Node _ edgesTable) = do
   undefined
 
 
 
-data Node v = Node { 
-  properties :: IORef v,
-  edges :: EdgesTable.EdgesTable v
+data Node tag a = Node { 
+  properties :: IORef a,
+  edges :: EdgesTable.EdgesTable tag a
 }
 
 -- |
 -- An edge from /source/ value to /target/.
-data family Edge source target
+data family Edge tag source target
 
-type instance EdgesTable.Node source = Node source
-type instance EdgesTable.Edge source target = Edge source target
+type instance EdgesTable.Node tag source = Node tag source
+type instance EdgesTable.Edge tag source target = Edge tag source target
 
 

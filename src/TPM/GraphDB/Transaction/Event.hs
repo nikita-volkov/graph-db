@@ -1,7 +1,6 @@
-{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Transaction-tags allow logging of transactions.
-module TPM.GraphDB.Transaction.Tag where
+module TPM.GraphDB.Transaction.Event where
 
 import TPM.Prelude hiding (Read, Write)
 import qualified TPM.GraphDB.Transaction as Transaction
@@ -14,12 +13,13 @@ import qualified Data.Serialize as Cereal
 
 
 
-class Tag t where
+class Event t where
+  type DBTag t
   type Transaction t
-  type TransactionResult t
-  transaction :: t -> (Transaction t) s (TransactionResult t)
+  type Result t
+  transaction :: t -> (Transaction t) (DBTag t) s (Result t)
 
-run :: (Tag t, Transaction.Transaction (Transaction t)) => DB -> t -> IO (TransactionResult t)
+run :: (Event t, Transaction.Transaction (Transaction t)) => DB (DBTag t) -> t -> IO (Result t)
 run db tag = Transaction.run db $ transaction tag
 
 

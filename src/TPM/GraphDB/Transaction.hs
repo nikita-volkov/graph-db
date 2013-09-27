@@ -10,9 +10,9 @@ import qualified TPM.GraphDB.Transaction.NodeRef as NodeRef; import TPM.GraphDB.
 
 
 class Transaction t where
-  run :: DB -> (forall s. t s a) -> IO a
-  getDB :: t s DB
-  getNodeRefRegistry :: t s NodeRefRegistry
+  run :: DB tag -> (forall state. t tag state a) -> IO a
+  getDB :: t tag state (DB tag)
+  getNodeRefRegistry :: t tag state (NodeRefRegistry tag)
 
 
 
@@ -22,7 +22,7 @@ class Transaction t where
 -- Here the /s/ is a state-thread making the escape of node-refs from transaction
 -- impossible. Much inspired by the realization of 'ST'.
 -- 
-newtype Write s a = Write (DB -> NodeRefRegistry -> IO a)
+newtype Write tag s a = Write (DB tag -> NodeRefRegistry tag -> IO a)
 
 instance Transaction Write where
   run db (Write dbToRegistryToIO) = Dispatcher.runWrite (DB.dispatcher db) io where 
@@ -30,10 +30,10 @@ instance Transaction Write where
   getDB = Write $ \z _ -> return z
   getNodeRefRegistry = Write $ \_ z -> return z
 
-instance MonadIO (Write s) where
+instance MonadIO (Write tag s) where
   liftIO io = Write $ \_ _ -> io
 
-instance Monad (Write s) where
+instance Monad (Write tag s) where
   return a = Write $ \_ _ -> return a
   writeA >>= aToWriteB = Write dbToRegToIO where
     dbToRegToIO db reg = ioA >>= aToIOB where
@@ -43,11 +43,11 @@ instance Monad (Write s) where
         Write dbToRegToIOB = aToWriteB a
         ioB = dbToRegToIOB db reg
 
-instance Applicative (Write s) where
+instance Applicative (Write tag s) where
   pure = return
   (<*>) = ap
 
-instance Functor (Write s) where
+instance Functor (Write tag s) where
   fmap f = (=<<) $ return . f
 
 
@@ -58,7 +58,7 @@ instance Functor (Write s) where
 -- Here the /s/ is a state-thread making the escape of node-refs from transaction
 -- impossible. Much inspired by the realization of 'ST'.
 -- 
-newtype Read s a = Read (DB -> NodeRefRegistry -> IO a)
+newtype Read tag s a = Read (DB tag -> NodeRefRegistry tag -> IO a)
 
 instance Transaction Read where
   run db (Read dbToRegistryToIO) = Dispatcher.runRead (DB.dispatcher db) io where 
@@ -66,10 +66,10 @@ instance Transaction Read where
   getDB = Read $ \z _ -> return z
   getNodeRefRegistry = Read $ \_ z -> return z
 
-instance MonadIO (Read s) where
+instance MonadIO (Read tag s) where
   liftIO io = Read $ \_ _ -> io
 
-instance Monad (Read s) where
+instance Monad (Read tag s) where
   return a = Read $ \_ _ -> return a
   readA >>= aToReadB = Read dbToRegToIO where
     dbToRegToIO db reg = ioA >>= aToIOB where
@@ -79,29 +79,30 @@ instance Monad (Read s) where
         Read dbToRegToIOB = aToReadB a
         ioB = dbToRegToIOB db reg
 
-instance Applicative (Read s) where
+instance Applicative (Read tag s) where
   pure = return
   (<*>) = ap
 
-instance Functor (Read s) where
+instance Functor (Read tag s) where
   fmap f = (=<<) $ return . f
 
 
 
-getRoot :: (Transaction t, Monad (t s), MonadIO (t s)) => t s (NodeRef s ())
+getRoot :: (Transaction t, Monad (t tag s), MonadIO (t tag s)) => t tag s (NodeRef tag s ())
 getRoot = do
   root <- getDB >>= return . DB.root
   registry <- getNodeRefRegistry
   liftIO $ NodeRefRegistry.newNodeRef root registry
 
-newNode :: a -> Write s (NodeRef s a)
+newNode :: a -> Write tag s (NodeRef tag s a)
 newNode value = do
   registry <- getNodeRefRegistry
   liftIO $ do
     node <- Node.new value
     NodeRefRegistry.newNodeRef node registry
 
-getTargets :: (Transaction t, Monad (t s), MonadIO (t s)) => Node.Edge a b -> NodeRef s a -> t s [NodeRef s b]
+getTargets :: ( Transaction t, Monad (t tag s), MonadIO (t tag s) ) 
+           => Node.Edge tag a b -> NodeRef tag s a -> t tag s [NodeRef tag s b]
 getTargets edge refA = do
   registry <- getNodeRefRegistry
   liftIO $ do
@@ -109,24 +110,24 @@ getTargets edge refA = do
     nodesB <- Node.getTargets edge nodeA
     for nodesB $ \node -> NodeRefRegistry.newNodeRef node registry
 
-getValue :: (Transaction t, Monad (t s), MonadIO (t s)) => NodeRef s a -> t s a
+getValue :: (Transaction t, Monad (t tag s), MonadIO (t tag s)) => NodeRef tag s a -> t tag s a
 getValue ref = liftIO $ NodeRef.getNode ref >>= Node.getValue
 
-setValue :: a -> NodeRef s a -> Write s ()
+setValue :: a -> NodeRef tag s a -> Write tag s ()
 setValue value ref = do
   liftIO $ do
     node <- NodeRef.getNode ref
     Node.setValue value node
 
-insertEdge :: (Hashable (Node.Edge a b), Eq (Node.Edge a b), Typeable b) =>
-              Node.Edge a b -> NodeRef s a -> NodeRef s b -> Write s ()
+insertEdge :: (Hashable (Node.Edge tag a b), Eq (Node.Edge tag a b), Typeable b) =>
+              Node.Edge tag a b -> NodeRef tag s a -> NodeRef tag s b -> Write tag s ()
 insertEdge edge refA refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
     Node.insertEdge edge nodeB nodeA
 
-deleteEdge :: Node.Edge a b -> NodeRef s a -> NodeRef s b -> Write s ()
+deleteEdge :: Node.Edge tag a b -> NodeRef tag s a -> NodeRef tag s b -> Write tag s ()
 deleteEdge edge refA refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA

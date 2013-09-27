@@ -16,12 +16,12 @@ module TPM.GraphDB
     Transaction.setValue,
     Transaction.insertEdge,
     Transaction.deleteEdge,
-    -- ** Transaction tag
-    Tag.Tag,
-    Tag.run,
+    -- ** Events
+    Event.Event,
+    Event.run,
   ) where
 
 import qualified TPM.GraphDB.DB as DB
 import qualified TPM.GraphDB.Transaction as Transaction
-import qualified TPM.GraphDB.Transaction.Tag as Tag
+import qualified TPM.GraphDB.Transaction.Event as Event
 import qualified TPM.GraphDB.Node as Node

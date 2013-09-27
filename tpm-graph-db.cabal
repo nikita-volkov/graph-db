@@ -24,7 +24,7 @@ library
     TPM.GraphDB.Node.EdgesTable
     TPM.GraphDB.Dispatcher
     TPM.GraphDB.Transaction
-    TPM.GraphDB.Transaction.Tag
+    TPM.GraphDB.Transaction.Event
     TPM.GraphDB.Transaction.NodeRef
     TPM.GraphDB.Transaction.NodeRefRegistry
   build-depends:

@@ -5,9 +5,9 @@ import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
 
 
 
-data NodeRef s v = NodeRef Int (IORef (Node v))
+data NodeRef t s a = NodeRef Int (IORef (Node t a))
 
-getNode :: NodeRef s v -> IO (Node v)
+getNode :: NodeRef t s a -> IO (Node t a)
 getNode (NodeRef _ ioRef) = readIORef ioRef
 
 

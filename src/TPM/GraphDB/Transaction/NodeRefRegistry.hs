@@ -9,18 +9,18 @@ import qualified Data.HashTable.IO as HashTables
 -- Transaction-local registry of references to nodes. These references may not escape
 -- the transaction.
 -- Inspired by 'ST' monad.
-data NodeRefRegistry = NodeRefRegistry {
-  table :: HashTables.BasicHashTable Int (forall a. Typeable a => Node a),
+data NodeRefRegistry tag = NodeRefRegistry {
+  table :: HashTables.BasicHashTable Int (forall a. Typeable a => Node tag a),
   inc :: Int
 }
 
-new :: IO NodeRefRegistry
+new :: IO (NodeRefRegistry tag)
 new = undefined
 
-newNodeRef :: Node a -> NodeRefRegistry -> IO (NodeRef s a)
+newNodeRef :: Node tag a -> (NodeRefRegistry tag) -> IO (NodeRef tag s a)
 newNodeRef = undefined
 
-getTargets :: Node.Edge a b -> NodeRef s a -> NodeRefRegistry -> IO [NodeRef s b]
+getTargets :: Node.Edge tag a b -> NodeRef tag s a -> (NodeRefRegistry tag) -> IO [NodeRef tag s b]
 getTargets edge ref registry = do
   node <- NodeRef.getNode ref
   targetNodes <- Node.getTargets edge node
@@ -28,6 +28,6 @@ getTargets edge ref registry = do
 
 -- |
 -- For deserialization.
-lookup :: Int -> NodeRefRegistry -> IO (Maybe (NodeRef s a))
+lookup :: Int -> (NodeRefRegistry tag) -> IO (Maybe (NodeRef tag s a))
 lookup = undefined
 
