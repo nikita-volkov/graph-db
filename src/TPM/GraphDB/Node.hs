@@ -37,7 +37,7 @@ instance Eq (Node db a) where
   a == b = properties a == properties b
 
 -- |
--- An edge from /source/ value to /target/.
+-- An edge from /source/ value to /target/ tagged with /db/.
 data family Edge db source target
 
 type instance EdgesTable.Node db source = Node db source
