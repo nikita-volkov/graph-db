@@ -33,6 +33,9 @@ data Node db a = Node {
   edges :: EdgesTable.EdgesTable db a
 }
 
+instance Eq (Node db a) where
+  a == b = properties a == properties b
+
 -- |
 -- An edge from /source/ value to /target/.
 data family Edge db source target
