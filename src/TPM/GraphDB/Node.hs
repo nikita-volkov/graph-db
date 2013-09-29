@@ -35,6 +35,7 @@ data Node db a = Node {
 
 instance Eq (Node db a) where
   a == b = properties a == properties b
+deriving instance Typeable2 Node
 
 -- |
 -- An edge from /source/ value to /target/ tagged with /db/.

@@ -22,6 +22,7 @@ library
     TPM.GraphDB.DB
     TPM.GraphDB.Node
     TPM.GraphDB.Node.EdgesTable
+    TPM.GraphDB.Node.Serialize
     TPM.GraphDB.Dispatcher
     TPM.GraphDB.Transaction
     TPM.GraphDB.Transaction.Event
