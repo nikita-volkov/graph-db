@@ -27,6 +27,7 @@ library
     TPM.GraphDB.Transaction.Event
     TPM.GraphDB.Transaction.NodeRef
     TPM.GraphDB.Transaction.NodeRefRegistry
+    TPM.GraphDB.Serialization
   build-depends:
     hashtables == 1.1.*,
     SafeSemaphore == 0.9.*,
