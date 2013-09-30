@@ -1,14 +1,11 @@
 module TPM.GraphDB.Node.Serialize where
 
-import TPM.Prelude hiding (put, State, state)
-import qualified Data.SafeCopy as SafeCopy
+import TPM.GraphDB.Prelude hiding (put, State, state)
+import qualified Data.SafeCopy as SafeCopy; import Data.SafeCopy (SafeCopy)
 import qualified Data.Serialize as Cereal
-import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
-import qualified Data.HashTable.IO as Table
+import qualified TPM.GraphDB.EdgesTable as EdgesTable
 import TPM.GraphDB.Serialization hiding (Table, SafeCopy)
-
-type Table k v = Table.BasicHashTable k v
-type SafeCopy = SafeCopy.SafeCopy
+import TPM.GraphDB.Node as Node
 
 
 
@@ -24,25 +21,14 @@ type SafeCopy = SafeCopy.SafeCopy
 -- 2. Put all its edges with refs to others nodes.
 -- 3. Traverse all referred nodes by going to step 1 with each of them.
 -- 
--- FIXME: accumulating 'Cereal.Put' probably is very ineffective.
-run :: Node db () -> IO Cereal.Put
+-- FIXME: accumulating 'Cereal.Put' probably is very inefficient.
+run :: (SafeCopy (Term db), IsTerm a db, Typeable db, Typeable a) => Node db a -> IO Cereal.Put
 run root = do
-  state <- undefined
-  flip runReaderT state $ do 
-    -- processNode root 
-    undefined
+  state <- newIORef []
+  execWriterT $ flip runReaderT state $ putNode $ AnyNode root
 
 type Serialize db = ReaderT (State db) (WriterT Cereal.Put IO)
-type State db = IORef [(StateNode db, Word64)]
-data StateNode db = forall a. (Typeable a, Typeable db) => StateNode (Node db a)
-
-instance Eq (StateNode db) where
-  StateNode a == StateNode b = Just a == cast b
-
--- | Required by 'WriterT'
-instance Monoid Cereal.Put where
-  mempty = return ()
-  mappend a b = a >> b
+type State db = IORef [(AnyNode db, Word64)]
 
 put :: (Cereal.Serialize a) => a -> Serialize db ()
 put a = tell $ Cereal.put a
@@ -50,32 +36,31 @@ put a = tell $ Cereal.put a
 safePut :: (SafeCopy a) => a -> Serialize db ()
 safePut a = tell $ SafeCopy.safePut a
 
-putTerm :: forall db a. (SafeCopy (Term db), IsTerm db a) => a -> Serialize db ()
+putTerm :: forall db a. (SafeCopy (Term db), IsTerm a db) => a -> Serialize db ()
 putTerm a = safePut (toTerm a :: Term db)
 
-putNodeValue :: forall db a. (SafeCopy (Term db), IsTerm db a) => Node db a -> Serialize db ()
-putNodeValue node = do
+putNode :: (SafeCopy (Term db)) => AnyNode db -> Serialize db ()
+putNode (AnyNode node) = do
   value <- liftIO $ Node.getValue node
   putTerm value
+  (edgesCount, putEdges) <- liftIO $ EdgesTable.foldM fold (0 :: Word32, return ()) $ Node.edges node
+  put edgesCount >> putEdges
+  where
+    fold (count, put) (edge, node) = return $ (succ count, putEdgeAndTarget edge node)
 
-putNode :: (SafeCopy (Term db), IsTerm db a) => Node db a -> Serialize db ()
-putNode node = do
-  putNodeValue node
-  error "TODO: traverse edges"
-
-putEdge :: (SafeCopy (Term db), IsTerm db (Node.Edge db a b), IsTerm db b, Typeable b, Typeable db) => Node.Edge db a b -> Node db b -> Serialize db ()
-putEdge edge node = do
+putEdgeAndTarget :: (SafeCopy (Term db)) => AnyEdge db -> AnyNode db -> Serialize db ()
+putEdgeAndTarget (AnyEdge edge) anyNode = do
   putTerm edge
-  refM <- lookupNodeRef node
+  refM <- lookupNodeRef anyNode
   case refM of
     Nothing -> do
       put False
-      putNode node
+      putNode anyNode
     Just ref -> do
       put True
       put ref
 
-lookupNodeRef :: (Typeable db, Typeable a) => Node db a -> Serialize db (Maybe Word64)
-lookupNodeRef node = do
+lookupNodeRef :: AnyNode db -> Serialize db (Maybe Word64)
+lookupNodeRef anyNode = do
   state <- ask
-  liftIO (readIORef state) >>= return . lookup (StateNode node)
+  liftIO (readIORef state) >>= return . lookup anyNode

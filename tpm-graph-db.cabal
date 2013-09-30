@@ -19,6 +19,7 @@ library
   exposed-modules:
     TPM.GraphDB
   other-modules:
+    TPM.GraphDB.Prelude
     TPM.GraphDB.DB
     TPM.GraphDB.Node
     TPM.GraphDB.EdgesTable
@@ -36,7 +37,7 @@ library
     unordered-containers,
     lens,
     vector,
-    safecopy >= 0.8.3,
+    safecopy >= 0.8.2,
     cereal,
     tpm-prelude == 0.1.*,
     text,
@@ -93,7 +94,7 @@ executable demo
     unordered-containers,
     lens,
     vector,
-    safecopy >= 0.8.3,
+    safecopy >= 0.8.2,
     cereal,
     tpm-prelude == 0.1.*,
     text,

@@ -1,6 +1,6 @@
 module TPM.GraphDB.Transaction.NodeRef where
 
-import TPM.Prelude hiding (Read, Write)
+import TPM.GraphDB.Prelude hiding (Read, Write)
 import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
 
 

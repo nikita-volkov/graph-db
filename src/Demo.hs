@@ -1,10 +1,11 @@
 
-import TPM.Prelude
+import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB as DB
+import qualified TPM.GraphDB.Serialization as DB
 
 
 
-data Catalogue
+data Catalogue deriving (Typeable, Generic)
 data Artist = Artist {artistName :: Text} deriving (Eq, Show, Typeable, Generic)
 data Genre = Genre {genreName :: Text} deriving (Eq, Show, Typeable, Generic)
 data instance DB.Edge Catalogue () Artist = UnitToArtistByNameEdge Text | UnitToArtistEdge deriving (Eq, Show, Generic)
@@ -17,6 +18,24 @@ instance Hashable (DB.Edge Catalogue Artist Genre)
 instance Hashable (DB.Edge Catalogue () Artist)
 instance Hashable (DB.Edge Catalogue () Genre)
 
+
+
+data instance DB.Term Catalogue =
+  UnitTerm () | ArtistTerm Artist | GenreTerm Genre | 
+  UnitToArtistEdgeTerm (DB.Edge Catalogue () Artist) |
+  ArtistToGenreEdgeTerm (DB.Edge Catalogue Artist Genre)
+
+instance DB.IsTerm Artist Catalogue where
+  toTerm = ArtistTerm
+  fromTerm (ArtistTerm z) = z
+
+instance DB.IsTerm (DB.Edge Catalogue () Artist) Catalogue where
+  toTerm = UnitToArtistEdgeTerm
+  fromTerm (UnitToArtistEdgeTerm z) = z
+
+instance DB.IsTerm (DB.Edge Catalogue Artist Genre) Catalogue where
+  toTerm = ArtistToGenreEdgeTerm
+  fromTerm (ArtistToGenreEdgeTerm z) = z
 
 main = do
   db <- DB.new

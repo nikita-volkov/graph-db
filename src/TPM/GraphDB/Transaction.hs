@@ -1,11 +1,12 @@
 module TPM.GraphDB.Transaction where
 
-import TPM.Prelude hiding (Read, Write)
+import TPM.GraphDB.Prelude hiding (Read, Write)
 import qualified TPM.GraphDB.DB as DB; import TPM.GraphDB.DB (DB)
 import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
 import qualified TPM.GraphDB.Dispatcher as Dispatcher; import TPM.GraphDB.Dispatcher (Dispatcher)
 import qualified TPM.GraphDB.Transaction.NodeRefRegistry as NodeRefRegistry; import TPM.GraphDB.Transaction.NodeRefRegistry (NodeRefRegistry)
 import qualified TPM.GraphDB.Transaction.NodeRef as NodeRef; import TPM.GraphDB.Transaction.NodeRef (NodeRef)
+import qualified TPM.GraphDB.Serialization as Serialization
 
 
 
@@ -101,7 +102,12 @@ newNode value = do
     node <- Node.new value
     NodeRefRegistry.newNodeRef node registry
 
-getTargets :: ( Transaction t, Monad (t tag s), MonadIO (t tag s) ) 
+getTargets :: ( Transaction t, Monad (t tag s), MonadIO (t tag s), 
+                Serialization.IsTerm (Node.Edge tag a b) tag,
+                Hashable (Node.Edge tag a b),
+                Typeable (Node.Edge tag a b),
+                Eq (Node.Edge tag a b),
+                Typeable tag ) 
            => Node.Edge tag a b -> NodeRef tag s a -> t tag s [NodeRef tag s b]
 getTargets edge refA = do
   registry <- getNodeRefRegistry
@@ -119,7 +125,13 @@ setValue value ref = do
     node <- NodeRef.getNode ref
     Node.setValue value node
 
-insertEdge :: (Hashable (Node.Edge tag a b), Eq (Node.Edge tag a b), Typeable b) =>
+insertEdge :: ( Hashable (Node.Edge tag a b), 
+                Eq (Node.Edge tag a b), 
+                Serialization.IsTerm (Node.Edge tag a b) tag,
+                Serialization.IsTerm b tag,
+                Typeable (Node.Edge tag a b),
+                Typeable b,
+                Typeable tag ) =>
               Node.Edge tag a b -> NodeRef tag s a -> NodeRef tag s b -> Write tag s ()
 insertEdge edge refA refB = do
   liftIO $ do
