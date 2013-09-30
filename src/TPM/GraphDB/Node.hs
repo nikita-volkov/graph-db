@@ -1,47 +1,64 @@
 module TPM.GraphDB.Node where
 
 import TPM.Prelude
-import qualified TPM.GraphDB.Node.EdgesTable as EdgesTable
+import qualified TPM.GraphDB.EdgesTable as EdgesTable
+import qualified TPM.GraphDB.Serialization as Serialization
 
 
 
-insertEdge :: (Hashable (Edge db a b), Eq (Edge db a b), Typeable b) 
-           => Edge db a b -> Node db b -> Node db a -> IO ()
+insertEdge :: (Hashable (Edge a b), Eq (Edge a b), Typeable (Edge a b)) 
+           => Edge a b -> Node b -> Node a -> IO ()
 insertEdge edge target source = do
-  EdgesTable.insert (edges source) edge target
+  EdgesTable.insert (EdgesTableEdge edge) (EdgesTableNode target) (edges source)
 
-deleteEdge :: Edge db a b -> Node db b -> Node db a -> IO ()
+deleteEdge :: Edge a b -> Node b -> Node a -> IO ()
 deleteEdge = undefined
 
-new :: a -> IO (Node db a)
+new :: a -> IO (Node a)
 new value = Node <$> newIORef value <*> EdgesTable.new
 
-getValue :: Node db a -> IO a
+getValue :: Node a -> IO a
 getValue (Node ref _) = readIORef ref
 
-setValue :: a -> Node db a -> IO ()
+setValue :: a -> Node a -> IO ()
 setValue = undefined
 
-getTargets :: Edge db a b -> Node db a -> IO [Node db b]
+getTargets :: (Hashable (Edge a b), Eq (Edge a b), Typeable (Edge a b)) 
+           => Edge a b -> Node a -> IO [Node b]
 getTargets edge (Node _ edgesTable) = do
-  undefined
+  etNodes <- EdgesTable.lookup (EdgesTableEdge edge) edgesTable  
+  return $ do
+    EdgesTableNode node <- etNodes
+    return $ unsafeCoerce node
 
 
 
-data Node db a = Node { 
+data Node a = Node { 
   properties :: IORef a,
-  edges :: EdgesTable.EdgesTable db a
+  edges :: EdgesTable.EdgesTable
 }
 
-instance Eq (Node db a) where
+instance Eq (Node a) where
   a == b = properties a == properties b
-deriving instance Typeable2 Node
+deriving instance Typeable1 Node
 
 -- |
 -- An edge from /source/ value to /target/ tagged with /db/.
-data family Edge db source target
+data family Edge a b
 
-type instance EdgesTable.Node db source = Node db source
-type instance EdgesTable.Edge db source target = Edge db source target
+data instance EdgesTable.Node = 
+  forall a. 
+  EdgesTableNode (Node a)
+data instance EdgesTable.Edge = 
+  forall a b. 
+  (Hashable (Edge a b), Typeable (Edge a b), Eq (Edge a b)) => 
+  EdgesTableEdge (Edge a b)
+
+deriving instance Typeable EdgesTable.Edge
+instance Hashable EdgesTable.Edge where
+  hashWithSalt salt (EdgesTableEdge edge) = hashWithSalt (succ salt) edge
+instance Eq EdgesTable.Edge where
+  EdgesTableEdge a == EdgesTableEdge b = Just a == cast b
+
 
 
