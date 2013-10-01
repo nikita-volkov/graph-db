@@ -24,12 +24,14 @@ library
     TPM.GraphDB.Node
     TPM.GraphDB.EdgesTable
     TPM.GraphDB.Node.Serialize
+    TPM.GraphDB.Node.Deserialize
     TPM.GraphDB.Dispatcher
     TPM.GraphDB.Transaction
     TPM.GraphDB.Transaction.Event
     TPM.GraphDB.Transaction.NodeRef
     TPM.GraphDB.Transaction.NodeRefRegistry
     TPM.GraphDB.Serialization
+    TPM.GraphDB.DIOVector
     TPM.GraphDB.GetT
   build-depends:
     hashtables == 1.1.*,

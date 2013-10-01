@@ -24,11 +24,12 @@ import TPM.GraphDB.Node as Node
 -- FIXME: accumulating 'Cereal.Put' probably is very inefficient.
 run :: (SafeCopy (Term db), IsTerm a db, Typeable db, Typeable a) => Node db a -> IO Cereal.Put
 run root = do
-  state <- newIORef []
+  state <- newIORef ([], 0)
   execWriterT $ flip runReaderT state $ putNode $ AnyNode root
 
 type Serialize db = ReaderT (State db) (WriterT Cereal.Put IO)
-type State db = IORef [(AnyNode db, Word64)]
+-- | A list of serialized nodes and its length.
+type State db = IORef ([AnyNode db], Int)
 
 put :: (Cereal.Serialize a) => a -> Serialize db ()
 put a = tell $ Cereal.put a
@@ -40,18 +41,24 @@ putTerm :: forall db a. (SafeCopy (Term db), IsTerm a db) => a -> Serialize db (
 putTerm a = safePut (toTerm a :: Term db)
 
 putNode :: (SafeCopy (Term db)) => AnyNode db -> Serialize db ()
-putNode (AnyNode node) = do
-  value <- liftIO $ Node.getValue node
-  putTerm value
-  (edgesCount, putEdges) <- liftIO $ EdgesTable.foldM fold (0 :: Word32, return ()) $ Node.edges node
-  put edgesCount >> putEdges
-  where
-    fold (count, put) (edge, node) = return $ (succ count, putEdgeAndTarget edge node)
+putNode anyNode@(AnyNode node) = putValue >> putEdges >> updateState where
+  putValue = do
+    value <- liftIO $ Node.getValue node
+    putTerm value
+  putEdges = do
+    (edgesCount, putEdges) <- liftIO $ EdgesTable.foldM fold (0 :: Int, return ()) $ Node.edges node
+    put edgesCount
+    putEdges
+    where
+      fold (count, put) (edge, node) = return $ (succ count, putEdgeAndTarget edge node)
+  updateState = do
+    state <- ask
+    liftIO $ modifyIORef state $ \(list, length) -> (anyNode : list, succ length)
 
 putEdgeAndTarget :: (SafeCopy (Term db)) => AnyEdge db -> AnyNode db -> Serialize db ()
 putEdgeAndTarget (AnyEdge edge) anyNode = do
   putTerm edge
-  refM <- lookupNodeRef anyNode
+  refM <- lookupNodeIndex anyNode
   case refM of
     Nothing -> do
       put False
@@ -60,7 +67,8 @@ putEdgeAndTarget (AnyEdge edge) anyNode = do
       put True
       put ref
 
-lookupNodeRef :: AnyNode db -> Serialize db (Maybe Word64)
-lookupNodeRef anyNode = do
+lookupNodeIndex :: AnyNode db -> Serialize db (Maybe Int)
+lookupNodeIndex anyNode = do
   state <- ask
-  liftIO (readIORef state) >>= return . lookup anyNode
+  -- liftIO (readIORef state) >>= return . lookup anyNode
+  error "FIXME: implement"
