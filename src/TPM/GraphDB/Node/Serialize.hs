@@ -1,11 +1,9 @@
 module TPM.GraphDB.Node.Serialize where
 
-import TPM.GraphDB.Prelude hiding (put, State, state)
+import TPM.GraphDB.Prelude hiding (put)
+import TPM.GraphDB.Node as Node
 import qualified Data.SafeCopy as SafeCopy; import Data.SafeCopy (SafeCopy)
 import qualified Data.Serialize as Cereal
-import qualified TPM.GraphDB.EdgesTable as EdgesTable
-import TPM.GraphDB.Serialization hiding (Table, SafeCopy)
-import TPM.GraphDB.Node as Node
 
 
 
@@ -22,14 +20,21 @@ import TPM.GraphDB.Node as Node
 -- 3. Traverse all referred nodes by going to step 1 with each of them.
 -- 
 -- FIXME: accumulating 'Cereal.Put' probably is very inefficient.
-run :: (SafeCopy (Term db), IsTerm a db, Typeable db, Typeable a) => Node db a -> IO Cereal.Put
+run :: (SafeCopy (Value db), SafeCopy (Edge db)) => Node db -> IO Cereal.Put
 run root = do
-  state <- newIORef ([], 0)
-  execWriterT $ flip runReaderT state $ putNode $ AnyNode root
+  state <- (,) <$> newIORef ([], 0) <*> newTChanIO
+  execWriterT $ flip runReaderT state $ do
+    putNodeValue root
+    loopTraverseNode
 
-type Serialize db = ReaderT (State db) (WriterT Cereal.Put IO)
--- | A list of serialized nodes and its length.
-type State db = IORef ([AnyNode db], Int)
+
+
+type Serialize db = ReaderT (SerializeState db) (WriterT Cereal.Put IO)
+
+-- | A list of serialized nodes, its length and a queue of untraversed nodes.
+type SerializeState db = (IORef ([Node db], Int), TChan (Node db))
+
+
 
 put :: (Cereal.Serialize a) => a -> Serialize db ()
 put a = tell $ Cereal.put a
@@ -37,38 +42,40 @@ put a = tell $ Cereal.put a
 safePut :: (SafeCopy a) => a -> Serialize db ()
 safePut a = tell $ SafeCopy.safePut a
 
-putTerm :: forall db a. (SafeCopy (Term db), IsTerm a db) => a -> Serialize db ()
-putTerm a = safePut (toTerm a :: Term db)
-
-putNode :: (SafeCopy (Term db)) => AnyNode db -> Serialize db ()
-putNode anyNode@(AnyNode node) = putValue >> putEdges >> updateState where
+putNodeValue :: (SafeCopy (Value db)) => Node db -> Serialize db ()
+putNodeValue node = putValue >> updateState where
   putValue = do
-    value <- liftIO $ Node.getValue node
-    putTerm value
-  putEdges = do
-    (edgesCount, putEdges) <- liftIO $ EdgesTable.foldM fold (0 :: Int, return ()) $ Node.edges node
-    put edgesCount
-    putEdges
-    where
-      fold (count, put) (edge, node) = return $ (succ count, putEdgeAndTarget edge node)
+    indexM <- lookupSerializedNodeIndex node
+    case indexM of
+      Nothing -> put False >> (liftIO $ Node.getValue node) >>= safePut
+      Just i -> put True >> put i
   updateState = do
-    state <- ask
-    liftIO $ modifyIORef state $ \(list, length) -> (anyNode : list, succ length)
+    (_, untraversedNodes) <- ask
+    liftIO $ atomically $ writeTChan untraversedNodes node
 
-putEdgeAndTarget :: (SafeCopy (Term db)) => AnyEdge db -> AnyNode db -> Serialize db ()
-putEdgeAndTarget (AnyEdge edge) anyNode = do
-  putTerm edge
-  refM <- lookupNodeIndex anyNode
-  case refM of
-    Nothing -> do
-      put False
-      putNode anyNode
-    Just ref -> do
-      put True
-      put ref
+loopTraverseNode :: (SafeCopy (Value db), SafeCopy (Edge db)) => Serialize db ()
+loopTraverseNode = do
+  nodeM <- do
+    (_, chan) <- ask
+    liftIO $ atomically $ tryReadTChan chan
+  case nodeM of
+    Nothing -> return ()
+    Just node -> do
+      traverseNode node
+      loopTraverseNode
 
-lookupNodeIndex :: AnyNode db -> Serialize db (Maybe Int)
-lookupNodeIndex anyNode = do
-  state <- ask
-  -- liftIO (readIORef state) >>= return . lookup anyNode
-  error "FIXME: implement"
+traverseNode :: (SafeCopy (Value db), SafeCopy (Edge db)) => Node db -> Serialize db ()
+traverseNode node = do
+  (edgesCount, putEdges) <- 
+    liftIO $ Node.foldEdgesM node (0 :: Int, return ()) $ \(count, put) (edge, target) -> do
+      return (succ count, put >> safePut edge >> putNodeValue target)
+  put edgesCount
+  putEdges
+
+lookupSerializedNodeIndex :: Node db -> Serialize db (Maybe Int)
+lookupSerializedNodeIndex node = do
+  (registryRef, _) <- ask
+  (list, length) <- liftIO $ readIORef registryRef
+  return $ (length-) <$> elemIndex node list
+
+

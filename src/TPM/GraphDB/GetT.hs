@@ -1,19 +1,23 @@
 module TPM.GraphDB.GetT where
 
 import TPM.GraphDB.Prelude
-import Data.Serialize
+import qualified Data.Serialize.Get as Get
 
 
 
-newtype GetT m a = GetT { run :: ByteString -> m (Result a) }
+data Result m a = 
+  Fail String |
+  Partial (ByteString -> m (Result m a)) |
+  Done a ByteString
+
+newtype GetT m a = GetT { run :: ByteString -> m (Result m a) }
 
 instance (Monad m) => Monad (GetT m) where
-  GetT runA >>= aToGetTB = GetT $ \bs -> do
-    rA <- runA bs
-    case rA of
+  GetT runA >>= aToGetTB = GetT $ \bs -> runA bs >>= aToMB where
+    aToMB a = case a of
       Fail msg -> return $ Fail msg
-      Partial cont -> error "FIXME: Partial parsing unimplemented"
-      Done a bs' -> case aToGetTB a of GetT runB -> runB bs'
+      Partial cont -> return $ Partial $ \bs -> cont bs >>= aToMB
+      Done a bs -> case aToGetTB a of GetT runB -> runB bs
   return a = GetT $ \bs -> return $ Done a bs
 
 instance MonadTrans GetT where
@@ -32,12 +36,16 @@ instance (Monad m) => Functor (GetT m) where
 
 
 class MonadGet m where 
-  liftGet :: Get a -> m a
+  liftGet :: Get.Get a -> m a
 
 instance (Monad m) => MonadGet (GetT m) where 
-  liftGet get = GetT $ \bs -> return $ runGetPartial get bs
+  liftGet get = GetT $ \bs -> return $ convertResult $ Get.runGetPartial get bs where
+    convertResult r = case r of
+      Get.Fail m -> Fail m
+      Get.Partial cont -> Partial $ \bs -> return $ convertResult $ cont bs
+      Get.Done a bs -> Done a bs
 
-instance MonadGet Get where
+instance MonadGet Get.Get where
   liftGet = id
 
 

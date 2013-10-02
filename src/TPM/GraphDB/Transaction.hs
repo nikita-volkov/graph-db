@@ -6,14 +6,13 @@ import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
 import qualified TPM.GraphDB.Dispatcher as Dispatcher; import TPM.GraphDB.Dispatcher (Dispatcher)
 import qualified TPM.GraphDB.Transaction.NodeRefRegistry as NodeRefRegistry; import TPM.GraphDB.Transaction.NodeRefRegistry (NodeRefRegistry)
 import qualified TPM.GraphDB.Transaction.NodeRef as NodeRef; import TPM.GraphDB.Transaction.NodeRef (NodeRef)
-import qualified TPM.GraphDB.Serialization as Serialization
 
 
 
 class Transaction t where
-  run :: DB tag -> (forall state. t tag state a) -> IO a
-  getDB :: t tag state (DB tag)
-  getNodeRefRegistry :: t tag state (NodeRefRegistry tag)
+  run :: DB db -> (forall state. t db state a) -> IO a
+  getDB :: t db state (DB db)
+  getNodeRefRegistry :: t db state (NodeRefRegistry db)
 
 
 
@@ -23,7 +22,7 @@ class Transaction t where
 -- Here the /s/ is a state-thread making the escape of node-refs from transaction
 -- impossible. Much inspired by the realization of 'ST'.
 -- 
-newtype Write tag s a = Write (DB tag -> NodeRefRegistry tag -> IO a)
+newtype Write db s a = Write (DB db -> NodeRefRegistry db -> IO a)
 
 instance Transaction Write where
   run db (Write dbToRegistryToIO) = Dispatcher.runWrite (DB.dispatcher db) io where 
@@ -31,10 +30,10 @@ instance Transaction Write where
   getDB = Write $ \z _ -> return z
   getNodeRefRegistry = Write $ \_ z -> return z
 
-instance MonadIO (Write tag s) where
+instance MonadIO (Write db s) where
   liftIO io = Write $ \_ _ -> io
 
-instance Monad (Write tag s) where
+instance Monad (Write db s) where
   return a = Write $ \_ _ -> return a
   writeA >>= aToWriteB = Write dbToRegToIO where
     dbToRegToIO db reg = ioA >>= aToIOB where
@@ -44,11 +43,11 @@ instance Monad (Write tag s) where
         Write dbToRegToIOB = aToWriteB a
         ioB = dbToRegToIOB db reg
 
-instance Applicative (Write tag s) where
+instance Applicative (Write db s) where
   pure = return
   (<*>) = ap
 
-instance Functor (Write tag s) where
+instance Functor (Write db s) where
   fmap f = (=<<) $ return . f
 
 
@@ -59,7 +58,7 @@ instance Functor (Write tag s) where
 -- Here the /s/ is a state-thread making the escape of node-refs from transaction
 -- impossible. Much inspired by the realization of 'ST'.
 -- 
-newtype Read tag s a = Read (DB tag -> NodeRefRegistry tag -> IO a)
+newtype Read db s a = Read (DB db -> NodeRefRegistry db -> IO a)
 
 instance Transaction Read where
   run db (Read dbToRegistryToIO) = Dispatcher.runRead (DB.dispatcher db) io where 
@@ -67,10 +66,10 @@ instance Transaction Read where
   getDB = Read $ \z _ -> return z
   getNodeRefRegistry = Read $ \_ z -> return z
 
-instance MonadIO (Read tag s) where
+instance MonadIO (Read db s) where
   liftIO io = Read $ \_ _ -> io
 
-instance Monad (Read tag s) where
+instance Monad (Read db s) where
   return a = Read $ \_ _ -> return a
   readA >>= aToReadB = Read dbToRegToIO where
     dbToRegToIO db reg = ioA >>= aToIOB where
@@ -80,71 +79,60 @@ instance Monad (Read tag s) where
         Read dbToRegToIOB = aToReadB a
         ioB = dbToRegToIOB db reg
 
-instance Applicative (Read tag s) where
+instance Applicative (Read db s) where
   pure = return
   (<*>) = ap
 
-instance Functor (Read tag s) where
+instance Functor (Read db s) where
   fmap f = (=<<) $ return . f
 
 
 
-getRoot :: (Transaction t, Monad (t tag s), MonadIO (t tag s)) => t tag s (NodeRef tag s ())
+getRoot :: (Transaction t, Monad (t db s), MonadIO (t db s)) => t db s (NodeRef db s)
 getRoot = do
   root <- getDB >>= return . DB.root
   registry <- getNodeRefRegistry
-  liftIO $ NodeRefRegistry.newNodeRef root registry
+  liftIO $ NodeRefRegistry.newNodeRef registry root
 
-newNode :: a -> Write tag s (NodeRef tag s a)
+newNode :: Node.Value db -> Write db s (NodeRef db s)
 newNode value = do
   registry <- getNodeRefRegistry
   liftIO $ do
     node <- Node.new value
-    NodeRefRegistry.newNodeRef node registry
+    NodeRefRegistry.newNodeRef registry node
 
-getTargets :: ( Transaction t, Monad (t tag s), MonadIO (t tag s), 
-                Serialization.IsTerm (Node.Edge tag a b) tag,
-                Hashable (Node.Edge tag a b),
-                Typeable (Node.Edge tag a b),
-                Eq (Node.Edge tag a b),
-                Typeable tag ) 
-           => Node.Edge tag a b -> NodeRef tag s a -> t tag s [NodeRef tag s b]
+getTargets :: ( Transaction t, Monad (t db s), MonadIO (t db s), Hashable (Node.Edge db), Eq (Node.Edge db) ) => 
+              Node.Edge db -> NodeRef db s -> t db s [NodeRef db s]
 getTargets edge refA = do
   registry <- getNodeRefRegistry
   liftIO $ do
     nodeA <- NodeRef.getNode refA
-    nodesB <- Node.getTargets edge nodeA
-    for nodesB $ \node -> NodeRefRegistry.newNodeRef node registry
+    nodesB <- Node.getTargets nodeA edge
+    for nodesB $ \node -> NodeRefRegistry.newNodeRef registry node
 
-getValue :: (Transaction t, Monad (t tag s), MonadIO (t tag s)) => NodeRef tag s a -> t tag s a
+getValue :: (Transaction t, Monad (t db s), MonadIO (t db s)) => NodeRef db s -> t db s (Node.Value db)
 getValue ref = liftIO $ NodeRef.getNode ref >>= Node.getValue
 
-setValue :: a -> NodeRef tag s a -> Write tag s ()
+setValue :: Node.Value db -> NodeRef db s -> Write db s ()
 setValue value ref = do
   liftIO $ do
     node <- NodeRef.getNode ref
-    Node.setValue value node
+    Node.setValue node value
 
-insertEdge :: ( Hashable (Node.Edge tag a b), 
-                Eq (Node.Edge tag a b), 
-                Serialization.IsTerm (Node.Edge tag a b) tag,
-                Serialization.IsTerm b tag,
-                Typeable (Node.Edge tag a b),
-                Typeable b,
-                Typeable tag ) =>
-              Node.Edge tag a b -> NodeRef tag s a -> NodeRef tag s b -> Write tag s ()
+insertEdge :: ( Hashable (Node.Edge db), Eq (Node.Edge db) ) =>
+              Node.Edge db -> NodeRef db s -> NodeRef db s -> Write db s ()
 insertEdge edge refA refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
-    Node.insertEdge edge nodeB nodeA
+    Node.insertEdge nodeA edge nodeB
 
-deleteEdge :: Node.Edge tag a b -> NodeRef tag s a -> NodeRef tag s b -> Write tag s ()
+deleteEdge :: Node.Edge db -> NodeRef db s -> NodeRef db s -> Write db s ()
 deleteEdge edge refA refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
-    Node.deleteEdge edge nodeB nodeA
+    Node.deleteEdge nodeA edge nodeB
 
 
 

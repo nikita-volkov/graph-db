@@ -1,70 +1,55 @@
 module TPM.GraphDB.Node where
 
 import TPM.GraphDB.Prelude
-import qualified TPM.GraphDB.EdgesTable as EdgesTable
-import TPM.GraphDB.Serialization
-import qualified Data.SafeCopy as SafeCopy; import Data.SafeCopy (SafeCopy)
-import qualified Data.Serialize as Cereal
+import qualified Data.HashTable.IO as Table
 
 
 
-insertEdge :: (Hashable (Edge db a b), Eq (Edge db a b), Typeable (Edge db a b), IsTerm b db, Typeable db, Typeable b, IsTerm (Edge db a b) db) 
-           => Edge db a b -> Node db b -> Node db a -> IO ()
-insertEdge edge target source = do
-  EdgesTable.insert (AnyEdge edge) (AnyNode target) (edges source)
-
-deleteEdge :: Edge db a b -> Node db b -> Node db a -> IO ()
-deleteEdge = undefined
-
-new :: a -> IO (Node db a)
-new value = Node <$> newIORef value <*> EdgesTable.new
-
-getValue :: Node db a -> IO a
-getValue (Node ref _) = readIORef ref
-
-setValue :: a -> Node db a -> IO ()
-setValue = undefined
-
-getTargets :: (Hashable (Edge db a b), Eq (Edge db a b), Typeable (Edge db a b), Typeable db, IsTerm (Edge db a b) db) 
-           => Edge db a b -> Node db a -> IO [Node db b]
-getTargets edge (Node _ edgesTable) = do
-  etNodes <- EdgesTable.lookup (AnyEdge edge) edgesTable  
-  return $ do
-    AnyNode node <- etNodes
-    return $ unsafeCoerce node
-
-
-
-data Node db a = Node { 
-  properties :: IORef a,
-  edges :: EdgesTable.EdgesTable db
+data Node db = Node { 
+  value :: IORef (Value db),
+  edges :: Table.BasicHashTable (Edge db) [Node db]
 }
 
-instance Eq (Node db a) where
-  a == b = properties a == properties b
-deriving instance Typeable2 Node
+-- | 
+-- A union type for all nodes under a /db/ tag.
+-- Used as a dictionary for deserialization.
+-- Client specifies a 'SafeCopy' instance for it.
+type family Value db 
 
 -- |
--- An edge from /source/ value to /target/ tagged with /db/.
-data family Edge db a b
-deriving instance Typeable3 Edge
+-- A union type for all edges under a /db/ tag.
+type family Edge db
 
 
 
-data AnyNode db = forall a. (IsTerm a db, Typeable a, Typeable db) => AnyNode (Node db a)
-type instance EdgesTable.Node db = AnyNode db
-instance Eq (AnyNode db) where
-  AnyNode a == AnyNode b = Just a == cast b
+insertEdge :: (Hashable (Edge db), Eq (Edge db)) => Node db -> Edge db -> Node db -> IO ()
+insertEdge (Node _ table) edge target =
+  Table.lookup table edge >>=
+  return . fromMaybe [] >>=
+  return . (target:) >>=
+  Table.insert table edge
 
-data AnyEdge db =
-  forall a b. 
-  (Hashable (Edge db a b), Typeable (Edge db a b), Eq (Edge db a b), IsTerm (Edge db a b) db) => 
-  AnyEdge (Edge db a b)
-type instance EdgesTable.Edge db = AnyEdge db
-deriving instance Typeable1 AnyEdge
-instance Hashable (AnyEdge db) where
-  hashWithSalt salt (AnyEdge edge) = hashWithSalt (succ salt) edge
-instance Eq (AnyEdge db) where
-  AnyEdge a == AnyEdge b = Just a == cast b
+deleteEdge :: Node db -> Edge db -> Node db -> IO ()
+deleteEdge = undefined
+
+new :: Value db -> IO (Node db)
+new value = Node <$> newIORef value <*> Table.new
+
+getValue :: Node db -> IO (Value db)
+getValue (Node ref _) = readIORef ref
+
+setValue :: Node db -> Value db -> IO ()
+setValue = undefined
+
+getTargets :: (Hashable (Edge db), Eq (Edge db)) => Node db -> Edge db -> IO [Node db]
+getTargets (Node _ edgesTable) edge = fromMaybe [] <$> Table.lookup edgesTable edge
+
+foldEdgesM :: Node db -> z -> (z -> (Edge db, Node db) -> IO z) -> IO z
+foldEdgesM node f z = undefined
+
+
+
+instance Eq (Node db) where
+  a == b = value a == value b
 
 

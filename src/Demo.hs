@@ -1,7 +1,6 @@
 
 import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB as DB
-import qualified TPM.GraphDB.Serialization as DB
 
 
 
@@ -18,27 +17,38 @@ instance Hashable (DB.Edge Catalogue Artist Genre)
 instance Hashable (DB.Edge Catalogue () Artist)
 instance Hashable (DB.Edge Catalogue () Genre)
 
+data instance DB.ValueUnion Catalogue =
+  UnitTerm () | ArtistTerm Artist | GenreTerm Genre
 
-
-data instance DB.Term Catalogue =
-  UnitTerm () | ArtistTerm Artist | GenreTerm Genre | 
+data instance DB.EdgeUnion Catalogue =
   UnitToArtistEdgeTerm (DB.Edge Catalogue () Artist) |
   ArtistToGenreEdgeTerm (DB.Edge Catalogue Artist Genre)
+  deriving (Generic, Eq)
 
-instance DB.IsTerm Artist Catalogue where
-  toTerm = ArtistTerm
-  fromTerm (ArtistTerm z) = z
+instance Hashable (DB.EdgeUnion Catalogue)
 
-instance DB.IsTerm (DB.Edge Catalogue () Artist) Catalogue where
-  toTerm = UnitToArtistEdgeTerm
-  fromTerm (UnitToArtistEdgeTerm z) = z
+instance DB.IsValue () Catalogue where
+  toValueUnion = UnitTerm
+  fromValueUnion (UnitTerm z) = z
 
-instance DB.IsTerm (DB.Edge Catalogue Artist Genre) Catalogue where
-  toTerm = ArtistToGenreEdgeTerm
-  fromTerm (ArtistToGenreEdgeTerm z) = z
+instance DB.IsValue Artist Catalogue where
+  toValueUnion = ArtistTerm
+  fromValueUnion (ArtistTerm z) = z
+
+instance DB.IsValue Genre Catalogue where
+  toValueUnion = GenreTerm
+  fromValueUnion (GenreTerm z) = z
+
+instance DB.IsEdge (DB.Edge Catalogue () Artist) Catalogue where
+  toEdgeUnion = UnitToArtistEdgeTerm
+  fromEdgeUnion (UnitToArtistEdgeTerm z) = z
+
+instance DB.IsEdge (DB.Edge Catalogue Artist Genre) Catalogue where
+  toEdgeUnion = ArtistToGenreEdgeTerm
+  fromEdgeUnion (ArtistToGenreEdgeTerm z) = z
 
 main = do
-  db <- DB.new
+  db :: DB.GraphDB Catalogue <- DB.new
   -- DB.run db $ InsertArtist (Artist "A")
 
   undefined

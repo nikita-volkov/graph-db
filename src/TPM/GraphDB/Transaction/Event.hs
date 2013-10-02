@@ -14,13 +14,13 @@ import qualified Data.Serialize as Cereal
 
 
 class Event t where
-  type DBTag t
-  type Transaction t
-  type Result t
-  transaction :: t -> (Transaction t) (DBTag t) s (Result t)
+  type EventTag t
+  type EventTransaction t
+  type EventResult t
+  transaction :: t -> (EventTransaction t) (EventTag t) s (EventResult t)
 
-run :: (Event t, Transaction.Transaction (Transaction t)) => DB (DBTag t) -> t -> IO (Result t)
-run db tag = Transaction.run db $ transaction tag
+run :: (Event t, Transaction.Transaction (EventTransaction t)) => DB (EventTag t) -> t -> IO (EventResult t)
+run db event = Transaction.run db $ transaction event
 
 
 

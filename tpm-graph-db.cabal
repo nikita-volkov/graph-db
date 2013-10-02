@@ -21,18 +21,16 @@ library
   other-modules:
     TPM.GraphDB.Prelude
     TPM.GraphDB.DB
+    TPM.GraphDB.Dispatcher
     TPM.GraphDB.Node
-    TPM.GraphDB.EdgesTable
     TPM.GraphDB.Node.Serialize
     TPM.GraphDB.Node.Deserialize
-    TPM.GraphDB.Dispatcher
-    TPM.GraphDB.Transaction
-    TPM.GraphDB.Transaction.Event
-    TPM.GraphDB.Transaction.NodeRef
-    TPM.GraphDB.Transaction.NodeRefRegistry
-    TPM.GraphDB.Serialization
     TPM.GraphDB.DIOVector
     TPM.GraphDB.GetT
+    TPM.GraphDB.Transaction
+    TPM.GraphDB.Transaction.NodeRef
+    TPM.GraphDB.Transaction.NodeRefRegistry
+    TPM.GraphDB.Transaction.Event
   build-depends:
     hashtables == 1.1.*,
     SafeSemaphore == 0.9.*,
