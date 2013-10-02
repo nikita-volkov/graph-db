@@ -89,7 +89,7 @@ class IsValue v db where
 
 -- |
 -- Functions for converting an edge to and from a union value.
-class IsEdge e db where
+class (Hashable (EdgeUnion db), Eq (EdgeUnion db)) => IsEdge e db where
   toEdgeUnion :: e -> EdgeUnion db
   fromEdgeUnion :: EdgeUnion db -> e
 
@@ -99,11 +99,24 @@ class IsEdge e db where
 new :: (IsValue () db) => IO (GraphDB db)
 new = GraphDB <$> (DB.DB <$> Node.new (toValueUnion ()) <*> Dispatcher.new)
 
-getRoot = NodeRef <$> Transaction.getRoot
-newNode value = NodeRef <$> Transaction.newNode (toValueUnion value)
-getTargets edge (NodeRef ref) = map NodeRef <$> Transaction.getTargets (toEdgeUnion edge) ref
-getValue (NodeRef ref) = fromValueUnion <$> Transaction.getValue ref
+getRoot :: (MonadIO (t db s), Transaction.Transaction t) => t db s (NodeRef db s a)
+getRoot = NodeRef `liftM` Transaction.getRoot
+
+newNode :: (IsValue a db) => a -> Transaction.Write db s (NodeRef db s a)
+newNode value = NodeRef `liftM` Transaction.newNode (toValueUnion value)
+
+getTargets :: (MonadIO (t db s), Transaction.Transaction t, IsEdge (Edge a b) db) => Edge a b -> NodeRef db s a -> t db s [NodeRef db s b]
+getTargets edge (NodeRef ref) = liftM (map NodeRef) $ Transaction.getTargets (toEdgeUnion edge) ref
+
+getValue :: (MonadIO (t db s), Transaction.Transaction t, IsValue a db) => NodeRef db s a -> t db s a
+getValue (NodeRef ref) = liftM fromValueUnion $ Transaction.getValue ref
+
+setValue :: (IsValue a db) => a -> NodeRef db s a -> Transaction.Write db s ()
 setValue value (NodeRef ref) = Transaction.setValue (toValueUnion value) ref
+
+insertEdge :: (IsEdge (Edge a b) db) => Edge a b -> NodeRef db s a -> NodeRef db s b -> Transaction.Write db s ()
 insertEdge edge (NodeRef ref1) (NodeRef ref2) = Transaction.insertEdge (toEdgeUnion edge) ref1 ref2
+
+deleteEdge :: (IsEdge (Edge a b) db) => Edge a b -> NodeRef db s a -> NodeRef db s b -> Transaction.Write db s ()
 deleteEdge edge (NodeRef ref1) (NodeRef ref2) = Transaction.deleteEdge (toEdgeUnion edge) ref1 ref2
 
