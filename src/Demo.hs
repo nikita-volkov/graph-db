@@ -9,7 +9,7 @@ data Artist = Artist {artistName :: Text} deriving (Eq, Show, Typeable, Generic)
 data Genre = Genre {genreName :: Text} deriving (Eq, Show, Typeable, Generic)
 data instance DB.Edge () Artist = UnitToArtistByNameEdge Text | UnitToArtistEdge deriving (Eq, Show, Generic)
 data instance DB.Edge Artist Genre = ArtistToGenreEdge deriving (Eq, Show, Generic)
-data instance DB.Edge () Genre = UnitToGenreByGenreEdge Genre deriving (Eq, Show, Generic)
+data instance DB.Edge () Genre = UnitToGenreByNameEdge Text deriving (Eq, Show, Generic)
 
 instance Hashable Artist
 instance Hashable Genre
@@ -17,35 +17,37 @@ instance Hashable (DB.Edge Artist Genre)
 instance Hashable (DB.Edge () Artist)
 instance Hashable (DB.Edge () Genre)
 
-data instance DB.ValueUnion Catalogue =
-  UnitTerm () | ArtistTerm Artist | GenreTerm Genre
+data instance DB.UnionValue Catalogue =
+  UnitUV () | ArtistUV Artist | GenreUV Genre
 
-data instance DB.EdgeUnion Catalogue =
-  UnitToArtistEdgeTerm (DB.Edge () Artist) |
-  ArtistToGenreEdgeTerm (DB.Edge Artist Genre)
+data instance DB.UnionEdge Catalogue =
+  UnitToArtistUE (DB.Edge () Artist) |
+  ArtistToGenreUE (DB.Edge Artist Genre)
   deriving (Generic, Eq)
 
-instance Hashable (DB.EdgeUnion Catalogue)
+instance Hashable (DB.UnionEdge Catalogue)
 
-instance DB.IsValue () Catalogue where
-  toValueUnion = UnitTerm
-  fromValueUnion (UnitTerm z) = z
+instance DB.IsUnionValueOf () Catalogue where
+  toUnionValue = UnitUV
+  fromUnionValue (UnitUV z) = z
 
-instance DB.IsValue Artist Catalogue where
-  toValueUnion = ArtistTerm
-  fromValueUnion (ArtistTerm z) = z
+instance DB.IsUnionValueOf Artist Catalogue where
+  toUnionValue = ArtistUV
+  fromUnionValue (ArtistUV z) = z
 
-instance DB.IsValue Genre Catalogue where
-  toValueUnion = GenreTerm
-  fromValueUnion (GenreTerm z) = z
+instance DB.IsUnionValueOf Genre Catalogue where
+  toUnionValue = GenreUV
+  fromUnionValue (GenreUV z) = z
 
-instance DB.IsEdge (DB.Edge () Artist) Catalogue where
-  toEdgeUnion = UnitToArtistEdgeTerm
-  fromEdgeUnion (UnitToArtistEdgeTerm z) = z
+instance DB.IsUnionEdgeOf (DB.Edge () Artist) Catalogue where
+  toUnionEdge = UnitToArtistUE
+  fromUnionEdge (UnitToArtistUE z) = z
 
-instance DB.IsEdge (DB.Edge Artist Genre) Catalogue where
-  toEdgeUnion = ArtistToGenreEdgeTerm
-  fromEdgeUnion (ArtistToGenreEdgeTerm z) = z
+instance DB.IsUnionEdgeOf (DB.Edge Artist Genre) Catalogue where
+  toUnionEdge = ArtistToGenreUE
+  fromUnionEdge (ArtistToGenreUE z) = z
+
+
 
 main = do
   db :: DB.GraphDB Catalogue <- DB.new
@@ -67,6 +69,19 @@ getGenresByArtistName name =
   traverse (DB.getTargets ArtistToGenreEdge) >>=
   return . concat >>=
   traverse DB.getValue
+
+
+  
+-- data instance DB.EventUnion Catalogue = 
+--   InsertArtistUE InsertArtist
+
+-- data InsertArtist = InsertArtist Artist
+
+-- instance DB.Event InsertArtist where
+--   type EventTag = Catalogue
+--   type EventTransaction = DB.Write
+--   type EventResult = ()
+--   transaction (InsertArtist artist) = insertArtist artist
 
 
 

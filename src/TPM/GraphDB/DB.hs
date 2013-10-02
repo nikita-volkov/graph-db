@@ -13,12 +13,5 @@ data DB db = DB {
   dispatcher :: Dispatcher
 }
 
--- -- | Initialize a 'DB' with only a single node having a /unit/-value.
--- new :: (IsValue () db) => IO (DB db)
--- new = DB <$> Node.new (toValue ()) <*> Dispatcher.new
-
--- class IsValue v db where
---   toValue :: v -> Node.Value db
---   fromValue :: Node.Value db -> v
-
-
+new :: Node.Value db -> IO (DB db)
+new value = DB <$> Node.new value <*> Dispatcher.new
