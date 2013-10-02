@@ -1,39 +1,55 @@
 module TPM.GraphDB.Node where
 
-import TPM.Prelude
-import qualified Data.HashTable.IO as HashTables
+import TPM.GraphDB.Prelude
+import qualified Data.HashTable.IO as Table
 
 
 
-insertEdge :: Edge s t -> Node t -> Node s -> IO ()
-insertEdge = undefined
+data Node db = Node { 
+  value :: IORef (Value db),
+  edges :: Table.BasicHashTable (Edge db) [Node db]
+}
 
-deleteEdge :: Edge s t -> Node t -> Node s -> IO ()
-deleteEdge = undefined
-
-new :: v -> IO (Node v)
-new value = Node <$> newIORef value <*> HashTables.new
-
-getValue :: Node v -> IO v
-getValue (Node ref _) = readIORef ref
-
-setValue :: v -> Node v -> IO ()
-setValue = undefined
-
-getTargets :: Edge s t -> Node s -> IO [Node t]
-getTargets edge (Node _ edgesTable) = do
-  undefined
-
-
-
-data Node v = Node 
-  (IORef v)
-  (HashTables.BasicHashTable TypeRep (forall t. Typeable t => HashTables.BasicHashTable (Edge v t) [Node t]))
+-- | 
+-- A union type for all nodes under a /db/ tag.
+-- Used as a dictionary for deserialization.
+-- Client specifies a 'SafeCopy' instance for it.
+type family Value db 
 
 -- |
--- An edge from /source/ value to /target/.
-data family Edge source target
+-- A union type for all edges under a /db/ tag.
+type family Edge db
 
 
+
+insertEdge :: (Hashable (Edge db), Eq (Edge db)) => Node db -> Edge db -> Node db -> IO ()
+insertEdge (Node _ table) edge target =
+  Table.lookup table edge >>=
+  return . fromMaybe [] >>=
+  return . (target:) >>=
+  Table.insert table edge
+
+deleteEdge :: Node db -> Edge db -> Node db -> IO ()
+deleteEdge = undefined
+
+new :: Value db -> IO (Node db)
+new value = Node <$> newIORef value <*> Table.new
+
+getValue :: Node db -> IO (Value db)
+getValue (Node ref _) = readIORef ref
+
+setValue :: Node db -> Value db -> IO ()
+setValue = undefined
+
+getTargets :: (Hashable (Edge db), Eq (Edge db)) => Node db -> Edge db -> IO [Node db]
+getTargets (Node _ edgesTable) edge = fromMaybe [] <$> Table.lookup edgesTable edge
+
+foldEdgesM :: Node db -> z -> (z -> (Edge db, Node db) -> IO z) -> IO z
+foldEdgesM node f z = undefined
+
+
+
+instance Eq (Node db) where
+  a == b = value a == value b
 
 

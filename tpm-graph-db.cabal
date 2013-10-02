@@ -19,13 +19,18 @@ library
   exposed-modules:
     TPM.GraphDB
   other-modules:
+    TPM.GraphDB.Prelude
     TPM.GraphDB.DB
-    TPM.GraphDB.Node
     TPM.GraphDB.Dispatcher
+    TPM.GraphDB.Node
+    TPM.GraphDB.Node.Serialize
+    TPM.GraphDB.Node.Deserialize
+    TPM.GraphDB.DIOVector
+    TPM.GraphDB.GetT
     TPM.GraphDB.Transaction
-    TPM.GraphDB.Transaction.Tag
     TPM.GraphDB.Transaction.NodeRef
     TPM.GraphDB.Transaction.NodeRefRegistry
+    TPM.GraphDB.Transaction.Event
   build-depends:
     hashtables == 1.1.*,
     SafeSemaphore == 0.9.*,
@@ -33,7 +38,7 @@ library
     unordered-containers,
     lens,
     vector,
-    safecopy >= 0.8.3,
+    safecopy >= 0.8.2,
     cereal,
     tpm-prelude == 0.1.*,
     text,
@@ -90,7 +95,7 @@ executable demo
     unordered-containers,
     lens,
     vector,
-    safecopy >= 0.8.3,
+    safecopy >= 0.8.2,
     cereal,
     tpm-prelude == 0.1.*,
     text,

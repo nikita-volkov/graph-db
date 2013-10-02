@@ -1,33 +1,24 @@
 module TPM.GraphDB.Transaction.NodeRefRegistry where
 
-import TPM.Prelude
+import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
 import qualified TPM.GraphDB.Transaction.NodeRef as NodeRef; import TPM.GraphDB.Transaction.NodeRef (NodeRef)
-import qualified Data.HashTable.IO as HashTables
+import qualified TPM.GraphDB.DIOVector as DIOVector; import TPM.GraphDB.DIOVector (DIOVector)
 
 -- |
 -- Transaction-local registry of references to nodes. These references may not escape
 -- the transaction.
 -- Inspired by 'ST' monad.
-data NodeRefRegistry = NodeRefRegistry {
-  table :: HashTables.BasicHashTable Int (forall a. Typeable a => Node a),
-  inc :: Int
-}
+newtype NodeRefRegistry db = NodeRefRegistry (DIOVector (Node db))
 
-new :: IO NodeRefRegistry
-new = undefined
+new :: IO (NodeRefRegistry db)
+new = NodeRefRegistry <$> DIOVector.new
 
-newNodeRef :: Node a -> NodeRefRegistry -> IO (NodeRef s a)
+newNodeRef :: NodeRefRegistry db -> Node db -> IO (NodeRef db s)
 newNodeRef = undefined
-
-getTargets :: Node.Edge a b -> NodeRef s a -> NodeRefRegistry -> IO [NodeRef s b]
-getTargets edge ref registry = do
-  node <- NodeRef.getNode ref
-  targetNodes <- Node.getTargets edge node
-  traverse (flip newNodeRef registry) targetNodes
 
 -- |
 -- For deserialization.
-lookup :: Int -> NodeRefRegistry -> IO (Maybe (NodeRef s a))
+lookup :: NodeRefRegistry db -> Int -> IO (Maybe (NodeRef db s))
 lookup = undefined
 
