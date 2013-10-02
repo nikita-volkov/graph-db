@@ -32,17 +32,18 @@ library
     TPM.GraphDB.Transaction.NodeRefRegistry
     TPM.GraphDB.Transaction.Event
   build-depends:
-    hashtables == 1.1.*,
     SafeSemaphore == 0.9.*,
-    hashable == 1.2.*,
-    unordered-containers,
-    lens,
-    vector,
     safecopy >= 0.8.2,
     cereal,
-    tpm-prelude == 0.1.*,
+    system-filepath == 0.4.*,
+    vector,
+    hashtables == 1.1.*,
+    hashable == 1.2.*,
     text,
-    containers,
+    bytestring,
+    stm,
+    transformers,
+    mtl,
     base >= 4.5 && < 5
   default-extensions:
     Arrows
@@ -89,17 +90,18 @@ executable tpm-graph-demo
     -threaded 
     "-with-rtsopts=-N"
   build-depends:
-    hashtables == 1.1.*,
     SafeSemaphore == 0.9.*,
-    hashable == 1.2.*,
-    unordered-containers,
-    lens,
-    vector,
     safecopy >= 0.8.2,
     cereal,
-    tpm-prelude == 0.1.*,
+    system-filepath == 0.4.*,
+    vector,
+    hashtables == 1.1.*,
+    hashable == 1.2.*,
     text,
-    containers,
+    bytestring,
+    stm,
+    transformers,
+    mtl,
     base >= 4.5 && < 5
   default-extensions:
     Arrows
