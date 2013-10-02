@@ -29,6 +29,8 @@ module TPM.GraphDB
     deleteEdge,
 
     -- ** Events
+    Event.UnionEvent,
+    Event.IsUnionEventOf(..),
     Event.Event(..),
     Event.run,
   ) where
@@ -45,7 +47,11 @@ import qualified TPM.GraphDB.Dispatcher as Dispatcher
 
 -- | 
 -- The Graph Database.
-newtype GraphDB db = GraphDB (DB.DB db)
+type GraphDB db = DB.DB db
+
+-- | Initialize a 'DB' with only a single node having a /unit/-value.
+new :: (IsUnionValueOf () db) => IO (GraphDB db)
+new = DB.new (toUnionValue ())
 
 
 
@@ -101,10 +107,6 @@ class (Hashable (UnionEdge db), Eq (UnionEdge db)) => IsUnionEdgeOf e db where
   fromUnionEdge :: UnionEdge db -> Maybe e
 
 
-
--- | Initialize a 'DB' with only a single node having a /unit/-value.
-new :: (IsUnionValueOf () db) => IO (GraphDB db)
-new = GraphDB <$> DB.new (toUnionValue ())
 
 getRoot :: (MonadIO (t db s), Transaction.Transaction t) => t db s (NodeRef db s a)
 getRoot = NodeRef `liftM` Transaction.getRoot
