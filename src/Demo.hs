@@ -135,9 +135,12 @@ instance DB.IsUnionEventOf GetGenresByArtistName Catalogue where
 
 
 
-instance Eq (DB.Edge Artist Genre)
-instance Eq (DB.Edge () Artist)
-instance Eq (DB.UnionEdge Catalogue)
+deriving instance Eq Artist
+deriving instance Eq Genre
+deriving instance Eq (DB.Edge Artist Genre)
+deriving instance Eq (DB.Edge () Artist)
+deriving instance Eq (DB.Edge () Genre)
+deriving instance Eq (DB.UnionEdge Catalogue)
 deriving instance Generic Artist
 deriving instance Generic Genre
 deriving instance Generic (DB.Edge Artist Genre)
