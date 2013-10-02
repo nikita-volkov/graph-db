@@ -92,13 +92,13 @@ type instance Node.Edge db = UnionEdge db
 -- Functions for converting a value to and from a union value.
 class IsUnionValueOf v db where
   toUnionValue :: v -> UnionValue db
-  fromUnionValue :: UnionValue db -> v
+  fromUnionValue :: UnionValue db -> Maybe v
 
 -- |
 -- Functions for converting an edge to and from a union value.
 class (Hashable (UnionEdge db), Eq (UnionEdge db)) => IsUnionEdgeOf e db where
   toUnionEdge :: e -> UnionEdge db
-  fromUnionEdge :: UnionEdge db -> e
+  fromUnionEdge :: UnionEdge db -> Maybe e
 
 
 
@@ -116,7 +116,8 @@ getTargets :: (MonadIO (t db s), Transaction.Transaction t, IsUnionEdgeOf (Edge 
 getTargets edge (NodeRef ref) = liftM (map NodeRef) $ Transaction.getTargets (toUnionEdge edge) ref
 
 getValue :: (MonadIO (t db s), Transaction.Transaction t, IsUnionValueOf a db) => NodeRef db s a -> t db s a
-getValue (NodeRef ref) = liftM fromUnionValue $ Transaction.getValue ref
+getValue (NodeRef ref) = liftM (fromMaybe bug . fromUnionValue) $ Transaction.getValue ref where
+  bug = error "Unexpected value. This is a bug. Please report it."
 
 setValue :: (IsUnionValueOf a db) => a -> NodeRef db s a -> Transaction.Write db s ()
 setValue value (NodeRef ref) = Transaction.setValue (toUnionValue value) ref

@@ -29,23 +29,28 @@ instance Hashable (DB.UnionEdge Catalogue)
 
 instance DB.IsUnionValueOf () Catalogue where
   toUnionValue = UnitUV
-  fromUnionValue (UnitUV z) = z
+  fromUnionValue (UnitUV z) = Just z
+  fromUnionValue _ = Nothing
 
 instance DB.IsUnionValueOf Artist Catalogue where
   toUnionValue = ArtistUV
-  fromUnionValue (ArtistUV z) = z
+  fromUnionValue (ArtistUV z) = Just z
+  fromUnionValue _ = Nothing
 
 instance DB.IsUnionValueOf Genre Catalogue where
   toUnionValue = GenreUV
-  fromUnionValue (GenreUV z) = z
+  fromUnionValue (GenreUV z) = Just z
+  fromUnionValue _ = Nothing
 
 instance DB.IsUnionEdgeOf (DB.Edge () Artist) Catalogue where
   toUnionEdge = UnitToArtistUE
-  fromUnionEdge (UnitToArtistUE z) = z
+  fromUnionEdge (UnitToArtistUE z) = Just z
+  fromUnionEdge _ = Nothing
 
 instance DB.IsUnionEdgeOf (DB.Edge Artist Genre) Catalogue where
   toUnionEdge = ArtistToGenreUE
-  fromUnionEdge (ArtistToGenreUE z) = z
+  fromUnionEdge (ArtistToGenreUE z) = Just z
+  fromUnionEdge _ = Nothing
 
 
 
