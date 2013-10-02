@@ -79,7 +79,7 @@ library
 
 
 
-executable demo
+executable tpm-graph-demo
   hs-source-dirs:
     src
   main-is:

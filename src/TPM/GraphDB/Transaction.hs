@@ -101,7 +101,7 @@ newNode value = do
     node <- Node.new (toUnionValue value)
     NodeRefRegistry.newNodeRef registry node
 
-getTargets :: (MonadIO (t db s), Transaction t, IsUnionEdgeOf (Edge a b) db) => 
+getTargets :: (MonadIO (t db s), Transaction t, IsUnionEdgeOf (Edge a b) db, Hashable (UnionEdge db), Eq (UnionEdge db)) => 
               Edge a b -> NodeRef db s a -> t db s [NodeRef db s b]
 getTargets edge refA = do
   registry <- getNodeRefRegistry
@@ -116,23 +116,23 @@ getValue ref = liftIO $
   NodeRef.getNode ref >>= Node.getValue >>= return . fromMaybe bug . fromUnionValue
   where bug = error "Unexpected value. This is a bug. Please report it."
 
-setValue :: (IsUnionValueOf a db) => a -> NodeRef db s a -> Write db s ()
-setValue value ref = do
+setValue :: (IsUnionValueOf a db) => NodeRef db s a -> a -> Write db s ()
+setValue ref value = do
   liftIO $ do
     node <- NodeRef.getNode ref
     Node.setValue node (toUnionValue value)
 
-insertEdge :: (IsUnionEdgeOf (Edge a b) db) => 
-              Edge a b -> NodeRef db s b -> NodeRef db s a -> Write db s ()
-insertEdge edge refB refA = do
+insertEdge :: (IsUnionEdgeOf (Edge a b) db, Hashable (UnionEdge db), Eq (UnionEdge db)) => 
+              NodeRef db s a -> Edge a b -> NodeRef db s b -> Write db s ()
+insertEdge refA edge refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
     Node.insertEdge nodeA (toUnionEdge edge) nodeB
 
 deleteEdge :: (IsUnionEdgeOf (Edge a b) db) => 
-              Edge a b -> NodeRef db s b -> NodeRef db s a -> Write db s ()
-deleteEdge edge refB refA = do
+              NodeRef db s a -> Edge a b -> NodeRef db s b -> Write db s ()
+deleteEdge refA edge refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB

@@ -47,7 +47,7 @@ class IsUnionValueOf v db where
 
 -- |
 -- Functions for converting an edge to and from a union value.
-class (Hashable (UnionEdge db), Eq (UnionEdge db)) => IsUnionEdgeOf e db where
+class IsUnionEdgeOf e db where
   toUnionEdge :: e -> UnionEdge db
   fromUnionEdge :: UnionEdge db -> Maybe e
 

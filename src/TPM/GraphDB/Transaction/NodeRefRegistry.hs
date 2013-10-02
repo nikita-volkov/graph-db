@@ -15,7 +15,11 @@ new :: IO (NodeRefRegistry db)
 new = NodeRefRegistry <$> DIOVector.new
 
 newNodeRef :: NodeRefRegistry db -> Node db -> IO (NodeRef db s a)
-newNodeRef = undefined
+newNodeRef (NodeRefRegistry vec) node = do
+  -- FIXME: possible race condition
+  DIOVector.append vec node
+  index <- DIOVector.length vec
+  NodeRef.new index node
 
 -- |
 -- For deserialization.

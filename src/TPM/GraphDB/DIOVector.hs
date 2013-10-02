@@ -7,7 +7,10 @@ import qualified Data.Vector.Mutable as IOVector
 newtype DIOVector a = DIOVector (MVar (IOVector.IOVector a, Int))
 
 new :: IO (DIOVector a)
-new = undefined
+new = do
+  vector <- IOVector.new (2^8)
+  var <- newMVar (vector, 0)
+  return $ DIOVector var
 
 append :: DIOVector a -> a -> IO ()
 append (DIOVector var) value = 
@@ -23,4 +26,6 @@ append (DIOVector var) value =
 unsafeLookup :: DIOVector a -> Int -> IO a
 unsafeLookup = undefined
 
+length :: DIOVector a -> IO Int
+length (DIOVector var) = readMVar var >>= return . snd
 

@@ -32,4 +32,6 @@ run ::
   DB (EventDB e) -> e -> IO (EventResult e)
 run db event = runTransaction <* persist where
   runTransaction = Transaction.run db $ transaction event
-  persist = undefined
+  persist = 
+    trace "TODO: implement 'TPM.GraphDB.Transaction.Event.run.persist'" $
+    return ()
