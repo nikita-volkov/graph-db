@@ -31,7 +31,7 @@ instance (Monad m) => Applicative (GetT m) where
   (<*>) = ap
 
 instance (Monad m) => Functor (GetT m) where
-  fmap f = (>>= return . f)
+  fmap = liftM
 
 
 

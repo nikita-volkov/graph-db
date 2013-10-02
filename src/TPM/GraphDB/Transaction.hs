@@ -48,7 +48,7 @@ instance Applicative (Write db s) where
   (<*>) = ap
 
 instance Functor (Write db s) where
-  fmap f = (=<<) $ return . f
+  fmap = liftM
 
 
 
@@ -84,7 +84,7 @@ instance Applicative (Read db s) where
   (<*>) = ap
 
 instance Functor (Read db s) where
-  fmap f = (=<<) $ return . f
+  fmap = liftM
 
 
 
