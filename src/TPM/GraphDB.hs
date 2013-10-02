@@ -49,8 +49,8 @@ newtype GraphDB db = GraphDB (DB.DB db)
 
 
 -- |
--- An edge from /source/ to /target/ used with /db/.
-data family Edge db source target
+-- An edge from /source/ to /target/.
+data family Edge source target
 
 -- |
 -- A reference to node. 
