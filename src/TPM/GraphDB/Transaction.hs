@@ -123,16 +123,16 @@ setValue value ref = do
     Node.setValue node (toUnionValue value)
 
 insertEdge :: (IsUnionEdgeOf (Edge a b) db) => 
-              Edge a b -> NodeRef db s a -> NodeRef db s b -> Write db s ()
-insertEdge edge refA refB = do
+              Edge a b -> NodeRef db s b -> NodeRef db s a -> Write db s ()
+insertEdge edge refB refA = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
     Node.insertEdge nodeA (toUnionEdge edge) nodeB
 
 deleteEdge :: (IsUnionEdgeOf (Edge a b) db) => 
-              Edge a b -> NodeRef db s a -> NodeRef db s b -> Write db s ()
-deleteEdge edge refA refB = do
+              Edge a b -> NodeRef db s b -> NodeRef db s a -> Write db s ()
+deleteEdge edge refB refA = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
