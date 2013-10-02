@@ -5,9 +5,13 @@ import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
 
 
 
-data NodeRef db s = NodeRef Int (IORef (Node db))
+-- |
+-- A reference to node. 
+-- 
+-- Cannot escape from transaction.
+data NodeRef db s a = NodeRef Int (IORef (Node db))
 
-getNode :: NodeRef db s -> IO (Node db)
+getNode :: NodeRef db s a -> IO (Node db)
 getNode (NodeRef _ ioRef) = readIORef ioRef
 
 

@@ -1,7 +1,7 @@
 module TPM.GraphDB.Transaction where
 
 import TPM.GraphDB.Prelude hiding (Read, Write)
-import qualified TPM.GraphDB.DB as DB; import TPM.GraphDB.DB (DB)
+import TPM.GraphDB.DB as DB
 import qualified TPM.GraphDB.Node as Node; import TPM.GraphDB.Node (Node)
 import qualified TPM.GraphDB.Dispatcher as Dispatcher; import TPM.GraphDB.Dispatcher (Dispatcher)
 import qualified TPM.GraphDB.Transaction.NodeRefRegistry as NodeRefRegistry; import TPM.GraphDB.Transaction.NodeRefRegistry (NodeRefRegistry)
@@ -88,51 +88,55 @@ instance Functor (Read db s) where
 
 
 
-getRoot :: (Transaction t, Monad (t db s), MonadIO (t db s)) => t db s (NodeRef db s)
+getRoot :: (Transaction t, MonadIO (t db s)) => t db s (NodeRef db s a)
 getRoot = do
   root <- getDB >>= return . DB.root
   registry <- getNodeRefRegistry
   liftIO $ NodeRefRegistry.newNodeRef registry root
 
-newNode :: Node.Value db -> Write db s (NodeRef db s)
+newNode :: (IsUnionValueOf a db) => a -> Write db s (NodeRef db s a)
 newNode value = do
   registry <- getNodeRefRegistry
   liftIO $ do
-    node <- Node.new value
+    node <- Node.new (toUnionValue value)
     NodeRefRegistry.newNodeRef registry node
 
-getTargets :: ( Transaction t, Monad (t db s), MonadIO (t db s), Hashable (Node.Edge db), Eq (Node.Edge db) ) => 
-              Node.Edge db -> NodeRef db s -> t db s [NodeRef db s]
+getTargets :: (MonadIO (t db s), Transaction t, IsUnionEdgeOf (Edge a b) db) => 
+              Edge a b -> NodeRef db s a -> t db s [NodeRef db s b]
 getTargets edge refA = do
   registry <- getNodeRefRegistry
   liftIO $ do
     nodeA <- NodeRef.getNode refA
-    nodesB <- Node.getTargets nodeA edge
+    nodesB <- Node.getTargets nodeA (toUnionEdge edge)
     for nodesB $ \node -> NodeRefRegistry.newNodeRef registry node
 
-getValue :: (Transaction t, Monad (t db s), MonadIO (t db s)) => NodeRef db s -> t db s (Node.Value db)
-getValue ref = liftIO $ NodeRef.getNode ref >>= Node.getValue
+getValue :: (MonadIO (t db s), Transaction t, IsUnionValueOf a db) => 
+            NodeRef db s a -> t db s a
+getValue ref = liftIO $ 
+  NodeRef.getNode ref >>= Node.getValue >>= return . fromMaybe bug . fromUnionValue
+  where bug = error "Unexpected value. This is a bug. Please report it."
 
-setValue :: Node.Value db -> NodeRef db s -> Write db s ()
+setValue :: (IsUnionValueOf a db) => a -> NodeRef db s a -> Write db s ()
 setValue value ref = do
   liftIO $ do
     node <- NodeRef.getNode ref
-    Node.setValue node value
+    Node.setValue node (toUnionValue value)
 
-insertEdge :: ( Hashable (Node.Edge db), Eq (Node.Edge db) ) =>
-              Node.Edge db -> NodeRef db s -> NodeRef db s -> Write db s ()
+insertEdge :: (IsUnionEdgeOf (Edge a b) db) => 
+              Edge a b -> NodeRef db s a -> NodeRef db s b -> Write db s ()
 insertEdge edge refA refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
-    Node.insertEdge nodeA edge nodeB
+    Node.insertEdge nodeA (toUnionEdge edge) nodeB
 
-deleteEdge :: Node.Edge db -> NodeRef db s -> NodeRef db s -> Write db s ()
+deleteEdge :: (IsUnionEdgeOf (Edge a b) db) => 
+              Edge a b -> NodeRef db s a -> NodeRef db s b -> Write db s ()
 deleteEdge edge refA refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
-    Node.deleteEdge nodeA edge nodeB
+    Node.deleteEdge nodeA (toUnionEdge edge) nodeB
 
 
 

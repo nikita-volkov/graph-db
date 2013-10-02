@@ -14,11 +14,11 @@ newtype NodeRefRegistry db = NodeRefRegistry (DIOVector (Node db))
 new :: IO (NodeRefRegistry db)
 new = NodeRefRegistry <$> DIOVector.new
 
-newNodeRef :: NodeRefRegistry db -> Node db -> IO (NodeRef db s)
+newNodeRef :: NodeRefRegistry db -> Node db -> IO (NodeRef db s a)
 newNodeRef = undefined
 
 -- |
 -- For deserialization.
-lookup :: NodeRefRegistry db -> Int -> IO (Maybe (NodeRef db s))
+lookup :: NodeRefRegistry db -> Int -> IO (Maybe (NodeRef db s a))
 lookup = undefined
 
