@@ -62,7 +62,7 @@ newtype NodeRef db s value = NodeRef (NodeRef.NodeRef db s)
 -- A union type for all node values to be used with /db/. E.g.:
 -- 
 -- @
--- data instance DB.ValueUnion Catalogue = ArtistValue Artist | GenreValue Genre
+-- data instance DB.ValueUnion Catalogue = UnitValue () | ArtistValue Artist | GenreValue Genre
 -- @
 -- 
 data family ValueUnion db
@@ -73,9 +73,9 @@ type instance Node.Value db = ValueUnion db
 -- 
 -- @
 -- data instance DB.EdgeUnion Catalogue = 
---   UnitToArtistEdgeValue (DB.Edge Catalogue () Artist) |
---   UnitToGenreValue (DB.Edge Catalogue () Genre) |
---   ArtistToGenreValue (DB.Edge Catalogue Artist Genre)
+--   UnitToArtistEdge (DB.Edge () Artist) |
+--   UnitToGenreEdge (DB.Edge () Genre) |
+--   ArtistToGenreEdge (DB.Edge Artist Genre)
 -- @
 data family EdgeUnion db
 type instance Node.Edge db = EdgeUnion db
