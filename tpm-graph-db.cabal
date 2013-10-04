@@ -22,6 +22,7 @@ library
     TPM.GraphDB.Prelude
     TPM.GraphDB.DB
     TPM.GraphDB.Dispatcher
+    TPM.GraphDB.Storage
     TPM.GraphDB.Node
     TPM.GraphDB.Node.Serialize
     TPM.GraphDB.Node.Deserialize
