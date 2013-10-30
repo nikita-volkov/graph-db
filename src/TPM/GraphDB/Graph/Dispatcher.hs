@@ -1,4 +1,4 @@
-module TPM.GraphDB.Dispatcher (Dispatcher, new, runWrite, runRead) where
+module TPM.GraphDB.Graph.Dispatcher (Dispatcher, new, runWrite, runRead) where
 
 import TPM.GraphDB.Prelude
 import qualified Control.Concurrent.FairRWLock as RWLock

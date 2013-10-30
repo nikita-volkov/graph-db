@@ -24,7 +24,7 @@ append (DIOVector var) value =
     return (vector', succ nextIndex)
 
 unsafeLookup :: DIOVector a -> Int -> IO a
-unsafeLookup = undefined
+unsafeLookup = error "TODO: TPM.GraphDB.DIOVector.unsafeLookup"
 
 length :: DIOVector a -> IO Int
 length (DIOVector var) = readMVar var >>= return . snd

@@ -1,23 +1,9 @@
+module MainTestSuite.Model where
 
 import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB as DB
 import qualified Data.SafeCopy as SafeCopy
 
-
-
-main = do
-  db :: DB.Engine Catalogue <- 
-    DB.startEngine =<< return . DB.Mode_Local . Just . (100,) =<< DB.pathsFromDirectory dir
-  DB.runEvent db $ InsertArtist (Artist "Metallica") [Genre "Metal", Genre "Rock"]
-  DB.runEvent db $ InsertArtist (Artist "Dire Straits") [Genre "Rock"]
-
-  metallicaGenres <- DB.runEvent db $ GetGenresByArtistName "Metallica"
-  direStraitsGenres <- DB.runEvent db $ GetGenresByArtistName "Dire Straits"
-  putStrLn $ "Metallica's genres: " ++ show metallicaGenres
-  putStrLn $ "Dire Straits' genres: " ++ show direStraitsGenres
-  DB.shutdownEngine db
-  where
-    dir = "./dist/demo/"
 
 insertArtist :: Artist -> [Genre] -> DB.Write Catalogue s ()
 insertArtist artist genreList = do
