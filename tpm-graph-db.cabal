@@ -33,6 +33,7 @@ library
     TPM.GraphDB.Graph.Transaction.NodeRefRegistry
     TPM.GraphDB.DIOVector
     TPM.GraphDB.IOQueue
+    TPM.GraphDB.CIO
   build-depends:
     parallel-io,
     containers,

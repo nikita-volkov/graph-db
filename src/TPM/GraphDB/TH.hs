@@ -45,7 +45,7 @@ processTag tagName = AccumulateDecs.exec $ do
 
     writeType <- AccumulateDecs.liftQ [t| API.Write |]
     readType <- AccumulateDecs.liftQ [t| API.Read |]
-    AccumulateDecs.sequenceConcurrently_ $ flip map localFunctionNames $ \functionName -> do
+    AccumulateDecs.sequence_ $ flip map localFunctionNames $ \functionName -> do
       argsAndResultM <- AccumulateDecs.liftQ $ Q.functionArgsAndResult functionName
       case argsAndResultM of
         Just (argTypes, AppT (AppT (AppT transactionType transactionTagType) _) resultType)
