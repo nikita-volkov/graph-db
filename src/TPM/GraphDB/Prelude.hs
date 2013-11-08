@@ -42,6 +42,12 @@ module TPM.GraphDB.Prelude
     -- stm
     module Control.Concurrent.STM,
     
+    -- containers
+    module Data.Map,
+    module Data.IntMap,
+    module Data.Set,
+    module Data.IntSet,
+
     -- text
     module Data.Text,
 
@@ -109,6 +115,12 @@ import Control.Monad.Trans.Maybe
 
 -- stm
 import Control.Concurrent.STM
+
+-- containers
+import Data.Map (Map)
+import Data.IntMap (IntMap)
+import Data.Set (Set)
+import Data.IntSet (IntSet)
 
 -- text
 import Data.Text (Text)

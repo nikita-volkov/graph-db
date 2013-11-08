@@ -20,6 +20,10 @@ library
     TPM.GraphDB
   other-modules:
     TPM.GraphDB.API
+    TPM.GraphDB.TH
+    TPM.GraphDB.TH.MembersRegistry
+    TPM.GraphDB.TH.AccumulateDecs
+    TPM.GraphDB.TH.Q
     TPM.GraphDB.Graph
     TPM.GraphDB.Prelude
     TPM.GraphDB.Graph.Dispatcher
@@ -30,6 +34,9 @@ library
     TPM.GraphDB.DIOVector
     TPM.GraphDB.IOQueue
   build-depends:
+    parallel-io,
+    containers,
+    template-haskell,
     pipes == 4.0.*,
     errors,
     acid-io == 0.1.*,
@@ -90,6 +97,9 @@ executable graph-db-demo
     -threaded 
     "-with-rtsopts=-N"
   build-depends:
+    parallel-io,
+    containers,
+    template-haskell,    
     errors,
     acid-io == 0.1.*,
     SafeSemaphore == 0.9.*,
@@ -147,6 +157,9 @@ test-suite graph-db-main-test-suite
   main-is:          
     MainTestSuite.hs
   build-depends:
+    parallel-io,
+    containers,
+    template-haskell,
     pipes,
     pipes-bytestring,
     errors,
