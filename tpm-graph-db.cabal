@@ -19,6 +19,7 @@ library
   exposed-modules:
     TPM.GraphDB
   other-modules:
+    TPM.GraphDB.API
     TPM.GraphDB.Graph
     TPM.GraphDB.Prelude
     TPM.GraphDB.Graph.Dispatcher
