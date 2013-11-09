@@ -74,6 +74,7 @@ module TPM.GraphDB.Prelude
     LazyText,
 
     (?:),
+    traceM,
   )
   where
 
@@ -157,3 +158,6 @@ type LazyText = Data.Text.Lazy.Text
 (?:) :: Maybe a -> a -> a
 maybeA ?: b = fromMaybe b maybeA
 {-# INLINE (?:) #-}
+
+traceM :: (Monad m) => String -> m ()
+traceM s = trace s $ return ()

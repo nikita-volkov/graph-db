@@ -42,7 +42,7 @@ sequence actions =
     poolToCIOToIO pool (CIO t) = runReaderT t pool
 
 -- | Same as 'sequence' with a difference that it does not maintain the order of results,
--- which allows it to execute a bit more effectively.
+-- which allows it to execute a bit more effeciently.
 sequenceInterleaved :: [CIO a] -> CIO [a]
 sequenceInterleaved actions = 
   CIO $ do

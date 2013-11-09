@@ -7,8 +7,11 @@ import qualified TPM.GraphDB.TH.MembersRegistry as MembersRegistry; import TPM.G
 import qualified Data.Char as Char
 import qualified Data.Set as Set
 import qualified Data.SafeCopy as SafeCopy
-import qualified TPM.GraphDB.TH.AccumulateDecs as AccumulateDecs; import TPM.GraphDB.TH.AccumulateDecs (AccumulateDecs)
+import qualified Data.Serialize as Serialize
 import qualified TPM.GraphDB.TH.Q as Q
+import qualified TPM.GraphDB.TH.Type as Type
+import qualified TPM.GraphDB.CIO as CIO; import TPM.GraphDB.CIO (CIO)
+import qualified TPM.GraphDB.TH.TagInstanceBuilder as TagInstanceBuilder
 
 -- |
 -- Scan the current module for all transaction-functions and 
@@ -16,222 +19,203 @@ import qualified TPM.GraphDB.TH.Q as Q
 -- associating them with the provided database tag.
 -- 
 processTag :: Name -> Q [Dec]
-processTag tagName = AccumulateDecs.exec $ do
-  tagType <- do
-    tagInfo <- AccumulateDecs.liftQ $ reify tagName
-    case tagInfo of
-      TyConI{} -> return ()
-      _ -> error $ "Not a type name: " ++ show tagName
-    AccumulateDecs.liftQ $ conT tagName
-  
-  memberValuesRegistry <- 
-    liftIO $ atomically $ MembersRegistry.new (nameBase tagName ++ "MemberValue")
-  
-  memberEdgesRegistry <- 
-    liftIO $ atomically $ MembersRegistry.new (nameBase tagName ++ "MemberEdge")
-  
-  memberEventsRegistry <- 
-    liftIO $ atomically $ MembersRegistry.new (nameBase tagName ++ "MemberEvent")
-  
-  memberEventResultsRegistry <- 
-    liftIO $ atomically $ MembersRegistry.new (nameBase tagName ++ "MemberEventResult")
+processTag tagName = do
+  (addDecs, getDecs) <- newDecsAccumulator
 
-  memberEventToMemberEventResultPairs <-
-    liftIO $ atomically $ newTVar Set.empty
+  tagType <-
+    Q.reifyType tagName >>= 
+    return . fromMaybe (error $ "Not a type name: " ++ show tagName)
 
-  -- Process functions:
-  do
-    localFunctionNames <- AccumulateDecs.liftQ Q.listLocalFunctions
+  tib <- liftCIO $ TagInstanceBuilder.new tagType
 
-    writeType <- AccumulateDecs.liftQ [t| API.Write |]
-    readType <- AccumulateDecs.liftQ [t| API.Read |]
-    AccumulateDecs.sequence_ $ flip map localFunctionNames $ \functionName -> do
-      argsAndResultM <- AccumulateDecs.liftQ $ Q.functionArgsAndResult functionName
-      case argsAndResultM of
-        Just (argTypes, AppT (AppT (AppT transactionType transactionTagType) _) resultType)
-          | transactionType `elem` [writeType, readType] &&
-            transactionTagType == tagType -> do
-              (eventType, eventCons) <- generateEvent functionName argTypes
-              memberEventCons <- liftIO $ atomically $ 
-                MembersRegistry.resolve memberEventsRegistry eventType
-              generateEventInstance eventType tagType eventCons functionName argTypes resultType (transactionType == writeType)
-              generateIsMemberEventOfInstance eventType tagType memberEventCons
-              memberEventResultCons <- liftIO $ atomically $ 
-                MembersRegistry.resolve memberEventResultsRegistry resultType
-              generateIsMemberEventResultOfInstance resultType tagType memberEventResultCons
-              forM_ argTypes $ \argType -> do
-                if isEdge argType
-                  then do
-                    memberEdgeCons <- liftIO $ atomically $ 
-                      MembersRegistry.resolve memberEdgesRegistry argType
-                    generateIsMemberEdgeOfInstance argType tagType memberEdgeCons
-                  else do
-                    memberValueCons <- liftIO $ atomically $
-                      MembersRegistry.resolve memberValuesRegistry argType
-                    generateIsMemberValueOfInstance argType tagType memberValueCons
+  (valueMR, edgeMR, eventMR, eventResultMR) <- 
+    liftSTM $ (,,,) 
+      <$> MembersRegistry.new (nameBase tagName ++ "_MemberValue_")
+      <*> MembersRegistry.new (nameBase tagName ++ "_MemberEdge_")
+      <*> MembersRegistry.new (nameBase tagName ++ "_MemberEvent_")
+      <*> MembersRegistry.new (nameBase tagName ++ "_MemberEventResult_")
 
-              liftIO $ atomically $ modifyTVar memberEventToMemberEventResultPairs $ 
-                Set.insert (memberEventCons, memberEventResultCons)
-          where
-            resultTypeName = case resultType of ConT n -> n
-        _ -> return ()
+  writeType <- [t| API.Write |]
+  readType <- [t| API.Read |]
 
+  let
+    addValueType t = do
+      memberName <- liftSTM $ MembersRegistry.resolve valueMR t
+      liftCIO $ TagInstanceBuilder.addMemberValueConstructor tib memberName t
+      addDecs =<< generateIsMemberValueOfInstance t tagType memberName
+      addDecs =<< generateEqInstance t
+      addDecs =<< generateGenericInstance t
+      addDecs =<< generateHashableInstance t
+      addDecs =<< generateSafeCopyInstance t
+    addEdgeType t = do
+      memberName <- liftSTM $ MembersRegistry.resolve edgeMR t
+      liftCIO $ TagInstanceBuilder.addMemberEdgeConstructor tib memberName t
+      addDecs =<< generateIsMemberEdgeOfInstance t tagType memberName
+      addDecs =<< generateEqInstance t
+      addDecs =<< generateGenericInstance t
+      addDecs =<< generateHashableInstance t
+      addDecs =<< generateSafeCopyInstance t
+    addValueOrEdgeType t = if isEdge t then addEdgeType t else addValueType t
+    addTransactionFunction name argTypes evResultType trType = do
+      addDecs =<< generateEvent evName argTypes
+      addDecs =<< generateEventInstance evType tagType evName name argTypes evResultType (trType == writeType)
+      memberEventName <- liftSTM $ MembersRegistry.resolve eventMR evType
+      addDecs =<< generateIsMemberEventOfInstance evType tagType memberEventName
+      memberEventResultName <- liftSTM $ MembersRegistry.resolve eventResultMR evResultType
+      addDecs =<< generateIsMemberEventResultOfInstance evResultType tagType memberEventResultName
+      liftCIO $ TagInstanceBuilder.addMemberEventTransactionClause tib memberEventName memberEventResultName
+      
+      addDecs =<< generateSafeCopyInstance =<< [t| API.MemberEvent $(return tagType) |]
+      addDecs =<< generateSafeCopyInstance =<< [t| API.MemberEventResult $(return tagType) |]
 
-  join $ liftIO $ atomically $
-    generateTagInstance <$> 
-      pure tagType <*>
-      MembersRegistry.getPairs memberValuesRegistry <*>
-      MembersRegistry.getPairs memberEdgesRegistry <*>
-      MembersRegistry.getPairs memberEventsRegistry <*>
-      MembersRegistry.getPairs memberEventResultsRegistry <*>
-      (toList <$> readTVar memberEventToMemberEventResultPairs)
-
-generateTagInstance ::
-  Type ->
-  [(Type, Name)] ->
-  [(Type, Name)] ->
-  [(Type, Name)] ->
-  [(Type, Name)] ->
-  [(Name, Name)] ->
-  AccumulateDecs ()
-generateTagInstance tagType valueTable edgeTable eventTable eventResultTable eventToResultPairs =
-  -- AccumulateDecs.liftDecsQ $ (:[]) <$> decQ
-  -- where
-  --   decQ = instanceD (return []) headQ decQs
-  --     where
-  --       headQ = appT [t| API.Tag |] (return tagType)
-  --       decQs = [memberValueDecQ, undefined]
-  --         where
-  --           memberValueDecQ = undefined
-  AccumulateDecs.liftDecsQ $ return [dec]
-  where
-    dec = InstanceD [] head decs
       where
-        head = AppT (ConT ''API.Tag) tagType
-        decs = [memberValueDec, undefined]
-          where
-            memberValueDec = DataD [] typeName [] [constructor] []
-              where
-                typeName = undefined
-                constructor = undefined
+        evName = mkName $ case nameBase name of
+          x : xs -> Char.toUpper x : xs
+          _ -> []
+        evType = ConT evName
+    in do
+      functions <- Q.reifyLocalFunctions
+      forM_ functions $ \(functionName, argTypes, resultType) -> do
+        case Type.unapply resultType of
+          evResultType : _ : trTagType : trType : [] | 
+            trType `elem` [writeType, readType] && trTagType == tagType -> do
+              addTransactionFunction functionName argTypes evResultType trType
+              forM_ argTypes addValueOrEdgeType
+          _ -> return ()
+
+  addDecs =<< return . (:[]) =<< liftCIO (TagInstanceBuilder.getDec tib)
+  getDecs
+
+  where
+    newDecsAccumulator = do
+      decsVar <- liftSTM $ newTVar []
+      return (addDecs decsVar, getDecs decsVar)
+      where
+        addDecs decsVar decs = liftSTM $ modifyTVar decsVar (decs ++)
+        getDecs decsVar = liftSTM $ readTVar decsVar
+    liftSTM = runIO . atomically
+    liftCIO = runIO . CIO.run'
+    liftIO = runIO
 
 isEdge :: Type -> Bool
-isEdge = error "TODO: isEdge"
-
-generateEvent :: Name -> [Type] -> AccumulateDecs (Type, Name)
-generateEvent functionName argTypes = do
-  AccumulateDecs.liftDecsQ $ return [declaration]
-  return (ConT adtName, adtName)
+isEdge t = case Type.unapply t of
+  _ : _ : t : [] | t == edgeT -> True
+  _ -> False
   where
-    declaration = DataD [] adtName [] [constructor] [''Generic, ''Eq]
+    edgeT = Q.purify [t| API.Edge |]
+
+generateEvent :: Name -> [Type] -> Q [Dec]
+generateEvent adtName argTypes = return [declaration]
+  where
+    declaration = DataD [] adtName [] [constructor] []
       where
         constructor = NormalC adtName $ map ((IsStrict,)) argTypes
-    adtName = mkName $ case nameBase functionName of
-      [] -> []
-      (x:xs) -> Char.toUpper x : xs
 
-generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> AccumulateDecs ()
-generateEventInstance eventType tagType eventCons functionName argTypes resultType isWrite = do
-  AccumulateDecs.liftDecsQ
-    [d|
-      instance API.Event $(return eventType) $(return tagType) where
-        type EventResult $(return eventType) $(return tagType) = $(return resultType)
-        eventTransaction = $eventTransactionLambdaQ
-    |]
-    where
-      eventTransactionLambdaQ = lam1E pattern body
-        where
-          pattern = conP eventCons $ map varP argList
-          body = appE constructor $ foldl appE (varE functionName) $ map varE argList
-            where
-              constructor = if isWrite then [e|API.Write|] else [e|API.Read|]
-          argList = zipWith (\i _ -> mkName $ "_" ++ show i) [0..] argTypes
+generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> Q [Dec]
+generateEventInstance eventType tagType eventCons functionName argTypes resultType isWrite = 
+  [d|
+    instance API.Event $(return eventType) $(return tagType) where
+      type EventResult $(return eventType) $(return tagType) = $(return resultType)
+      eventTransaction = $eventTransactionLambdaQ
+  |]
+  where
+    eventTransactionLambdaQ = lam1E pattern body
+      where
+        pattern = conP eventCons $ map varP argList
+        body = appE constructor $ foldl appE (varE functionName) $ map varE argList
+          where
+            constructor = if isWrite then [e|API.Write|] else [e|API.Read|]
+        argList = zipWith (\i _ -> mkName $ "_" ++ show i) [0..] argTypes
 
-generateIsMemberEventOfInstance :: Type -> Type -> Name -> AccumulateDecs ()
-generateIsMemberEventOfInstance eventType tagType memberEventCons = do
-  AccumulateDecs.liftDecsQ
-    [d|
-      instance API.IsMemberEventOf $(return eventType) $(return tagType) where
-        toMemberEvent = $(varE memberEventCons)
-        fromMemberEvent = $fromMemberEventLambdaQ
-    |]
-    where
-      -- FIXME: Should be a case with a Nothing result possible
-      fromMemberEventLambdaQ = lam1E pattern body
-        where
-          pattern = conP memberEventCons $ [[p|z|]]
-          body = appE (conE $ mkName "Just") (varE $ mkName "z")
+generateIsMemberEventOfInstance :: Type -> Type -> Name -> Q [Dec]
+generateIsMemberEventOfInstance eventType tagType memberEventCons = 
+  [d|
+    instance API.IsMemberEventOf $(return eventType) $(return tagType) where
+      toMemberEvent = $(varE memberEventCons)
+      fromMemberEvent = $fromMemberEventLambdaQ
+  |]
+  where
+    -- FIXME: Should be a case with a Nothing result possible
+    fromMemberEventLambdaQ = lam1E pattern body
+      where
+        pattern = conP memberEventCons $ [[p|z|]]
+        body = appE (conE $ mkName "Just") (varE $ mkName "z")
 
-generateIsMemberEventResultOfInstance :: Type -> Type -> Name -> AccumulateDecs ()
-generateIsMemberEventResultOfInstance eventResultType tagType memberEventResultCons = do
-  AccumulateDecs.liftDecsQ 
-    [d|
-      instance API.IsMemberEventResultOf $(return eventResultType) $(return tagType) where
-        toMemberEventResult = $(varE memberEventResultCons)
-        fromMemberEventResult = $fromMemberEventResultLambdaQ
-    |]
-    where
-      -- FIXME: Should be a case with a Nothing result possible
-      fromMemberEventResultLambdaQ = lam1E pattern body
-        where
-          pattern = conP memberEventResultCons [[p|z|]]
-          body = appE (conE $ mkName "Just") (varE $ mkName "z")
+generateIsMemberEventResultOfInstance :: Type -> Type -> Name -> Q [Dec]
+generateIsMemberEventResultOfInstance eventResultType tagType memberEventResultCons =  
+  [d|
+    instance API.IsMemberEventResultOf $(return eventResultType) $(return tagType) where
+      toMemberEventResult = $(varE memberEventResultCons)
+      fromMemberEventResult = $fromMemberEventResultLambdaQ
+  |]
+  where
+    -- FIXME: Should be a case with a Nothing result possible
+    fromMemberEventResultLambdaQ = lam1E pattern body
+      where
+        pattern = conP memberEventResultCons [[p|z|]]
+        body = appE (conE $ mkName "Just") (varE $ mkName "z")
 
-generateEqInstance :: Type -> AccumulateDecs ()
-generateEqInstance t = AccumulateDecs.liftDecsQ [d|deriving instance Eq $(return t)|]
+generateEqInstance :: Type -> Q [Dec]
+generateEqInstance t = [d|deriving instance Eq $(return t)|]
 
-generateShowInstance :: Type -> AccumulateDecs ()
-generateShowInstance t = AccumulateDecs.liftDecsQ [d|deriving instance Show $(return t)|]
+generateShowInstance :: Type -> Q [Dec]
+generateShowInstance t = [d|deriving instance Show $(return t)|]
 
-generateGenericInstance :: Type -> AccumulateDecs ()
-generateGenericInstance t = AccumulateDecs.liftDecsQ [d|deriving instance Generic $(return t)|]
+generateGenericInstance :: Type -> Q [Dec]
+generateGenericInstance t = [d|deriving instance Generic $(return t)|]
 
-generateHashableInstance :: Type -> AccumulateDecs ()
-generateHashableInstance t = AccumulateDecs.liftDecsQ [d|instance Hashable $(return t)|]
+generateHashableInstance :: Type -> Q [Dec]
+generateHashableInstance t = [d|instance Hashable $(return t)|]
 
-generateSafeCopyInstance :: Type -> AccumulateDecs ()
-generateSafeCopyInstance t = AccumulateDecs.liftDecsQ $ case t of
+generateSafeCopyInstance :: Type -> Q [Dec]
+generateSafeCopyInstance t = case t of
   ConT name -> SafeCopy.deriveSafeCopy 0 'SafeCopy.base name
+  _ -> 
+    [d|
+      instance Serialize.Serialize $(return t)
+      instance SafeCopy.SafeCopy $(return t)
+    |]
 
-generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> AccumulateDecs ()
+generateSerializeInstance :: Type -> Q [Dec]
+generateSerializeInstance t = [d|instance Serialize.Serialize $(return t)|]
+
+generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEdgeOfInstance edgeType tagType memberEdgeCons = 
-  AccumulateDecs.liftDecsQ 
-    [d|
-      instance API.IsMemberEdgeOf $(return edgeType) $(return tagType) where
-        toMemberEdge = $(varE memberEdgeCons)
-        fromMemberEdge = $fromMemberEdgeLambdaQ
-    |]
-    where
-      fromMemberEdgeLambdaQ = lamCaseE [match1, match2]
-        where
-          match1 = match pattern body []
-            where
-              pattern = conP memberEdgeCons [[p|z|]]
-              body = normalB $ appE (conE $ mkName "Just") (varE $ mkName "z")
-          match2 = match pattern body []
-            where
-              pattern = wildP
-              body = normalB $ [e|Nothing|]
+  [d|
+    instance API.IsMemberEdgeOf $(return edgeType) $(return tagType) where
+      toMemberEdge = $(varE memberEdgeCons)
+      fromMemberEdge = $fromMemberEdgeLambdaQ
+  |]
+  where
+    fromMemberEdgeLambdaQ = lamCaseE [match1, match2]
+      where
+        match1 = match pattern body []
+          where
+            pattern = conP memberEdgeCons [[p|z|]]
+            body = normalB $ appE (conE $ mkName "Just") (varE $ mkName "z")
+        match2 = match pattern body []
+          where
+            pattern = wildP
+            body = normalB $ [e|Nothing|]
 
-generateIsMemberValueOfInstance :: Type -> Type -> Name -> AccumulateDecs ()
+generateIsMemberValueOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberValueOfInstance valueType tagType memberValueCons = 
-  AccumulateDecs.liftDecsQ 
-    [d|
-      instance API.IsMemberValueOf $(return valueType) $(return tagType) where
-        toMemberValue = $(varE memberValueCons)
-        fromMemberValue = $fromMemberValueLambdaQ
-    |]
-    where
-      fromMemberValueLambdaQ = lamCaseE [match1, match2]
-        where
-          match1 = match pattern body []
-            where
-              pattern = conP memberValueCons [[p|z|]]
-              body = normalB $ appE (conE $ mkName "Just") (varE $ mkName "z")
-          match2 = match pattern body []
-            where
-              pattern = wildP
-              body = normalB $ [e|Nothing|]
+  [d|
+    instance API.IsMemberValueOf $(return valueType) $(return tagType) where
+      toMemberValue = $(varE memberValueCons)
+      fromMemberValue = $fromMemberValueLambdaQ
+  |]
+  where
+    fromMemberValueLambdaQ = lamCaseE [match1, match2]
+      where
+        match1 = match pattern body []
+          where
+            pattern = conP memberValueCons [[p|z|]]
+            body = normalB $ appE (conE $ mkName "Just") (varE $ mkName "z")
+        match2 = match pattern body []
+          where
+            pattern = wildP
+            body = normalB $ [e|Nothing|]
 
 
 

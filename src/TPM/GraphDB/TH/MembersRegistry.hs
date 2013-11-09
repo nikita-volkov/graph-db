@@ -23,7 +23,7 @@ new prefix = do
       case lookup ty table of
         Nothing -> do
           size <- readTVar sizeVar
-          let memberName = mkName $ prefix <> "_" <> show size
+          let memberName = mkName $ prefix <> show size
           writeTVar tableVar $ (ty, memberName) : table
           modifyTVar sizeVar succ
           return memberName
