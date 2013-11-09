@@ -66,6 +66,9 @@ module TPM.GraphDB.Prelude
     -- either
     module Control.Error,
 
+    -- monad-stm
+    module Control.Monad.STM.Class,
+
 
     LazyByteString,
     LazyText,
@@ -140,6 +143,8 @@ import Data.SafeCopy (SafeCopy)
 -- either
 import Control.Error
 
+-- monad-stm
+import Control.Monad.STM.Class
 
 import qualified Data.ByteString.Lazy
 import qualified Data.Text.Lazy

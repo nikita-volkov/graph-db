@@ -35,6 +35,7 @@ library
     TPM.GraphDB.IOQueue
     TPM.GraphDB.CIO
   build-depends:
+    monad-stm,
     parallel-io,
     containers,
     template-haskell,
@@ -98,6 +99,7 @@ executable graph-db-demo
     -threaded 
     "-with-rtsopts=-N"
   build-depends:
+    monad-stm,
     parallel-io,
     containers,
     template-haskell,    
@@ -158,6 +160,7 @@ test-suite graph-db-main-test-suite
   main-is:          
     MainTestSuite.hs
   build-depends:
+    monad-stm,
     parallel-io,
     containers,
     template-haskell,

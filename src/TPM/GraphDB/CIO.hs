@@ -1,6 +1,6 @@
 module TPM.GraphDB.CIO where
 
-import TPM.GraphDB.Prelude
+import TPM.GraphDB.Prelude hiding (sequence, sequence_)
 import qualified Control.Concurrent.ParallelIO.Local as ParallelIO
 
 
@@ -10,6 +10,9 @@ newtype CIO r = CIO (ReaderT ParallelIO.Pool IO r)
 
 instance MonadIO CIO where
   liftIO io = CIO $ lift io
+
+instance MonadSTM CIO where
+  liftSTM = CIO . liftSTM
 
 run :: Int -> CIO r -> IO r
 run numCapabilities (CIO t) = ParallelIO.withPool numCapabilities $ runReaderT t
@@ -48,3 +51,8 @@ sequenceInterleaved actions =
   where
     poolToCIOToIO pool (CIO t) = runReaderT t pool
 
+mapM :: (a -> CIO b) -> [a] -> CIO [b]
+mapM f = sequence . map f
+
+mapM_ :: (a -> CIO b) -> [a] -> CIO ()
+mapM_ f = sequence_ . map f
