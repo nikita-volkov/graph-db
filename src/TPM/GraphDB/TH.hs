@@ -131,7 +131,7 @@ generateIsMemberEventOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEventOfInstance eventType tagType memberEventCons = 
   [d|
     instance API.IsMemberEventOf $(return eventType) $(return tagType) where
-      toMemberEvent = $(varE memberEventCons)
+      toMemberEvent = $(conE memberEventCons)
       fromMemberEvent = $fromMemberEventLambdaQ
   |]
   where
@@ -145,7 +145,7 @@ generateIsMemberEventResultOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEventResultOfInstance eventResultType tagType memberEventResultCons =  
   [d|
     instance API.IsMemberEventResultOf $(return eventResultType) $(return tagType) where
-      toMemberEventResult = $(varE memberEventResultCons)
+      toMemberEventResult = $(conE memberEventResultCons)
       fromMemberEventResult = $fromMemberEventResultLambdaQ
   |]
   where
@@ -202,7 +202,7 @@ generateIsMemberValueOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberValueOfInstance valueType tagType memberValueCons = 
   [d|
     instance API.IsMemberValueOf $(return valueType) $(return tagType) where
-      toMemberValue = $(varE memberValueCons)
+      toMemberValue = $(conE memberValueCons)
       fromMemberValue = $fromMemberValueLambdaQ
   |]
   where

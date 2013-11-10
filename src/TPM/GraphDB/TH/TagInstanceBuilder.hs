@@ -62,31 +62,31 @@ new tagType = do
               getMemberEventTransactionDec ]
           where
             getMemberValueDec = 
-              DataD <$> pure [] <*> pure typeName <*> pure [] <*> getConstructors <*> pure []
+              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure []
               where
-                typeName = mkName "MemberValue"
+                name = mkName "MemberValue"
                 getConstructors = liftSTM $ readTVar memberValueConstructorsVar
             getMemberEdgeDec =
-              DataD <$> pure [] <*> pure typeName <*> pure [] <*> getConstructors <*> pure []
+              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure []
               where
-                typeName = mkName "MemberEdge"
+                name = mkName "MemberEdge"
                 getConstructors = liftSTM $ readTVar memberEdgeConstructorsVar
             getMemberEventDec =
-              DataD <$> pure [] <*> pure typeName <*> pure [] <*> getConstructors <*> pure []
+              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure []
               where
-                typeName = mkName "MemberEvent"
+                name = mkName "MemberEvent"
                 getConstructors = liftSTM $ readTVar memberEventConstructorsVar
             getMemberEventResultDec =
-              DataD <$> pure [] <*> pure name <*> pure [] <*> getConstructors <*> pure []
+              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure []
               where
                 name = mkName "MemberEventResult"
                 getConstructors = liftSTM $ readTVar memberEventResultConstructorsVar
             getMemberEventTransactionDec = FunD <$> pure name <*> sequence [getClause]
               where
                 name = mkName "memberEventTransaction"
-                getClause = Clause <$> pure [] <*> getBody <*> pure []
+                getClause = Clause <$> pure [VarP $ mkName "e"] <*> getBody <*> pure []
                   where
-                    getBody = NormalB . LamCaseE <$> getMatches
+                    getBody = NormalB . CaseE (VarE $ mkName "e") <$> getMatches
                       where
                         getMatches = liftSTM $ readTVar memberEventTransactionMatchesVar
 

@@ -163,6 +163,7 @@ executable tpm-graph-db-th-demo
   ghc-options:
     -threaded 
     "-with-rtsopts=-N"
+    -ddump-splices
   build-depends:
     attoparsec,
     monad-stm,
