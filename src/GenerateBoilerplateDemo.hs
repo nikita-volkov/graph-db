@@ -25,18 +25,28 @@ insertArtist artist genreList = do
 -- instead it can only be used in composition of others, like in 'insertArtist'.
 insertGenreAndGetRef :: Genre -> DB.Write Catalogue s (DB.NodeRef Catalogue s Genre)
 insertGenreAndGetRef genre = do
+  -- O(1):
   new <- DB.newNode genre
+  -- O(1):
   root <- DB.getRoot
+  -- O(log n), where "n" is the number of edges from root node:
   DB.insertEdge root (UnitToGenreByGenreEdge genre) new
+  -- O(log n), where "n" is the number of edges from root node:
   DB.insertEdge root UnitToGenreEdge new
   return new
 
 getGenresByArtistName :: Text -> DB.Read Catalogue s [Genre]
 getGenresByArtistName name = 
+  -- O(1):
   DB.getRoot >>=
+  -- O(log n), where "n" is the number of edges from root node:
   DB.getTargets (UnitToArtistByNameEdge name) >>=
+  -- O(log n * m), where "n" is the number of edges from target node and 
+  -- "m" is the number of target nodes:
   traverse (DB.getTargets ArtistToGenreEdge) >>=
   return . concat >>=
+  -- O(n), where "n" is the number of result nodes, 
+  -- i.e. the complexity of operation "getValue" is O(1):
   traverse DB.getValue
 
 
