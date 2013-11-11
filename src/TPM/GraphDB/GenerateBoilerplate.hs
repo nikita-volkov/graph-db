@@ -1,9 +1,9 @@
-module TPM.GraphDB.TH where
+module TPM.GraphDB.GenerateBoilerplate where
 
 import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB.API as API
 import Language.Haskell.TH
-import qualified TPM.GraphDB.TH.MembersRegistry as MembersRegistry; import TPM.GraphDB.TH.MembersRegistry (MembersRegistry)
+import qualified TPM.GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry; import TPM.GraphDB.GenerateBoilerplate.MembersRegistry (MembersRegistry)
 import qualified Data.Char as Char
 import qualified Data.Set as Set
 import qualified Data.SafeCopy as SafeCopy
@@ -11,15 +11,15 @@ import qualified Data.Serialize as Serialize
 import qualified TPM.GraphDB.TH.Q as Q
 import qualified TPM.GraphDB.TH.Type as Type
 import qualified TPM.GraphDB.CIO as CIO; import TPM.GraphDB.CIO (CIO)
-import qualified TPM.GraphDB.TH.TagInstanceBuilder as TagInstanceBuilder
+import qualified TPM.GraphDB.GenerateBoilerplate.TagInstanceBuilder as TagInstanceBuilder
 
 -- |
 -- Scan the current module for all transaction-functions and 
 -- generate appropriate \"event\" data-types, 
 -- associating them with the provided database tag.
 -- 
-processTag :: Name -> Q [Dec]
-processTag tagName = do
+generateBoilerplate :: Name -> Q [Dec]
+generateBoilerplate tagName = do
   (addDecs, getDecs) <- newDecsAccumulator
 
   tagType <-

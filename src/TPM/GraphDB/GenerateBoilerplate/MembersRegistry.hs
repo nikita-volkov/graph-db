@@ -1,4 +1,4 @@
-module TPM.GraphDB.TH.MembersRegistry where
+module TPM.GraphDB.GenerateBoilerplate.MembersRegistry where
 
 import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB.API as API

@@ -19,11 +19,11 @@ library
   exposed-modules:
     TPM.GraphDB
   other-modules:
-    TPM.GraphDB.TH.MembersRegistry
     TPM.GraphDB.TH.Q
     TPM.GraphDB.TH.Type
-    TPM.GraphDB.TH.TagInstanceBuilder
-    TPM.GraphDB.TH
+    TPM.GraphDB.GenerateBoilerplate.MembersRegistry
+    TPM.GraphDB.GenerateBoilerplate.TagInstanceBuilder
+    TPM.GraphDB.GenerateBoilerplate
     TPM.GraphDB.Graph
     TPM.GraphDB.Prelude
     TPM.GraphDB.Graph.Dispatcher
@@ -159,7 +159,7 @@ executable tpm-graph-db-th-demo
   hs-source-dirs:
     src
   main-is:
-    THDemo.hs
+    GenerateBoilerplateDemo.hs
   ghc-options:
     -threaded 
     "-with-rtsopts=-N"

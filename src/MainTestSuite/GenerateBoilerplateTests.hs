@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
-module MainTestSuite.THTests where
+module MainTestSuite.GenerateBoilerplateTests where
 
 import Test.Framework
 import Language.Haskell.TH
 import TPM.GraphDB.Prelude hiding (assert, elements)
-import TPM.GraphDB.TH
+import TPM.GraphDB.GenerateBoilerplate
 import qualified TPM.GraphDB.TH.AccumulateDecs as AccumulateDecs
 import qualified TPM.GraphDB.API as API
 
@@ -35,7 +35,7 @@ test_generateEvent = do
     AccumulateDecs.exec . generateEvent 'writeEvent1 =<< sequence [[t|Artist|], [t|[Genre]|]] -- '
   assertEqual expected actual
   where
-    expected = "data WriteEvent1 = WriteEvent1 !MainTestSuite.THTests.Artist !([MainTestSuite.THTests.Genre]) deriving (GHC.Generics.Generic, GHC.Classes.Eq)"
+    expected = "data WriteEvent1 = WriteEvent1 !MainTestSuite.GenerateBoilerplateTests.Artist !([MainTestSuite.GenerateBoilerplateTests.Genre]) deriving (GHC.Generics.Generic, GHC.Classes.Eq)"
 
 test_generateEventInstance = do
   actual <- decsQToStringsIO $ do
@@ -46,7 +46,7 @@ test_generateEventInstance = do
     AccumulateDecs.exec $ generateEventInstance eventType tagType 'WriteEvent1 'writeEvent1 argTypes resultType True -- '
   assertEqual expected actual
   where
-    expected = "instance TPM.GraphDB.API.Event MainTestSuite.THTests.WriteEvent1 MainTestSuite.THTests.Catalogue where type TPM.GraphDB.API.EventResult MainTestSuite.THTests.WriteEvent1 MainTestSuite.THTests.Catalogue = () TPM.GraphDB.API.eventTransaction = \\(MainTestSuite.THTests.WriteEvent1 _0 _1) -> TPM.GraphDB.API.Write (MainTestSuite.THTests.writeEvent1 _0 _1)"
+    expected = "instance TPM.GraphDB.API.Event MainTestSuite.GenerateBoilerplateTests.WriteEvent1 MainTestSuite.GenerateBoilerplateTests.Catalogue where type TPM.GraphDB.API.EventResult MainTestSuite.GenerateBoilerplateTests.WriteEvent1 MainTestSuite.GenerateBoilerplateTests.Catalogue = () TPM.GraphDB.API.eventTransaction = \\(MainTestSuite.GenerateBoilerplateTests.WriteEvent1 _0 _1) -> TPM.GraphDB.API.Write (MainTestSuite.GenerateBoilerplateTests.writeEvent1 _0 _1)"
 
 
 

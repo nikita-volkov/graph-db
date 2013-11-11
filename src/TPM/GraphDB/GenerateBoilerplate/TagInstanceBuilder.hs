@@ -1,4 +1,4 @@
-module TPM.GraphDB.TH.TagInstanceBuilder where
+module TPM.GraphDB.GenerateBoilerplate.TagInstanceBuilder where
 
 import TPM.GraphDB.Prelude
 import Language.Haskell.TH

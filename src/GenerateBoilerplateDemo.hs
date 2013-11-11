@@ -49,7 +49,7 @@ data instance DB.Edge Artist Genre = ArtistToGenreEdge
 data instance DB.Edge () Genre = UnitToGenreEdge | UnitToGenreByGenreEdge Genre
 
 
-DB.processTag ''Catalogue
+DB.generateBoilerplate ''Catalogue
 
 
 main = do
