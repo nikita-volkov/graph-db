@@ -58,8 +58,15 @@ data instance DB.Edge () Artist = UnitToArtistEdge | UnitToArtistByNameEdge Text
 data instance DB.Edge Artist Genre = ArtistToGenreEdge
 data instance DB.Edge () Genre = UnitToGenreEdge | UnitToGenreByGenreEdge Genre
 
+-- data instance DB.Edge Artist = ArtistOf | ArtistOfByName Text
+-- data instance DB.Edge Genre = GenreOf | GenreOfByGenre Genre
+-- OR
+-- data instance DB.Edge Catalogue = Direct | ByName Text | ByGenre Genre
+-- data instance DB.Node Catalogue = ArtistNode Artist | GenreNode Genre
 
-DB.generateBoilerplate ''Catalogue
+DB.generateBoilerplate
+  ''Catalogue
+  [''Artist, ''Genre]
 
 
 main = do

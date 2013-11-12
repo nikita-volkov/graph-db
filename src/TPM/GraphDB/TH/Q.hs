@@ -126,3 +126,8 @@ purify = unsafePerformIO . runQ
 
 run :: MonadIO m => Q a -> m a
 run = liftIO . runQ
+
+caseLambda :: [Q Match] -> Q Exp
+caseLambda matches = lamE [varP argName] (caseE (varE argName) matches)
+  where
+    argName = mkName "_0"

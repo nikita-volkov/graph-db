@@ -31,7 +31,20 @@ unapply t = case t of
   AppT a b -> b : unapply a
   _ -> [t]
 
+-- |
+-- A bijection of 'unapply'.
+apply :: [Type] -> Type
+apply types = case types of
+  [t] -> t
+  t : rest -> AppT (apply rest) t
+  [] -> error "Empty type list"
+
 unforall :: Type -> Type
 unforall t = case t of
   ForallT _ _ t' -> t'
   _ -> t
+
+fromDataInstanceDec :: Dec -> Maybe Type
+fromDataInstanceDec dec = case dec of
+  DataInstD _ name types _ _ -> Just $ apply $ reverse $ ConT name : types
+  _ -> Nothing

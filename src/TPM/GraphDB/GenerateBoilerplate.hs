@@ -18,14 +18,20 @@ import qualified TPM.GraphDB.GenerateBoilerplate.TagInstanceBuilder as TagInstan
 -- generate appropriate \"event\" data-types, 
 -- associating them with the provided database tag.
 -- 
-generateBoilerplate :: Name -> Q [Dec]
-generateBoilerplate tagName = do
-  (addDecs, getDecs) <- newDecsAccumulator
+generateBoilerplate :: Name -> [Name] -> Q [Dec]
+generateBoilerplate tagName valueTypeNames = do
 
   tagType <-
     Q.reifyType tagName >>= 
     return . fromMaybe (error $ "Not a type name: " ++ show tagName)
 
+  valueTypes <- forM valueTypeNames $ \name -> 
+    Q.reifyType name >>= return . fromMaybe (error $ "Not a type name: " ++ show name)
+  allValueTypes <- do
+    unitType <- [t| () |]
+    return $ unitType : valueTypes
+        
+  (addDecs, getDecs) <- newDecsAccumulator
   tib <- liftCIO $ TagInstanceBuilder.new tagType
 
   (valueMR, edgeMR, eventMR, eventResultMR) <- 
@@ -63,6 +69,8 @@ generateBoilerplate tagName = do
       addDecs =<< generateIsMemberEventOfInstance evType tagType memberEventName
       memberEventResultName <- liftSTM $ MembersRegistry.resolve eventResultMR evResultType
       addDecs =<< generateIsMemberEventResultOfInstance evResultType tagType memberEventResultName
+      liftCIO $ TagInstanceBuilder.addMemberEventConstructor tib memberEventName evType
+      liftCIO $ TagInstanceBuilder.addMemberEventResultConstructor tib memberEventResultName evResultType
       liftCIO $ TagInstanceBuilder.addMemberEventTransactionClause tib memberEventName memberEventResultName
       
       addDecs =<< generateSafeCopyInstance =<< [t| API.MemberEvent $(return tagType) |]
@@ -80,8 +88,10 @@ generateBoilerplate tagName = do
           evResultType : _ : trTagType : trType : [] | 
             trType `elem` [writeType, readType] && trTagType == tagType -> do
               addTransactionFunction functionName argTypes evResultType trType
-              forM_ argTypes addValueOrEdgeType
           _ -> return ()
+
+      forM_ allValueTypes addValueType
+      reifyEdgeInstances allValueTypes >>= mapM_ addEdgeType 
 
   addDecs =<< return . (:[]) =<< liftCIO (TagInstanceBuilder.getDec tib)
   getDecs
@@ -96,6 +106,20 @@ generateBoilerplate tagName = do
     liftSTM = runIO . atomically
     liftCIO = runIO . CIO.run'
     liftIO = runIO
+
+-- reifyLocalTransactionFunctions :: Type -> Q [(Name, [Type], Type)]
+-- reifyLocalTransactionFunctions tagType = 
+
+-- |
+-- Get a list of all instances of 'Edge' between all possible combinations of provided types.
+reifyEdgeInstances :: [Type] -> Q [Type]
+reifyEdgeInstances types = do
+  ConT familyName <- [t| API.Edge |]
+  decs <- fmap join $ sequence $ do
+    fromType <- types
+    toType <- types
+    return $ reifyInstances familyName [fromType, toType]
+  return $ catMaybes $ map Type.fromDataInstanceDec decs
 
 isEdge :: Type -> Bool
 isEdge t = case Type.unapply t of
@@ -136,24 +160,38 @@ generateIsMemberEventOfInstance eventType tagType memberEventCons =
   |]
   where
     -- FIXME: Should be a case with a Nothing result possible
-    fromMemberEventLambdaQ = lam1E pattern body
+    fromMemberEventLambdaQ = Q.caseLambda [pure match1, pure match2]
       where
-        pattern = conP memberEventCons $ [[p|z|]]
-        body = appE (conE $ mkName "Just") (varE $ mkName "z")
+        match1 = Match pattern body []
+          where
+            pattern = ConP memberEventCons [VarP patternVarName]
+            patternVarName = mkName "_0"
+            body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
+        match2 = Match pattern body []
+          where
+            pattern = WildP
+            body = NormalB $ Q.purify [e| Nothing |]
 
 generateIsMemberEventResultOfInstance :: Type -> Type -> Name -> Q [Dec]
-generateIsMemberEventResultOfInstance eventResultType tagType memberEventResultCons =  
+generateIsMemberEventResultOfInstance eventResultType tagType memberEventResultName =  
   [d|
     instance API.IsMemberEventResultOf $(return eventResultType) $(return tagType) where
-      toMemberEventResult = $(conE memberEventResultCons)
-      fromMemberEventResult = $fromMemberEventResultLambdaQ
+      toMemberEventResult = $(conE memberEventResultName)
+      fromMemberEventResult = $(fromMemberEventResultLambdaQ)
   |]
   where
-    -- FIXME: Should be a case with a Nothing result possible
-    fromMemberEventResultLambdaQ = lam1E pattern body
+    fromMemberEventResultLambdaQ = Q.caseLambda [pure match1, pure match2]
       where
-        pattern = conP memberEventResultCons [[p|z|]]
-        body = appE (conE $ mkName "Just") (varE $ mkName "z")
+        match1 = Match pattern body []
+          where
+            pattern = ConP memberEventResultName [VarP patternVarName]
+            patternVarName = mkName "_0"
+            body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
+        match2 = Match pattern body []
+          where
+            pattern = WildP
+            body = NormalB $ Q.purify [e| Nothing |]
+
 
 generateEqInstance :: Type -> Q [Dec]
 generateEqInstance t = [d|deriving instance Eq $(return t)|]
@@ -183,20 +221,21 @@ generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEdgeOfInstance edgeType tagType memberEdgeCons = 
   [d|
     instance API.IsMemberEdgeOf $(return edgeType) $(return tagType) where
-      toMemberEdge = $(varE memberEdgeCons)
+      toMemberEdge = $(conE memberEdgeCons)
       fromMemberEdge = $fromMemberEdgeLambdaQ
   |]
   where
-    fromMemberEdgeLambdaQ = lamCaseE [match1, match2]
+    fromMemberEdgeLambdaQ = Q.caseLambda [pure match1, pure match2]
       where
-        match1 = match pattern body []
+        match1 = Match pattern body []
           where
-            pattern = conP memberEdgeCons [[p|z|]]
-            body = normalB $ appE (conE $ mkName "Just") (varE $ mkName "z")
-        match2 = match pattern body []
+            pattern = ConP memberEdgeCons [VarP patternVarName]
+            patternVarName = mkName "_0"
+            body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
+        match2 = Match pattern body []
           where
-            pattern = wildP
-            body = normalB $ [e|Nothing|]
+            pattern = WildP
+            body = NormalB $ Q.purify [e| Nothing |]
 
 generateIsMemberValueOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberValueOfInstance valueType tagType memberValueCons = 
@@ -206,16 +245,17 @@ generateIsMemberValueOfInstance valueType tagType memberValueCons =
       fromMemberValue = $fromMemberValueLambdaQ
   |]
   where
-    fromMemberValueLambdaQ = lamCaseE [match1, match2]
+    fromMemberValueLambdaQ = Q.caseLambda [pure match1, pure match2]
       where
-        match1 = match pattern body []
+        match1 = Match pattern body []
           where
-            pattern = conP memberValueCons [[p|z|]]
-            body = normalB $ appE (conE $ mkName "Just") (varE $ mkName "z")
-        match2 = match pattern body []
+            pattern = ConP memberValueCons [VarP patternVarName]
+            patternVarName = mkName "_0"
+            body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
+        match2 = Match pattern body []
           where
-            pattern = wildP
-            body = normalB $ [e|Nothing|]
+            pattern = WildP
+            body = NormalB $ Q.purify [e| Nothing |]
 
 
 
