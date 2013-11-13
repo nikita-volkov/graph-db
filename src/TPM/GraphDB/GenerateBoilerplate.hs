@@ -49,22 +49,19 @@ generateBoilerplate tagName valueTypeNames = do
       memberName <- liftSTM $ MembersRegistry.resolve valueMR t
       liftCIO $ TagInstanceBuilder.addMemberValueConstructor tib memberName t
       addDecs =<< generateIsMemberValueOfInstance t tagType memberName
-      addDecs =<< generateEqInstance t
-      addDecs =<< generateGenericInstance t
       addDecs =<< generateHashableInstance t
       addDecs =<< generateSafeCopyInstance t
     addEdgeType t = do
       memberName <- liftSTM $ MembersRegistry.resolve edgeMR t
       liftCIO $ TagInstanceBuilder.addMemberEdgeConstructor tib memberName t
       addDecs =<< generateIsMemberEdgeOfInstance t tagType memberName
-      addDecs =<< generateEqInstance t
-      addDecs =<< generateGenericInstance t
       addDecs =<< generateHashableInstance t
       addDecs =<< generateSafeCopyInstance t
     addValueOrEdgeType t = if isEdge t then addEdgeType t else addValueType t
-    addTransactionFunction name argTypes evResultType trType = do
+    addTransactionFunction (name, argTypes, evResultType, isWrite) = do
       addDecs =<< generateEvent evName argTypes
-      addDecs =<< generateEventInstance evType tagType evName name argTypes evResultType (trType == writeType)
+      addDecs =<< generateEventInstance evType tagType evName name argTypes evResultType isWrite
+      addDecs =<< generateSafeCopyInstance evType
       memberEventName <- liftSTM $ MembersRegistry.resolve eventMR evType
       addDecs =<< generateIsMemberEventOfInstance evType tagType memberEventName
       memberEventResultName <- liftSTM $ MembersRegistry.resolve eventResultMR evResultType
@@ -72,26 +69,28 @@ generateBoilerplate tagName valueTypeNames = do
       liftCIO $ TagInstanceBuilder.addMemberEventConstructor tib memberEventName evType
       liftCIO $ TagInstanceBuilder.addMemberEventResultConstructor tib memberEventResultName evResultType
       liftCIO $ TagInstanceBuilder.addMemberEventTransactionClause tib memberEventName memberEventResultName
-      
-      addDecs =<< generateSafeCopyInstance =<< [t| API.MemberEvent $(return tagType) |]
-      addDecs =<< generateSafeCopyInstance =<< [t| API.MemberEventResult $(return tagType) |]
-
       where
         evName = mkName $ case nameBase name of
           x : xs -> Char.toUpper x : xs
           _ -> []
         evType = ConT evName
     in do
-      functions <- Q.reifyLocalFunctions
-      forM_ functions $ \(functionName, argTypes, resultType) -> do
-        case Type.unapply resultType of
-          evResultType : _ : trTagType : trType : [] | 
-            trType `elem` [writeType, readType] && trTagType == tagType -> do
-              addTransactionFunction functionName argTypes evResultType trType
-          _ -> return ()
+      reifyLocalTransactionFunctions tagType >>= traverse_ addTransactionFunction
+      traverse_ addValueType allValueTypes
+      reifyEdgeInstances allValueTypes >>= traverse_ addEdgeType 
 
-      forM_ allValueTypes addValueType
-      reifyEdgeInstances allValueTypes >>= mapM_ addEdgeType 
+      [t| API.MemberEdge $(return tagType) |] 
+        >>= applyAll [generateHashableInstance]
+        >>= addDecs . join
+      [t| API.MemberValue $(return tagType) |] 
+        >>= applyAll [generateHashableInstance]
+        >>= addDecs . join
+      [t| API.MemberEvent $(return tagType) |]
+        >>= applyAll [generateSafeCopyInstance]
+        >>= addDecs . join
+      [t| API.MemberEventResult $(return tagType) |]
+        >>= applyAll [generateSafeCopyInstance]
+        >>= addDecs . join
 
   addDecs =<< return . (:[]) =<< liftCIO (TagInstanceBuilder.getDec tib)
   getDecs
@@ -107,8 +106,27 @@ generateBoilerplate tagName valueTypeNames = do
     liftCIO = runIO . CIO.run'
     liftIO = runIO
 
--- reifyLocalTransactionFunctions :: Type -> Q [(Name, [Type], Type)]
--- reifyLocalTransactionFunctions tagType = 
+reifyLocalTransactionFunctions :: Type -> Q [(Name, [Type], Type, Bool)]
+reifyLocalTransactionFunctions tagType = 
+  Q.reifyLocalFunctions >>= return . catMaybes . map transactionFunctionInfo
+  where
+    transactionFunctionInfo (name, argTypes, resultType) = do
+      assertZ isValid
+      return (name, argTypes, trResultType, trType == writeType)
+      where
+        trResultType : stateThreadType : trTagType : trType : [] = Type.unapply resultType
+        isValid = 
+          trType `elem` [writeType, readType] && 
+          trTagType == tagType &&
+          not (isNodeRef trResultType)
+          where
+            isNodeRef t = case Type.unapply t of
+              _ : _ : _ : z : [] | z == nodeRefType -> True
+              _ -> False
+              where
+                nodeRefType = Q.purify [t| API.NodeRef |]
+        writeType = Q.purify [t| API.Write |]
+        readType = Q.purify [t| API.Read |]
 
 -- |
 -- Get a list of all instances of 'Edge' between all possible combinations of provided types.
@@ -131,9 +149,10 @@ isEdge t = case Type.unapply t of
 generateEvent :: Name -> [Type] -> Q [Dec]
 generateEvent adtName argTypes = return [declaration]
   where
-    declaration = DataD [] adtName [] [constructor] []
+    declaration = DataD [] adtName [] [constructor] derivations
       where
         constructor = NormalC adtName $ map ((IsStrict,)) argTypes
+        derivations = map mkName ["Eq", "Generic"]
 
 generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> Q [Dec]
 generateEventInstance eventType tagType eventCons functionName argTypes resultType isWrite = 
@@ -194,28 +213,30 @@ generateIsMemberEventResultOfInstance eventResultType tagType memberEventResultN
 
 
 generateEqInstance :: Type -> Q [Dec]
-generateEqInstance t = [d|deriving instance Eq $(return t)|]
+generateEqInstance t = 
+  Q.whenNoInstance (mkName "Eq") [t] $ [d|deriving instance Eq $(return t)|]
 
 generateShowInstance :: Type -> Q [Dec]
-generateShowInstance t = [d|deriving instance Show $(return t)|]
+generateShowInstance t = 
+  Q.whenNoInstance (mkName "Show") [t] $ [d|deriving instance Show $(return t)|]
 
 generateGenericInstance :: Type -> Q [Dec]
-generateGenericInstance t = [d|deriving instance Generic $(return t)|]
+generateGenericInstance t = 
+  Q.whenNoInstance (mkName "Generic") [t] $ [d|deriving instance Generic $(return t)|]
 
 generateHashableInstance :: Type -> Q [Dec]
-generateHashableInstance t = [d|instance Hashable $(return t)|]
+generateHashableInstance t = 
+  Q.whenNoInstance (mkName "Hashable") [t] $ [d|instance Hashable $(return t)|]
 
 generateSafeCopyInstance :: Type -> Q [Dec]
-generateSafeCopyInstance t = case t of
-  ConT name -> SafeCopy.deriveSafeCopy 0 'SafeCopy.base name
-  _ -> 
-    [d|
-      instance Serialize.Serialize $(return t)
-      instance SafeCopy.SafeCopy $(return t)
-    |]
-
-generateSerializeInstance :: Type -> Q [Dec]
-generateSerializeInstance t = [d|instance Serialize.Serialize $(return t)|]
+generateSafeCopyInstance t = do
+  Q.whenNoInstance (mkName "SafeCopy.SafeCopy") [t] $ case t of
+    -- ConT name -> SafeCopy.deriveSafeCopy 0 'SafeCopy.base name
+    _ -> 
+      [d|
+        instance Serialize.Serialize $(return t)
+        instance SafeCopy.SafeCopy $(return t)
+      |]
 
 generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEdgeOfInstance edgeType tagType memberEdgeCons = 
@@ -256,6 +277,4 @@ generateIsMemberValueOfInstance valueType tagType memberValueCons =
           where
             pattern = WildP
             body = NormalB $ Q.purify [e| Nothing |]
-
-
 

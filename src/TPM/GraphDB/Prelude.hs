@@ -75,6 +75,7 @@ module TPM.GraphDB.Prelude
 
     (?:),
     traceM,
+    applyAll,
   )
   where
 
@@ -161,3 +162,6 @@ maybeA ?: b = fromMaybe b maybeA
 
 traceM :: (Monad m) => String -> m ()
 traceM s = trace s $ return ()
+
+applyAll :: Monad m => [a -> m b] -> a -> m [b]
+applyAll ops a = sequence $ map ($ a) ops

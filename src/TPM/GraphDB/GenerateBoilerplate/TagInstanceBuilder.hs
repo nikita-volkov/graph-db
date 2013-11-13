@@ -62,25 +62,29 @@ new tagType = do
               getMemberEventTransactionDec ]
           where
             getMemberValueDec = 
-              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure []
+              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure derivations
               where
                 name = mkName "MemberValue"
                 getConstructors = liftSTM $ readTVar memberValueConstructorsVar
+                derivations = map mkName ["Eq", "Generic"]
             getMemberEdgeDec =
-              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure []
+              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure derivations
               where
                 name = mkName "MemberEdge"
                 getConstructors = liftSTM $ readTVar memberEdgeConstructorsVar
+                derivations = map mkName ["Eq", "Generic"]
             getMemberEventDec =
-              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure []
+              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure derivations
               where
                 name = mkName "MemberEvent"
                 getConstructors = liftSTM $ readTVar memberEventConstructorsVar
+                derivations = map mkName ["Eq", "Generic"]
             getMemberEventResultDec =
-              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure []
+              DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure derivations
               where
                 name = mkName "MemberEventResult"
                 getConstructors = liftSTM $ readTVar memberEventResultConstructorsVar
+                derivations = map mkName ["Eq", "Generic"]
             getMemberEventTransactionDec = FunD <$> pure name <*> sequence [getClause]
               where
                 name = mkName "memberEventTransaction"

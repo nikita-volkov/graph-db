@@ -113,9 +113,9 @@ reifyFunction name = do
 
 reifyType :: Name -> Q (Maybe Type)
 reifyType name = do
-  info <- reify name
+  info <- tryToReify name
   case info of
-    TyConI _ -> Just <$> conT name
+    Just (TyConI _) -> Just <$> conT name
     _ -> return Nothing
 
 tryToReify :: Name -> Q (Maybe Info)
@@ -131,3 +131,10 @@ caseLambda :: [Q Match] -> Q Exp
 caseLambda matches = lamE [varP argName] (caseE (varE argName) matches)
   where
     argName = mkName "_0"
+
+whenNoInstance :: Monoid a => Name -> [Type] -> Q a -> Q a
+whenNoInstance name types f = do
+  z <- recover (return False) (isInstance name types)
+  if z
+    then return mempty
+    else f

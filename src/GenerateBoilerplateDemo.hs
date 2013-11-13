@@ -52,11 +52,11 @@ getGenresByArtistName name =
 
 
 data Catalogue
-data Artist = Artist {artistName :: Text} deriving (Show)
-data Genre = Genre {genreName :: Text} deriving (Show)
-data instance DB.Edge () Artist = UnitToArtistEdge | UnitToArtistByNameEdge Text
-data instance DB.Edge Artist Genre = ArtistToGenreEdge
-data instance DB.Edge () Genre = UnitToGenreEdge | UnitToGenreByGenreEdge Genre
+data Artist = Artist {artistName :: Text} deriving (Show, Eq, Generic)
+data Genre = Genre {genreName :: Text} deriving (Show, Eq, Generic)
+data instance DB.Edge () Artist = UnitToArtistEdge | UnitToArtistByNameEdge Text deriving (Show, Eq, Generic)
+data instance DB.Edge Artist Genre = ArtistToGenreEdge deriving (Show, Eq, Generic)
+data instance DB.Edge () Genre = UnitToGenreEdge | UnitToGenreByGenreEdge Genre deriving (Show, Eq, Generic)
 
 -- data instance DB.Edge Artist = ArtistOf | ArtistOfByName Text
 -- data instance DB.Edge Genre = GenreOf | GenreOfByGenre Genre
