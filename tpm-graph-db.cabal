@@ -80,7 +80,7 @@ library
 
 
 
-executable graph-db-demo
+executable tpm-graph-db-demo
   hs-source-dirs:
     src
   main-is:
@@ -138,7 +138,7 @@ executable graph-db-demo
     Haskell2010
 
 
-test-suite graph-db-main-test-suite
+test-suite tpm-graph-db-main-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
