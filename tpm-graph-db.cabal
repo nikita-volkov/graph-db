@@ -219,13 +219,13 @@ executable tpm-graph-db-th-demo
     Haskell2010
 
 
-test-suite tpm-graph-db-main-test-suite
+test-suite tpm-graph-db-htf-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
     src
   main-is:          
-    MainTestSuite.hs
+    HTFTestSuite.hs
   build-depends:
     attoparsec,
     monad-stm,

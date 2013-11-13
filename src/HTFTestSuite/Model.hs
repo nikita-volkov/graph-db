@@ -1,4 +1,4 @@
-module MainTestSuite.Model where
+module HTFTestSuite.Model where
 
 import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB as DB

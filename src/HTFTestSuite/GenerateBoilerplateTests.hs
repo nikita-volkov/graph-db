@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
-module MainTestSuite.GenerateBoilerplateTests where
+module HTFTestSuite.GenerateBoilerplateTests where
 
 import Test.Framework
 import Language.Haskell.TH
