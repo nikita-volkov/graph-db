@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
-module MainTestSuite.GraphTests where
+module HTFTestSuite.GraphTests where
 
 import Test.Framework
 import Test.QuickCheck.Monadic
 import TPM.GraphDB.Prelude hiding (assert)
 import TPM.GraphDB.Graph
-import qualified MainTestSuite.Model as Model
+import qualified HTFTestSuite.Model as Model
 import qualified Acid.IO.SerializeM as SerializeM
 import Pipes
 import qualified Pipes.Prelude
