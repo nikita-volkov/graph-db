@@ -14,7 +14,11 @@ import qualified GraphDB.GenerateBoilerplate.TagInstanceBuilder as TagInstanceBu
 -- |
 -- Scan the current module for all transaction-functions and 
 -- generate appropriate \"event\" data-types, 
--- associating them with the provided database tag.
+-- associating them with the provided database tag and 
+-- a list of supported types of node values.
+-- 
+-- All transaction-functions and edge declarations must be located 
+-- in the same module where this macro gets called.
 -- 
 generateBoilerplate :: Name -> [Name] -> Q [Dec]
 generateBoilerplate tagName valueTypeNames = do

@@ -65,10 +65,11 @@ data Mode =
   -- 
   -- [@eventsPersistenceBufferSize@] 
   -- An admissible amount of events the persistence layer may be lagging after
-  -- the actual state of graph. Until that amount is reached callint an event
-  -- does not block on persistence. 
+  -- the actual state of graph. 
+  -- Until that amount is reached persistence of events is done asynchronously,
+  -- thus reducing the time of execution of event.
   -- If you want the persisted state to always accomodate to the actual in-memory state,
-  -- set it to @1@.
+  -- set this to @1@.
   -- 
   -- [@persistencePaths@] 
   -- Paths for persistence directories.
