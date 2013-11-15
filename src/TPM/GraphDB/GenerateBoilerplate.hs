@@ -154,19 +154,22 @@ generateEvent adtName argTypes = return [declaration]
 
 generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> Q [Dec]
 generateEventInstance eventType tagType eventCons functionName argTypes resultType isWrite = 
-  [d|
-    instance API.Event $(return eventType) $(return tagType) where
-      type EventResult $(return eventType) $(return tagType) = $(return resultType)
-      eventTransaction = $eventTransactionLambdaQ
-  |]
+  pure $ (:[]) $ InstanceD [] head decs
   where
-    eventTransactionLambdaQ = lam1E pattern body
+    head = Type.apply [tagType, eventType, ConT ''API.Event]
+    decs = [dec1, dec2]
       where
-        pattern = conP eventCons $ map varP argList
-        body = appE constructor $ foldl appE (varE functionName) $ map varE argList
+        dec1 = TySynInstD (mkName "EventResult") [eventType, tagType] resultType
+        dec2 = FunD (mkName "eventTransaction") [clause]
           where
-            constructor = if isWrite then [e|API.Write|] else [e|API.Read|]
-        argList = zipWith (\i _ -> mkName $ "_" ++ show i) [0..] argTypes
+            clause = Clause [pattern] body []
+              where
+                pattern = ConP eventCons $ map VarP argList
+                body = 
+                  NormalB $ AppE constructor $ foldl AppE (VarE functionName) $ map VarE argList
+                  where
+                    constructor = if isWrite then ConE 'API.Write else ConE 'API.Read
+                argList = zipWith (\i _ -> mkName $ "_" ++ show i) [0..] argTypes
 
 generateIsMemberEventOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEventOfInstance eventType tagType memberEventCons = 
@@ -228,11 +231,8 @@ generateHashableInstance t =
 
 generateSerializableInstance :: Type -> Q [Dec]
 generateSerializableInstance t = do
-  Q.whenNoInstance (mkName "Serializable") [t, ConT $ mkName "IO"] $ case t of
-    _ -> 
-      [d|
-        instance Serializable $(return t) IO
-      |]
+  Q.whenNoInstance (mkName "Serializable") [t, ConT $ mkName "IO"] $
+    [d| instance Serializable $(return t) IO |]
 
 generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEdgeOfInstance edgeType tagType memberEdgeCons = 
