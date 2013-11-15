@@ -26,7 +26,7 @@ getTargets edge refA = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodesB <- Node.getTargets nodeA edge
-    for nodesB $ \node -> NodeRefRegistry.newNodeRef registry node
+    forM nodesB $ \node -> NodeRefRegistry.newNodeRef registry node
 
 getValue :: (Reads t, MonadIO (t n e s)) => NodeRef n e s -> t n e s n
 getValue ref = liftIO $ NodeRef.getNode ref >>= Node.getValue

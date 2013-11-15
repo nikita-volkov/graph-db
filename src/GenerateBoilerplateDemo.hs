@@ -1,7 +1,6 @@
 
 import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB as DB
-import qualified Data.SafeCopy as SafeCopy
 
 
 

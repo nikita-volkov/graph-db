@@ -3,10 +3,9 @@ module HTFTestSuite.GraphTests where
 
 import Test.Framework
 import Test.QuickCheck.Monadic
-import TPM.GraphDB.Prelude hiding (assert)
+import TPM.GraphDB.Prelude hiding (assert, serialize, deserialize)
 import TPM.GraphDB.Graph
 import qualified HTFTestSuite.Model as Model
-import qualified Acid.IO.SerializeM as SerializeM
 import Pipes
 import qualified Pipes.Prelude
 import qualified Pipes.ByteString
@@ -27,12 +26,12 @@ prop_deserializedGraphSerializesIntoTheSameByteString = monadicIO $ do
     serialize graph
   assert $ a == b
 
-serialize :: SerializeM.SerializeM s IO => s -> IO LazyByteString
-serialize s = Pipes.ByteString.toLazyM $ SerializeM.serializerProducer s
+serialize :: Serializable s IO => s -> IO LazyByteString
+serialize s = Pipes.ByteString.toLazyM $ serializingProducer s
 
-deserialize :: SerializeM.SerializeM s IO => LazyByteString -> IO (Maybe s)
+deserialize :: Serializable s IO => LazyByteString -> IO (Maybe s)
 deserialize lbs = do
-  r <- runEitherT $ Pipes.Prelude.head $ Pipes.ByteString.fromLazy lbs >-> SerializeM.deserializerPipe
+  r <- runEitherT $ Pipes.Prelude.head $ Pipes.ByteString.fromLazy lbs >-> deserializingPipe
   either (\m -> error $ show $ "Deserialization failure: " <> m) return r
 
 

@@ -5,7 +5,6 @@ import Test.Framework
 import Language.Haskell.TH
 import TPM.GraphDB.Prelude hiding (assert, elements)
 import TPM.GraphDB.GenerateBoilerplate
-import qualified TPM.GraphDB.TH.AccumulateDecs as AccumulateDecs
 import qualified TPM.GraphDB.API as API
 
 
@@ -32,7 +31,7 @@ decsQToStringsIO decsQ =
 
 test_generateEvent = do
   actual <- decsQToStringsIO $
-    AccumulateDecs.exec . generateEvent 'writeEvent1 =<< sequence [[t|Artist|], [t|[Genre]|]] -- '
+    generateEvent 'writeEvent1 =<< sequence [[t|Artist|], [t|[Genre]|]] -- '
   assertEqual expected actual
   where
     expected = "data WriteEvent1 = WriteEvent1 !MainTestSuite.GenerateBoilerplateTests.Artist !([MainTestSuite.GenerateBoilerplateTests.Genre]) deriving (GHC.Generics.Generic, GHC.Classes.Eq)"
@@ -43,7 +42,7 @@ test_generateEventInstance = do
     tagType <- [t|Catalogue|]
     argTypes <- sequence [[t|Artist|], [t|Genre|]]
     resultType <- [t|()|]
-    AccumulateDecs.exec $ generateEventInstance eventType tagType 'WriteEvent1 'writeEvent1 argTypes resultType True -- '
+    generateEventInstance eventType tagType 'WriteEvent1 'writeEvent1 argTypes resultType True -- '
   assertEqual expected actual
   where
     expected = "instance TPM.GraphDB.API.Event MainTestSuite.GenerateBoilerplateTests.WriteEvent1 MainTestSuite.GenerateBoilerplateTests.Catalogue where type TPM.GraphDB.API.EventResult MainTestSuite.GenerateBoilerplateTests.WriteEvent1 MainTestSuite.GenerateBoilerplateTests.Catalogue = () TPM.GraphDB.API.eventTransaction = \\(MainTestSuite.GenerateBoilerplateTests.WriteEvent1 _0 _1) -> TPM.GraphDB.API.Write (MainTestSuite.GenerateBoilerplateTests.writeEvent1 _0 _1)"

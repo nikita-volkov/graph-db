@@ -47,9 +47,9 @@ import TPM.GraphDB.Prelude hiding (Read, log)
 import qualified TPM.GraphDB.IOQueue as IOQueue; import TPM.GraphDB.IOQueue (IOQueue)
 import qualified TPM.GraphDB.Graph as Graph
 import qualified TPM.GraphDB.Graph.Transaction as Transaction
-import qualified Acid.IO.Storage as Storage
-import qualified Acid.IO.Server as Server
-import qualified Acid.IO.Client as Client
+import qualified AcidIO.Storage as Storage
+import qualified AcidIO.Server as Server
+import qualified AcidIO.Client as Client
 
 
 -- | 
@@ -99,10 +99,10 @@ startEngine ::
     IsMemberValueOf () t, 
     Hashable (MemberEdge t), 
     Eq (MemberEdge t), 
-    SafeCopy (MemberEdge t), 
-    SafeCopy (MemberValue t), 
-    SafeCopy (MemberEvent t), 
-    SafeCopy (MemberEventResult t) 
+    Serializable (MemberEdge t) IO, 
+    Serializable (MemberValue t) IO, 
+    Serializable (MemberEvent t) IO, 
+    Serializable (MemberEventResult t) IO 
   ) => 
   Mode -> 
   IO (Engine t)
@@ -131,7 +131,8 @@ data Engine t =
   Engine_NonPersistent (Graph t)
 
 shutdownEngine ::
-  (Hashable (MemberEdge t), SafeCopy (MemberEdge t), Eq (MemberEdge t), Hashable (MemberValue t), SafeCopy (MemberValue t), Eq (MemberValue t)) =>
+  ( Hashable (MemberEdge t), Serializable (MemberEdge t) IO, Eq (MemberEdge t), 
+    Hashable (MemberValue t), Serializable (MemberValue t) IO, Eq (MemberValue t) ) =>
   Engine t -> IO ()
 shutdownEngine engine = case engine of
   Engine_Persistent buffer storage graph -> do
@@ -212,7 +213,7 @@ class Event e t where
   eventTransaction :: e -> Transaction t (EventResult e t)
 
 runEvent :: 
-  (Event e t, IsMemberEventOf e t, SafeCopy (MemberEvent t), IsMemberEventResultOf (EventResult e t) t) => 
+  (Event e t, IsMemberEventOf e t, Serializable (MemberEvent t) IO, IsMemberEventResultOf (EventResult e t) t) => 
   Engine t -> e -> IO (EventResult e t)
 runEvent engine event = case engine of
   Engine_Persistent buffer storage graph -> case eventTransaction event of
@@ -230,7 +231,7 @@ runEvent engine event = case engine of
     return . fromMaybe (error "Unexpected event result")
 
 runMemberEvent :: 
-  (Tag t, SafeCopy (MemberEvent t)) =>
+  (Tag t, Serializable (MemberEvent t) IO) =>
   Engine t -> MemberEvent t -> IO (MemberEventResult t)
 runMemberEvent engine memberEvent = case engine of
   Engine_Persistent buffer storage graph -> case memberEventTransaction memberEvent of
@@ -285,7 +286,7 @@ data Server t = Server {
 }
 
 startServer :: 
-  (Tag t, SafeCopy (MemberEvent t), SafeCopy (MemberEventResult t)) =>
+  (Tag t, Serializable (MemberEvent t) IO, Serializable (MemberEventResult t) IO) =>
   Engine t -> ServerMode -> IO (Server t)
 startServer engine serverMode = do
   acidServer <- Server.start (void . return) (5 * 60 * 10^6) acidServerMode processRequest

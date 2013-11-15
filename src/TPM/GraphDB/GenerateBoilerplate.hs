@@ -6,8 +6,6 @@ import Language.Haskell.TH
 import qualified TPM.GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry; import TPM.GraphDB.GenerateBoilerplate.MembersRegistry (MembersRegistry)
 import qualified Data.Char as Char
 import qualified Data.Set as Set
-import qualified Data.SafeCopy as SafeCopy
-import qualified Data.Serialize as Serialize
 import qualified TPM.GraphDB.TH.Q as Q
 import qualified TPM.GraphDB.TH.Type as Type
 import qualified TPM.GraphDB.CIO as CIO; import TPM.GraphDB.CIO (CIO)
@@ -50,18 +48,18 @@ generateBoilerplate tagName valueTypeNames = do
       liftCIO $ TagInstanceBuilder.addMemberValueConstructor tib memberName t
       addDecs =<< generateIsMemberValueOfInstance t tagType memberName
       addDecs =<< generateHashableInstance t
-      addDecs =<< generateSafeCopyInstance t
+      addDecs =<< generateSerializableInstance t
     addEdgeType t = do
       memberName <- liftSTM $ MembersRegistry.resolve edgeMR t
       liftCIO $ TagInstanceBuilder.addMemberEdgeConstructor tib memberName t
       addDecs =<< generateIsMemberEdgeOfInstance t tagType memberName
       addDecs =<< generateHashableInstance t
-      addDecs =<< generateSafeCopyInstance t
+      addDecs =<< generateSerializableInstance t
     addValueOrEdgeType t = if isEdge t then addEdgeType t else addValueType t
     addTransactionFunction (name, argTypes, evResultType, isWrite) = do
       addDecs =<< generateEvent evName argTypes
       addDecs =<< generateEventInstance evType tagType evName name argTypes evResultType isWrite
-      addDecs =<< generateSafeCopyInstance evType
+      addDecs =<< generateSerializableInstance evType
       memberEventName <- liftSTM $ MembersRegistry.resolve eventMR evType
       addDecs =<< generateIsMemberEventOfInstance evType tagType memberEventName
       memberEventResultName <- liftSTM $ MembersRegistry.resolve eventResultMR evResultType
@@ -80,16 +78,16 @@ generateBoilerplate tagName valueTypeNames = do
       reifyEdgeInstances allValueTypes >>= traverse_ addEdgeType 
 
       [t| API.MemberEdge $(return tagType) |] 
-        >>= applyAll [generateHashableInstance]
+        >>= applyAll [generateHashableInstance, generateSerializableInstance]
         >>= addDecs . join
       [t| API.MemberValue $(return tagType) |] 
-        >>= applyAll [generateHashableInstance]
+        >>= applyAll [generateHashableInstance, generateSerializableInstance]
         >>= addDecs . join
       [t| API.MemberEvent $(return tagType) |]
-        >>= applyAll [generateSafeCopyInstance]
+        >>= applyAll [generateSerializableInstance]
         >>= addDecs . join
       [t| API.MemberEventResult $(return tagType) |]
-        >>= applyAll [generateSafeCopyInstance]
+        >>= applyAll [generateSerializableInstance]
         >>= addDecs . join
 
   addDecs =<< return . (:[]) =<< liftCIO (TagInstanceBuilder.getDec tib)
@@ -228,14 +226,12 @@ generateHashableInstance :: Type -> Q [Dec]
 generateHashableInstance t = 
   Q.whenNoInstance (mkName "Hashable") [t] $ [d|instance Hashable $(return t)|]
 
-generateSafeCopyInstance :: Type -> Q [Dec]
-generateSafeCopyInstance t = do
-  Q.whenNoInstance (mkName "SafeCopy.SafeCopy") [t] $ case t of
-    -- ConT name -> SafeCopy.deriveSafeCopy 0 'SafeCopy.base name
+generateSerializableInstance :: Type -> Q [Dec]
+generateSerializableInstance t = do
+  Q.whenNoInstance (mkName "Serializable") [t, ConT $ mkName "IO"] $ case t of
     _ -> 
       [d|
-        instance Serialize.Serialize $(return t)
-        instance SafeCopy.SafeCopy $(return t)
+        instance Serializable $(return t) IO
       |]
 
 generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]

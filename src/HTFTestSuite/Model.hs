@@ -2,7 +2,6 @@ module HTFTestSuite.Model where
 
 import TPM.GraphDB.Prelude
 import qualified TPM.GraphDB as DB
-import qualified Data.SafeCopy as SafeCopy
 
 
 insertArtist :: Artist -> [Genre] -> DB.Write Catalogue s ()
@@ -158,6 +157,10 @@ deriving instance Generic (DB.Edge () Artist)
 deriving instance Generic (DB.Edge () Genre)
 deriving instance Generic (DB.MemberEdge Catalogue)
 deriving instance Generic (DB.MemberValue Catalogue)
+deriving instance Generic (DB.MemberEvent Catalogue)
+deriving instance Generic (DB.MemberEventResult Catalogue)
+deriving instance Generic (InsertArtist)
+deriving instance Generic (GetGenresByArtistName)
 instance Hashable Artist
 instance Hashable Genre
 instance Hashable (DB.Edge Artist Genre)
@@ -166,12 +169,14 @@ instance Hashable (DB.Edge () Genre)
 instance Hashable (DB.MemberEdge Catalogue)
 instance Hashable (DB.MemberValue Catalogue)
 
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''Artist
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''Genre
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''DB.MemberValue
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''DB.Edge
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''DB.MemberEdge
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''InsertArtist
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''GetGenresByArtistName
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''DB.MemberEvent
-SafeCopy.deriveSafeCopy 0 'SafeCopy.base ''DB.MemberEventResult
+instance Serializable Artist IO
+instance Serializable Genre IO
+instance Serializable (DB.MemberValue Catalogue) IO
+instance Serializable (DB.Edge Artist Genre) IO
+instance Serializable (DB.Edge () Artist) IO
+instance Serializable (DB.Edge () Genre) IO
+instance Serializable (DB.MemberEdge Catalogue) IO
+instance Serializable InsertArtist IO
+instance Serializable GetGenresByArtistName IO
+instance Serializable (DB.MemberEvent Catalogue) IO
+instance Serializable (DB.MemberEventResult Catalogue) IO
