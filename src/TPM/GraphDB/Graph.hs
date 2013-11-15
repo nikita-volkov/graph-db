@@ -29,8 +29,6 @@ import qualified TPM.GraphDB.Graph.Dispatcher as Dispatcher; import TPM.GraphDB.
 import qualified TPM.GraphDB.Graph.Node as Node; import TPM.GraphDB.Graph.Node (Node)
 import qualified TPM.GraphDB.Graph.Transaction as Transaction
 import qualified TPM.GraphDB.Graph.Transaction.NodeRef as Transaction
-import qualified Data.SafeCopy as SafeCopy; import Data.SafeCopy (SafeCopy)
-import qualified Acid.IO.SerializeM as SerializeM
 
 
 
@@ -43,9 +41,9 @@ data Graph n e = Graph {
 instance Eq (Graph n e) where
   a == b = root a == root b
 
-instance (SafeCopy n, SafeCopy e, Hashable e, Eq e) => SerializeM.SerializeM (Graph n e) IO where
-  putT = SerializeM.putT . root
-  getT = Graph <$> SerializeM.getT <*> (liftIO $ Dispatcher.new)
+instance (Serializable n IO, Serializable e IO, Hashable e, Eq e) => Serializable (Graph n e) IO where
+  serialize = serialize . root
+  deserialize = Graph <$> deserialize <*> (liftIO $ Dispatcher.new)
 
 
 -- | Initialize a 'Graph' with a value for a root-node.

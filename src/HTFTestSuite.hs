@@ -5,6 +5,7 @@ import TPM.GraphDB.Prelude
 
 import {-@ HTF_TESTS @-} HTFTestSuite.GraphTests
 import {-@ HTF_TESTS @-} HTFTestSuite.GraphDBTests
+import {-@ HTF_TESTS @-} HTFTestSuite.GenerateBoilerplateTests
 
 
 

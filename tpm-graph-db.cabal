@@ -19,6 +19,11 @@ library
   exposed-modules:
     TPM.GraphDB
   other-modules:
+    TPM.GraphDB.TH.Q
+    TPM.GraphDB.TH.Type
+    TPM.GraphDB.GenerateBoilerplate.MembersRegistry
+    TPM.GraphDB.GenerateBoilerplate.TagInstanceBuilder
+    TPM.GraphDB.GenerateBoilerplate
     TPM.GraphDB.Graph
     TPM.GraphDB.Prelude
     TPM.GraphDB.Graph.Dispatcher
@@ -28,13 +33,18 @@ library
     TPM.GraphDB.Graph.Transaction.NodeRefRegistry
     TPM.GraphDB.DIOVector
     TPM.GraphDB.IOQueue
+    TPM.GraphDB.CIO
+    TPM.GraphDB.API
   build-depends:
-    pipes == 4.0.*,
+    attoparsec,
+    monad-stm,
+    parallel-io,
+    containers,
+    template-haskell,
     errors,
     acid-io == 0.1.*,
     SafeSemaphore == 0.9.*,
-    safecopy >= 0.8.3,
-    cereal,
+    pipes-cereal-plus,
     system-filepath == 0.4.*,
     vector,
     hashtables == 1.1.*,
@@ -89,11 +99,78 @@ executable tpm-graph-db-demo
     -threaded 
     "-with-rtsopts=-N"
   build-depends:
+    attoparsec,
+    monad-stm,
+    parallel-io,
+    containers,
+    template-haskell,
     errors,
     acid-io == 0.1.*,
     SafeSemaphore == 0.9.*,
-    safecopy >= 0.8.3,
-    cereal,
+    pipes-cereal-plus,
+    system-filepath == 0.4.*,
+    vector,
+    hashtables == 1.1.*,
+    hashable == 1.2.*,
+    text,
+    bytestring,
+    stm,
+    transformers,
+    mtl,
+    base >= 4.5 && < 5
+  default-extensions:
+    Arrows
+    DeriveGeneric
+    ImpredicativeTypes
+    BangPatterns
+    PatternGuards
+    GADTs
+    StandaloneDeriving
+    MultiParamTypeClasses
+    ScopedTypeVariables
+    FlexibleInstances
+    TypeFamilies
+    TypeOperators
+    FlexibleContexts
+    NoImplicitPrelude
+    EmptyDataDecls
+    DataKinds
+    NoMonomorphismRestriction
+    RankNTypes
+    ConstraintKinds
+    DefaultSignatures
+    TupleSections
+    OverloadedStrings
+    TemplateHaskell
+    QuasiQuotes
+    DeriveDataTypeable
+    GeneralizedNewtypeDeriving
+    RecordWildCards
+    MultiWayIf
+    LiberalTypeSynonyms
+  default-language:
+    Haskell2010
+
+
+executable tpm-graph-db-th-demo
+  hs-source-dirs:
+    src
+  main-is:
+    GenerateBoilerplateDemo.hs
+  ghc-options:
+    -threaded 
+    "-with-rtsopts=-N"
+    -ddump-splices
+  build-depends:
+    attoparsec,
+    monad-stm,
+    parallel-io,
+    containers,
+    template-haskell,
+    errors,
+    acid-io == 0.1.*,
+    SafeSemaphore == 0.9.*,
+    pipes-cereal-plus,
     system-filepath == 0.4.*,
     vector,
     hashtables == 1.1.*,
@@ -146,13 +223,15 @@ test-suite tpm-graph-db-htf-test-suite
   main-is:          
     HTFTestSuite.hs
   build-depends:
-    pipes,
-    pipes-bytestring,
+    attoparsec,
+    monad-stm,
+    parallel-io,
+    containers,
+    template-haskell,
     errors,
     acid-io == 0.1.*,
     SafeSemaphore == 0.9.*,
-    safecopy >= 0.8.3,
-    cereal,
+    pipes-cereal-plus,
     system-filepath == 0.4.*,
     vector,
     hashtables == 1.1.*,
@@ -164,6 +243,8 @@ test-suite tpm-graph-db-htf-test-suite
     mtl,
     base >= 4.5 && < 5,
 
+    pipes-bytestring,
+    pipes,
     QuickCheck,
     HUnit,
     HTF == 0.11.*
