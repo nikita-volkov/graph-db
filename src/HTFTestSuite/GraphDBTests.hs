@@ -2,8 +2,8 @@
 module HTFTestSuite.GraphDBTests where
 
 import Test.Framework
-import TPM.GraphDB.Prelude
-import TPM.GraphDB
+import GraphDB.Prelude
+import GraphDB
 
 import qualified HTFTestSuite.Model as Model
 

@@ -3,9 +3,9 @@ module HTFTestSuite.GenerateBoilerplateTests where
 
 import Test.Framework
 import Language.Haskell.TH
-import TPM.GraphDB.Prelude hiding (assert, elements)
-import TPM.GraphDB.GenerateBoilerplate
-import qualified TPM.GraphDB.API as API
+import GraphDB.Prelude hiding (assert, elements)
+import GraphDB.GenerateBoilerplate
+import qualified GraphDB.API as API
 
 
 
@@ -45,7 +45,7 @@ test_generateEventInstance = do
     generateEventInstance eventType tagType 'WriteEvent1 'writeEvent1 argTypes resultType True -- '
   assertEqual expected actual
   where
-    expected = "instance TPM.GraphDB.API.Event MainTestSuite.GenerateBoilerplateTests.WriteEvent1 MainTestSuite.GenerateBoilerplateTests.Catalogue where type TPM.GraphDB.API.EventResult MainTestSuite.GenerateBoilerplateTests.WriteEvent1 MainTestSuite.GenerateBoilerplateTests.Catalogue = () TPM.GraphDB.API.eventTransaction = \\(MainTestSuite.GenerateBoilerplateTests.WriteEvent1 _0 _1) -> TPM.GraphDB.API.Write (MainTestSuite.GenerateBoilerplateTests.writeEvent1 _0 _1)"
+    expected = "instance GraphDB.API.Event MainTestSuite.GenerateBoilerplateTests.WriteEvent1 MainTestSuite.GenerateBoilerplateTests.Catalogue where type GraphDB.API.EventResult MainTestSuite.GenerateBoilerplateTests.WriteEvent1 MainTestSuite.GenerateBoilerplateTests.Catalogue = () GraphDB.API.eventTransaction = \\(MainTestSuite.GenerateBoilerplateTests.WriteEvent1 _0 _1) -> GraphDB.API.Write (MainTestSuite.GenerateBoilerplateTests.writeEvent1 _0 _1)"
 
 
 

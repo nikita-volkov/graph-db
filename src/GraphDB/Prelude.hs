@@ -1,4 +1,4 @@
-module TPM.GraphDB.Prelude 
+module GraphDB.Prelude 
   ( 
     module Exports,
 

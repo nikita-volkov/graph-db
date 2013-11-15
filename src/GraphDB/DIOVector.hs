@@ -1,6 +1,6 @@
-module TPM.GraphDB.DIOVector where
+module GraphDB.DIOVector where
 
-import TPM.GraphDB.Prelude
+import GraphDB.Prelude
 import qualified Data.Vector.Mutable as IOVector
 
 -- | Dynamic mutable vector in 'IO'.
@@ -24,7 +24,7 @@ append (DIOVector var) value =
     return (vector', succ nextIndex)
 
 unsafeLookup :: DIOVector a -> Int -> IO a
-unsafeLookup = error "TODO: TPM.GraphDB.DIOVector.unsafeLookup"
+unsafeLookup = error "TODO: GraphDB.DIOVector.unsafeLookup"
 
 length :: DIOVector a -> IO Int
 length (DIOVector var) = readMVar var >>= return . snd

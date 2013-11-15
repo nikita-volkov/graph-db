@@ -3,8 +3,8 @@ module HTFTestSuite.GraphTests where
 
 import Test.Framework
 import Test.QuickCheck.Monadic
-import TPM.GraphDB.Prelude hiding (assert, serialize, deserialize)
-import TPM.GraphDB.Graph
+import GraphDB.Prelude hiding (assert, serialize, deserialize)
+import GraphDB.Graph
 import qualified HTFTestSuite.Model as Model
 import Pipes
 import qualified Pipes.Prelude

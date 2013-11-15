@@ -1,6 +1,6 @@
-module TPM.GraphDB.CIO where
+module GraphDB.CIO where
 
-import TPM.GraphDB.Prelude hiding (sequence, sequence_)
+import GraphDB.Prelude hiding (sequence, sequence_)
 import qualified Control.Concurrent.ParallelIO.Local as ParallelIO
 
 

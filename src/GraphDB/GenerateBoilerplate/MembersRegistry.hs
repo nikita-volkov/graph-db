@@ -1,7 +1,7 @@
-module TPM.GraphDB.GenerateBoilerplate.MembersRegistry where
+module GraphDB.GenerateBoilerplate.MembersRegistry where
 
-import TPM.GraphDB.Prelude
-import qualified TPM.GraphDB.API as API
+import GraphDB.Prelude
+import qualified GraphDB.API as API
 import Language.Haskell.TH
 import qualified Data.Map as Map
 

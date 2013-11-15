@@ -1,10 +1,10 @@
-module TPM.GraphDB.GenerateBoilerplate.TagInstanceBuilder where
+module GraphDB.GenerateBoilerplate.TagInstanceBuilder where
 
-import TPM.GraphDB.Prelude
+import GraphDB.Prelude
 import Language.Haskell.TH
-import qualified TPM.GraphDB.API as API
-import qualified TPM.GraphDB.CIO as CIO; import TPM.GraphDB.CIO (CIO)
-import qualified TPM.GraphDB.TH.Q as Q
+import qualified GraphDB.API as API
+import qualified GraphDB.CIO as CIO; import GraphDB.CIO (CIO)
+import qualified GraphDB.TH.Q as Q
 
 data TagInstanceBuilder = TagInstanceBuilder {
   addMemberValueConstructor :: Name -> Type -> CIO (),

@@ -1,40 +1,63 @@
 name:
-  tpm-graph-db
+  graph-db
 version:
   0.1.0
+synopsis:
+  Native Haskell graph database.
+description:
+  Provides a mutable in-memory graph datastructure with complete ACID guarantees,
+  a persistence layer, server and client.
+license:
+  MIT
+license-file:
+  LICENSE
+homepage:
+  https://github.com/nikita-volkov/graph-db 
+bug-reports:
+  https://github.com/nikita-volkov/graph-db/issues 
 author:
-  Nikita Volkov
+  Nikita Volkov <nikita.y.volkov@mail.ru>
 maintainer:
-  nikita.y.volkov@mail.ru
+  Nikita Volkov <nikita.y.volkov@mail.ru>
+copyright:
+  (c) 2013, Nikita Volkov
+category:
+  Database
 build-type:
   Simple
 cabal-version:
   >=1.10
 
 
+source-repository head
+  type:
+    git
+  location:
+    git://github.com/nikita-volkov/graph-db.git
+
 
 library
   hs-source-dirs:
     src
   exposed-modules:
-    TPM.GraphDB
+    GraphDB
   other-modules:
-    TPM.GraphDB.TH.Q
-    TPM.GraphDB.TH.Type
-    TPM.GraphDB.GenerateBoilerplate.MembersRegistry
-    TPM.GraphDB.GenerateBoilerplate.TagInstanceBuilder
-    TPM.GraphDB.GenerateBoilerplate
-    TPM.GraphDB.Graph
-    TPM.GraphDB.Prelude
-    TPM.GraphDB.Graph.Dispatcher
-    TPM.GraphDB.Graph.Node
-    TPM.GraphDB.Graph.Transaction
-    TPM.GraphDB.Graph.Transaction.NodeRef
-    TPM.GraphDB.Graph.Transaction.NodeRefRegistry
-    TPM.GraphDB.DIOVector
-    TPM.GraphDB.IOQueue
-    TPM.GraphDB.CIO
-    TPM.GraphDB.API
+    GraphDB.TH.Q
+    GraphDB.TH.Type
+    GraphDB.GenerateBoilerplate.MembersRegistry
+    GraphDB.GenerateBoilerplate.TagInstanceBuilder
+    GraphDB.GenerateBoilerplate
+    GraphDB.Graph
+    GraphDB.Prelude
+    GraphDB.Graph.Dispatcher
+    GraphDB.Graph.Node
+    GraphDB.Graph.Transaction
+    GraphDB.Graph.Transaction.NodeRef
+    GraphDB.Graph.Transaction.NodeRefRegistry
+    GraphDB.DIOVector
+    GraphDB.IOQueue
+    GraphDB.CIO
+    GraphDB.API
   build-depends:
     attoparsec,
     monad-stm,
@@ -89,8 +112,7 @@ library
     Haskell2010
 
 
-
-executable tpm-graph-db-demo
+executable graph-db-demo
   hs-source-dirs:
     src
   main-is:
@@ -152,7 +174,7 @@ executable tpm-graph-db-demo
     Haskell2010
 
 
-executable tpm-graph-db-th-demo
+executable graph-db-th-demo
   hs-source-dirs:
     src
   main-is:
@@ -215,7 +237,7 @@ executable tpm-graph-db-th-demo
     Haskell2010
 
 
-test-suite tpm-graph-db-htf-test-suite
+test-suite graph-db-htf-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   

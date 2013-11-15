@@ -1,4 +1,4 @@
-module TPM.GraphDB.API
+module GraphDB.API
   (
     -- * DB Engine
     Engine,
@@ -43,10 +43,10 @@ module TPM.GraphDB.API
   ) 
   where
 
-import TPM.GraphDB.Prelude hiding (Read, log)
-import qualified TPM.GraphDB.IOQueue as IOQueue; import TPM.GraphDB.IOQueue (IOQueue)
-import qualified TPM.GraphDB.Graph as Graph
-import qualified TPM.GraphDB.Graph.Transaction as Transaction
+import GraphDB.Prelude hiding (Read, log)
+import qualified GraphDB.IOQueue as IOQueue; import GraphDB.IOQueue (IOQueue)
+import qualified GraphDB.Graph as Graph
+import qualified GraphDB.Graph.Transaction as Transaction
 import qualified AcidIO.Storage as Storage
 import qualified AcidIO.Server as Server
 import qualified AcidIO.Client as Client

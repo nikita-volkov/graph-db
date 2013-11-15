@@ -1,8 +1,8 @@
-module TPM.GraphDB.Graph.Node where
+module GraphDB.Graph.Node where
 
-import TPM.GraphDB.Prelude
+import GraphDB.Prelude
 import qualified Data.HashTable.IO as Table
-import qualified TPM.GraphDB.DIOVector as DIOVector; import TPM.GraphDB.DIOVector (DIOVector)
+import qualified GraphDB.DIOVector as DIOVector; import GraphDB.DIOVector (DIOVector)
 
 
 data Node n e = Node { 

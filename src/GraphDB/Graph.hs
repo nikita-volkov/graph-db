@@ -1,6 +1,6 @@
 -- |
 -- API of a mutable graph data structure over monomorphic node-value and edge.
-module TPM.GraphDB.Graph
+module GraphDB.Graph
   (
     Graph,
     new,
@@ -24,11 +24,11 @@ module TPM.GraphDB.Graph
 
   ) where
 
-import TPM.GraphDB.Prelude
-import qualified TPM.GraphDB.Graph.Dispatcher as Dispatcher; import TPM.GraphDB.Graph.Dispatcher (Dispatcher)
-import qualified TPM.GraphDB.Graph.Node as Node; import TPM.GraphDB.Graph.Node (Node)
-import qualified TPM.GraphDB.Graph.Transaction as Transaction
-import qualified TPM.GraphDB.Graph.Transaction.NodeRef as Transaction
+import GraphDB.Prelude
+import qualified GraphDB.Graph.Dispatcher as Dispatcher; import GraphDB.Graph.Dispatcher (Dispatcher)
+import qualified GraphDB.Graph.Node as Node; import GraphDB.Graph.Node (Node)
+import qualified GraphDB.Graph.Transaction as Transaction
+import qualified GraphDB.Graph.Transaction.NodeRef as Transaction
 
 
 

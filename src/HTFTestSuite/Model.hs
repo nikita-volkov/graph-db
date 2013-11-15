@@ -1,7 +1,7 @@
 module HTFTestSuite.Model where
 
-import TPM.GraphDB.Prelude
-import qualified TPM.GraphDB as DB
+import GraphDB.Prelude
+import qualified GraphDB as DB
 
 
 insertArtist :: Artist -> [Genre] -> DB.Write Catalogue s ()

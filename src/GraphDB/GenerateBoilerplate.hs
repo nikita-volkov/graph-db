@@ -1,15 +1,15 @@
-module TPM.GraphDB.GenerateBoilerplate where
+module GraphDB.GenerateBoilerplate where
 
-import TPM.GraphDB.Prelude
-import qualified TPM.GraphDB.API as API
+import GraphDB.Prelude
+import qualified GraphDB.API as API
 import Language.Haskell.TH
-import qualified TPM.GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry; import TPM.GraphDB.GenerateBoilerplate.MembersRegistry (MembersRegistry)
+import qualified GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry; import GraphDB.GenerateBoilerplate.MembersRegistry (MembersRegistry)
 import qualified Data.Char as Char
 import qualified Data.Set as Set
-import qualified TPM.GraphDB.TH.Q as Q
-import qualified TPM.GraphDB.TH.Type as Type
-import qualified TPM.GraphDB.CIO as CIO; import TPM.GraphDB.CIO (CIO)
-import qualified TPM.GraphDB.GenerateBoilerplate.TagInstanceBuilder as TagInstanceBuilder
+import qualified GraphDB.TH.Q as Q
+import qualified GraphDB.TH.Type as Type
+import qualified GraphDB.CIO as CIO; import GraphDB.CIO (CIO)
+import qualified GraphDB.GenerateBoilerplate.TagInstanceBuilder as TagInstanceBuilder
 
 -- |
 -- Scan the current module for all transaction-functions and 

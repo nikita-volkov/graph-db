@@ -1,4 +1,4 @@
-module TPM.GraphDB.IOQueue 
+module GraphDB.IOQueue 
   (
     IOQueue, 
     start, 
@@ -8,7 +8,7 @@ module TPM.GraphDB.IOQueue
   )
   where
 
-import TPM.GraphDB.Prelude
+import GraphDB.Prelude
 
 
 data IOQueue = IOQueue {

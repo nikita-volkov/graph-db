@@ -1,8 +1,8 @@
-module TPM.GraphDB.TH.Q where
+module GraphDB.TH.Q where
 
-import TPM.GraphDB.Prelude
+import GraphDB.Prelude
 import Language.Haskell.TH
-import qualified TPM.GraphDB.TH.Type as Type
+import qualified GraphDB.TH.Type as Type
 import qualified Data.Attoparsec.Text as AP
 import qualified Data.Text.IO as Text
 import qualified Data.Text as Text

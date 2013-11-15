@@ -1,9 +1,9 @@
-module TPM.GraphDB.Graph.Transaction where
+module GraphDB.Graph.Transaction where
 
-import TPM.GraphDB.Prelude hiding (Read, Write)
-import qualified TPM.GraphDB.Graph.Node as Node; import TPM.GraphDB.Graph.Node (Node)
-import qualified TPM.GraphDB.Graph.Transaction.NodeRefRegistry as NodeRefRegistry; import TPM.GraphDB.Graph.Transaction.NodeRefRegistry (NodeRefRegistry)
-import qualified TPM.GraphDB.Graph.Transaction.NodeRef as NodeRef; import TPM.GraphDB.Graph.Transaction.NodeRef (NodeRef)
+import GraphDB.Prelude hiding (Read, Write)
+import qualified GraphDB.Graph.Node as Node; import GraphDB.Graph.Node (Node)
+import qualified GraphDB.Graph.Transaction.NodeRefRegistry as NodeRefRegistry; import GraphDB.Graph.Transaction.NodeRefRegistry (NodeRefRegistry)
+import qualified GraphDB.Graph.Transaction.NodeRef as NodeRef; import GraphDB.Graph.Transaction.NodeRef (NodeRef)
 
 
 

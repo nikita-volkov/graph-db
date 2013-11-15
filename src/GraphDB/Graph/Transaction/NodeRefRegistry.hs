@@ -1,9 +1,9 @@
-module TPM.GraphDB.Graph.Transaction.NodeRefRegistry where
+module GraphDB.Graph.Transaction.NodeRefRegistry where
 
-import TPM.GraphDB.Prelude
-import qualified TPM.GraphDB.Graph.Node as Node; import TPM.GraphDB.Graph.Node (Node)
-import qualified TPM.GraphDB.Graph.Transaction.NodeRef as NodeRef; import TPM.GraphDB.Graph.Transaction.NodeRef (NodeRef)
-import qualified TPM.GraphDB.DIOVector as DIOVector; import TPM.GraphDB.DIOVector (DIOVector)
+import GraphDB.Prelude
+import qualified GraphDB.Graph.Node as Node; import GraphDB.Graph.Node (Node)
+import qualified GraphDB.Graph.Transaction.NodeRef as NodeRef; import GraphDB.Graph.Transaction.NodeRef (NodeRef)
+import qualified GraphDB.DIOVector as DIOVector; import GraphDB.DIOVector (DIOVector)
 
 -- |
 -- Transaction-local registry of references to nodes. These references may not escape
@@ -24,5 +24,5 @@ newNodeRef (NodeRefRegistry vec) node = do
 -- |
 -- For deserialization.
 lookup :: NodeRefRegistry n e -> Int -> IO (Maybe (NodeRef n e s))
-lookup = error "TODO: TPM.GraphDB.Graph.Transaction.NodeRefRegistry.lookup"
+lookup = error "TODO: GraphDB.Graph.Transaction.NodeRefRegistry.lookup"
 

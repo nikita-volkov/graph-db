@@ -1,6 +1,6 @@
-module TPM.GraphDB.TH.Type where
+module GraphDB.TH.Type where
 
-import TPM.GraphDB.Prelude
+import GraphDB.Prelude
 import Language.Haskell.TH
 
 argsAndResult :: Type -> ([Type], Type)
