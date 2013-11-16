@@ -8,16 +8,16 @@ insertArtist :: Artist -> [Genre] -> DB.Write Catalogue s ()
 insertArtist artist genreList = do
   artistRef <- DB.newNode artist
   rootRef <- DB.getRoot
-  DB.insertEdge rootRef UnitToArtistEdge artistRef
-  DB.insertEdge rootRef (UnitToArtistByNameEdge (artistName artist)) artistRef
+  DB.insertEdge rootRef ArtistOf artistRef
+  DB.insertEdge rootRef (ArtistOfByName (artistName artist)) artistRef
   -- Lookup existing genres and insert inexistent ones, then insert appropriate edges.
   for_ genreList $ \genre -> do
     genreRefs <- do
-      existing <- DB.getTargets (UnitToGenreByGenreEdge genre) rootRef
+      existing <- DB.getTargets (GenreOfByGenre genre) rootRef
       case existing of
         [] -> insertGenreAndGetRef genre >>= return . (:[])
         _ -> return existing
-    for_ genreRefs $ \genreRef -> DB.insertEdge artistRef ArtistToGenreEdge genreRef
+    for_ genreRefs $ \genreRef -> DB.insertEdge artistRef GenreOf genreRef
 
 -- | 
 -- Since this function returns a 'DB.NodeRef' it can't be directly used with 'DB.Event',
@@ -29,9 +29,9 @@ insertGenreAndGetRef genre = do
   -- O(1):
   root <- DB.getRoot
   -- O(log n), where "n" is the number of edges from root node:
-  DB.insertEdge root (UnitToGenreByGenreEdge genre) new
+  DB.insertEdge root (GenreOfByGenre genre) new
   -- O(log n), where "n" is the number of edges from root node:
-  DB.insertEdge root UnitToGenreEdge new
+  DB.insertEdge root GenreOf new
   return new
 
 getGenresByArtistName :: Text -> DB.Read Catalogue s [Genre]
@@ -39,10 +39,10 @@ getGenresByArtistName name =
   -- O(1):
   DB.getRoot >>=
   -- O(log n), where "n" is the number of edges from root node:
-  DB.getTargets (UnitToArtistByNameEdge name) >>=
+  DB.getTargets (ArtistOfByName name) >>=
   -- O(log n * m), where "n" is the number of edges from target node and 
   -- "m" is the number of target nodes:
-  traverse (DB.getTargets ArtistToGenreEdge) >>=
+  traverse (DB.getTargets GenreOf) >>=
   return . concat >>=
   -- O(n), where "n" is the number of result nodes, 
   -- i.e. the complexity of operation "getValue" is O(1):
@@ -53,15 +53,8 @@ getGenresByArtistName name =
 data Catalogue
 data Artist = Artist {artistName :: Text} deriving (Show, Eq, Generic)
 data Genre = Genre {genreName :: Text} deriving (Show, Eq, Generic)
-data instance DB.Edge () Artist = UnitToArtistEdge | UnitToArtistByNameEdge Text deriving (Show, Eq, Generic)
-data instance DB.Edge Artist Genre = ArtistToGenreEdge deriving (Show, Eq, Generic)
-data instance DB.Edge () Genre = UnitToGenreEdge | UnitToGenreByGenreEdge Genre deriving (Show, Eq, Generic)
-
--- data instance DB.Edge Artist = ArtistOf | ArtistOfByName Text
--- data instance DB.Edge Genre = GenreOf | GenreOfByGenre Genre
--- OR
--- data instance DB.Edge Catalogue = Direct | ByName Text | ByGenre Genre
--- data instance DB.Node Catalogue = ArtistNode Artist | GenreNode Genre
+data instance DB.EdgeTo Artist = ArtistOf | ArtistOfByName Text deriving (Show, Eq, Generic)
+data instance DB.EdgeTo Genre = GenreOf | GenreOfByGenre Genre deriving (Show, Eq, Generic)
 
 DB.generateBoilerplate
   ''Catalogue

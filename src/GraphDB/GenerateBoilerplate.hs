@@ -134,11 +134,10 @@ reifyLocalTransactionFunctions tagType =
 -- Get a list of all instances of 'Edge' between all possible combinations of provided types.
 reifyEdgeInstances :: [Type] -> Q [Type]
 reifyEdgeInstances types = do
-  ConT familyName <- [t| API.Edge |]
+  ConT familyName <- [t| API.EdgeTo |]
   decs <- fmap join $ sequence $ do
-    fromType <- types
     toType <- types
-    return $ reifyInstances familyName [fromType, toType]
+    return $ reifyInstances familyName [toType]
   return $ catMaybes $ map Type.fromDataInstanceDec decs
 
 isEdge :: Type -> Bool
@@ -146,7 +145,7 @@ isEdge t = case Type.unapply t of
   _ : _ : t : [] | t == edgeT -> True
   _ -> False
   where
-    edgeT = Q.purify [t| API.Edge |]
+    edgeT = Q.purify [t| API.EdgeTo |]
 
 generateEvent :: Name -> [Type] -> Q [Dec]
 generateEvent adtName argTypes = return [declaration]

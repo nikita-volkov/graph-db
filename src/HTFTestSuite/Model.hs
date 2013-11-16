@@ -8,44 +8,53 @@ insertArtist :: Artist -> [Genre] -> DB.Write Catalogue s ()
 insertArtist artist genreList = do
   artistRef <- DB.newNode artist
   rootRef <- DB.getRoot
-  DB.insertEdge rootRef UnitToArtistEdge artistRef
-  DB.insertEdge rootRef (UnitToArtistByNameEdge (artistName artist)) artistRef
+  DB.insertEdge rootRef ArtistOf artistRef
+  DB.insertEdge rootRef (ArtistOfByName (artistName artist)) artistRef
   -- Lookup existing genres and insert inexistent ones, then insert appropriate edges.
   for_ genreList $ \genre -> do
     genreRefs <- do
-      existing <- DB.getTargets (UnitToGenreByGenreEdge genre) rootRef
+      existing <- DB.getTargets (GenreOfByGenre genre) rootRef
       case existing of
         [] -> insertGenreAndGetRef genre >>= return . (:[])
         _ -> return existing
-    for_ genreRefs $ \genreRef -> DB.insertEdge artistRef ArtistToGenreEdge genreRef
+    for_ genreRefs $ \genreRef -> DB.insertEdge artistRef GenreOf genreRef
 
 -- | 
 -- Since this function returns a 'DB.NodeRef' it can't be directly used with 'DB.Event',
 -- instead it can only be used in composition of others, like in 'insertArtist'.
 insertGenreAndGetRef :: Genre -> DB.Write Catalogue s (DB.NodeRef Catalogue s Genre)
 insertGenreAndGetRef genre = do
+  -- O(1):
   new <- DB.newNode genre
+  -- O(1):
   root <- DB.getRoot
-  DB.insertEdge root (UnitToGenreByGenreEdge genre) new
-  DB.insertEdge root UnitToGenreEdge new
+  -- O(log n), where "n" is the number of edges from root node:
+  DB.insertEdge root (GenreOfByGenre genre) new
+  -- O(log n), where "n" is the number of edges from root node:
+  DB.insertEdge root GenreOf new
   return new
 
 getGenresByArtistName :: Text -> DB.Read Catalogue s [Genre]
 getGenresByArtistName name = 
+  -- O(1):
   DB.getRoot >>=
-  DB.getTargets (UnitToArtistByNameEdge name) >>=
-  traverse (DB.getTargets ArtistToGenreEdge) >>=
+  -- O(log n), where "n" is the number of edges from root node:
+  DB.getTargets (ArtistOfByName name) >>=
+  -- O(log n * m), where "n" is the number of edges from target node and 
+  -- "m" is the number of target nodes:
+  traverse (DB.getTargets GenreOf) >>=
   return . concat >>=
+  -- O(n), where "n" is the number of result nodes, 
+  -- i.e. the complexity of operation "getValue" is O(1):
   traverse DB.getValue
 
 
 
 data Catalogue
-data Artist = Artist {artistName :: Text} deriving (Show)
-data Genre = Genre {genreName :: Text} deriving (Show)
-data instance DB.Edge () Artist = UnitToArtistEdge | UnitToArtistByNameEdge Text
-data instance DB.Edge Artist Genre = ArtistToGenreEdge
-data instance DB.Edge () Genre = UnitToGenreEdge | UnitToGenreByGenreEdge Genre
+data Artist = Artist {artistName :: Text}
+data Genre = Genre {genreName :: Text}
+data instance DB.EdgeTo Artist = ArtistOf | ArtistOfByName Text
+data instance DB.EdgeTo Genre = GenreOf | GenreOfByGenre Genre
 
 
 
@@ -61,9 +70,8 @@ instance DB.Tag Catalogue where
     MemberValue_Artist Artist | 
     MemberValue_Genre Genre
   data MemberEdge Catalogue =
-    MemberEdge_UnitToArtist (DB.Edge () Artist) |
-    MemberEdge_UnitToGenre (DB.Edge () Genre) |
-    MemberEdge_ArtistToGenre (DB.Edge Artist Genre)
+    MemberEdge_Artist (DB.EdgeTo Artist) |
+    MemberEdge_Genre (DB.EdgeTo Genre)
   data MemberEvent Catalogue = 
     MemberEvent_InsertArtist InsertArtist |
     MemberEvent_GetGenresByArtistName GetGenresByArtistName
@@ -89,19 +97,14 @@ instance DB.IsMemberValueOf Genre Catalogue where
   fromMemberValue (MemberValue_Genre z) = Just z
   fromMemberValue _ = Nothing
 
-instance DB.IsMemberEdgeOf (DB.Edge () Artist) Catalogue where
-  toMemberEdge = MemberEdge_UnitToArtist
-  fromMemberEdge (MemberEdge_UnitToArtist z) = Just z
+instance DB.IsMemberEdgeOf (DB.EdgeTo Artist) Catalogue where
+  toMemberEdge = MemberEdge_Artist
+  fromMemberEdge (MemberEdge_Artist z) = Just z
   fromMemberEdge _ = Nothing
 
-instance DB.IsMemberEdgeOf (DB.Edge () Genre) Catalogue where
-  toMemberEdge = MemberEdge_UnitToGenre
-  fromMemberEdge (MemberEdge_UnitToGenre z) = Just z
-  fromMemberEdge _ = Nothing
-
-instance DB.IsMemberEdgeOf (DB.Edge Artist Genre) Catalogue where
-  toMemberEdge = MemberEdge_ArtistToGenre
-  fromMemberEdge (MemberEdge_ArtistToGenre z) = Just z
+instance DB.IsMemberEdgeOf (DB.EdgeTo Genre) Catalogue where
+  toMemberEdge = MemberEdge_Genre
+  fromMemberEdge (MemberEdge_Genre z) = Just z
   fromMemberEdge _ = Nothing
 
 
@@ -145,16 +148,14 @@ instance DB.IsMemberEventResultOf [Genre] Catalogue where
 
 deriving instance Eq Artist
 deriving instance Eq Genre
-deriving instance Eq (DB.Edge Artist Genre)
-deriving instance Eq (DB.Edge () Artist)
-deriving instance Eq (DB.Edge () Genre)
+deriving instance Eq (DB.EdgeTo Genre)
+deriving instance Eq (DB.EdgeTo Artist)
 deriving instance Eq (DB.MemberEdge Catalogue)
 deriving instance Eq (DB.MemberValue Catalogue)
 deriving instance Generic Artist
 deriving instance Generic Genre
-deriving instance Generic (DB.Edge Artist Genre)
-deriving instance Generic (DB.Edge () Artist)
-deriving instance Generic (DB.Edge () Genre)
+deriving instance Generic (DB.EdgeTo Genre)
+deriving instance Generic (DB.EdgeTo Artist)
 deriving instance Generic (DB.MemberEdge Catalogue)
 deriving instance Generic (DB.MemberValue Catalogue)
 deriving instance Generic (DB.MemberEvent Catalogue)
@@ -163,18 +164,16 @@ deriving instance Generic (InsertArtist)
 deriving instance Generic (GetGenresByArtistName)
 instance Hashable Artist
 instance Hashable Genre
-instance Hashable (DB.Edge Artist Genre)
-instance Hashable (DB.Edge () Artist)
-instance Hashable (DB.Edge () Genre)
+instance Hashable (DB.EdgeTo Genre)
+instance Hashable (DB.EdgeTo Artist)
 instance Hashable (DB.MemberEdge Catalogue)
 instance Hashable (DB.MemberValue Catalogue)
 
 instance Serializable Artist IO
 instance Serializable Genre IO
 instance Serializable (DB.MemberValue Catalogue) IO
-instance Serializable (DB.Edge Artist Genre) IO
-instance Serializable (DB.Edge () Artist) IO
-instance Serializable (DB.Edge () Genre) IO
+instance Serializable (DB.EdgeTo Genre) IO
+instance Serializable (DB.EdgeTo Artist) IO
 instance Serializable (DB.MemberEdge Catalogue) IO
 instance Serializable InsertArtist IO
 instance Serializable GetGenresByArtistName IO
