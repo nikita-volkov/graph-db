@@ -108,6 +108,7 @@ library
     RecordWildCards
     MultiWayIf
     LiberalTypeSynonyms
+    LambdaCase
   default-language:
     Haskell2010
 
@@ -170,6 +171,7 @@ executable graph-db-demo
     RecordWildCards
     MultiWayIf
     LiberalTypeSynonyms
+    LambdaCase
   default-language:
     Haskell2010
 
@@ -233,6 +235,7 @@ executable graph-db-th-demo
     RecordWildCards
     MultiWayIf
     LiberalTypeSynonyms
+    LambdaCase
   default-language:
     Haskell2010
 
@@ -299,6 +302,8 @@ test-suite graph-db-htf-test-suite
     GeneralizedNewtypeDeriving
     RecordWildCards
     MultiWayIf
+    LiberalTypeSynonyms
+    LambdaCase
   default-language:
     Haskell2010
 
