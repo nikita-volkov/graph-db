@@ -26,10 +26,10 @@ prop_deserializedGraphSerializesIntoTheSameByteString = monadicIO $ do
     serialize graph
   assert $ a == b
 
-serialize :: Serializable s IO => s -> IO LazyByteString
+serialize :: Serializable IO s => s -> IO LazyByteString
 serialize s = Pipes.ByteString.toLazyM $ serializingProducer s
 
-deserialize :: Serializable s IO => LazyByteString -> IO (Maybe s)
+deserialize :: Serializable IO s => LazyByteString -> IO (Maybe s)
 deserialize lbs = do
   r <- runEitherT $ Pipes.Prelude.head $ Pipes.ByteString.fromLazy lbs >-> deserializingPipe
   either (\m -> error $ show $ "Deserialization failure: " <> m) return r

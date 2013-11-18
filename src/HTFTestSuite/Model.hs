@@ -169,13 +169,13 @@ instance Hashable (DB.EdgeTo Artist)
 instance Hashable (DB.MemberEdge Catalogue)
 instance Hashable (DB.MemberValue Catalogue)
 
-instance Serializable Artist IO
-instance Serializable Genre IO
-instance Serializable (DB.MemberValue Catalogue) IO
-instance Serializable (DB.EdgeTo Genre) IO
-instance Serializable (DB.EdgeTo Artist) IO
-instance Serializable (DB.MemberEdge Catalogue) IO
-instance Serializable InsertArtist IO
-instance Serializable GetGenresByArtistName IO
-instance Serializable (DB.MemberEvent Catalogue) IO
-instance Serializable (DB.MemberEventResult Catalogue) IO
+instance Serializable IO Artist
+instance Serializable IO Genre
+instance Serializable IO (DB.MemberValue Catalogue)
+instance Serializable IO (DB.EdgeTo Genre)
+instance Serializable IO (DB.EdgeTo Artist)
+instance Serializable IO (DB.MemberEdge Catalogue)
+instance Serializable IO InsertArtist
+instance Serializable IO GetGenresByArtistName
+instance Serializable IO (DB.MemberEvent Catalogue)
+instance Serializable IO (DB.MemberEventResult Catalogue)

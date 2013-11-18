@@ -41,7 +41,7 @@ foldEdgesM node z zToEdgeNodeToIOZ = Table.foldM zToEdgeNodeListToIOZ z $ edgesT
     zToEdgeNodeListToIOZ z (edge, nodeList) = foldM zToEdgeNodeToIOZ z $ map (edge,) nodeList
 
 
-instance (Serializable n IO, Serializable e IO, Hashable e, Eq e) => Serializable (Node n e) IO where
+instance (Serializable IO n, Serializable IO e, Hashable e, Eq e) => Serializable IO (Node n e) where
   serialize node = do
     untraversedNodesQueue <- liftIO $ atomically $ newTQueue
     registryVar <- liftIO $ atomically $ newTVar ([], 0)

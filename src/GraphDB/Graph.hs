@@ -41,7 +41,7 @@ data Graph n e = Graph {
 instance Eq (Graph n e) where
   a == b = root a == root b
 
-instance (Serializable n IO, Serializable e IO, Hashable e, Eq e) => Serializable (Graph n e) IO where
+instance (Serializable IO n, Serializable IO e, Hashable e, Eq e) => Serializable IO (Graph n e) where
   serialize = serialize . root
   deserialize = Graph <$> deserialize <*> (liftIO $ Dispatcher.new)
 

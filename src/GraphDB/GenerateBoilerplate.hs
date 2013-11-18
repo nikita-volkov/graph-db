@@ -234,8 +234,8 @@ generateHashableInstance t =
 
 generateSerializableInstance :: Type -> Q [Dec]
 generateSerializableInstance t = do
-  Q.whenNoInstance (mkName "Serializable") [t, ConT $ mkName "IO"] $
-    [d| instance Serializable $(return t) IO |]
+  Q.whenNoInstance (mkName "Serializable") [ConT $ mkName "IO", t] $
+    [d| instance Serializable IO $(return t) |]
 
 generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEdgeOfInstance edgeType tagType memberEdgeCons = 
