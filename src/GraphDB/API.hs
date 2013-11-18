@@ -23,7 +23,8 @@ module GraphDB.API
     getTargets,
     getValue,
     setValue,
-    insertEdge,
+    insertEdgeTo,
+    deleteEdgeTo,
     deleteEdge,
 
     -- * Server
@@ -175,13 +176,17 @@ getValue (NodeRef ref) = liftM (fromMaybe bug . fromMemberValue) $ Graph.getValu
 setValue :: (IsMemberValueOf a t) => NodeRef t s a -> a -> Write t s ()
 setValue (NodeRef ref) value = Graph.setValue ref (toMemberValue value)
 
-insertEdge :: (IsMemberEdgeOf (EdgeTo b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-              NodeRef t s a -> EdgeTo b -> NodeRef t s b -> Write t s ()
-insertEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdge ref1 (toMemberEdge edge) ref2
+insertEdgeTo :: (IsMemberEdgeOf (EdgeTo b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+                NodeRef t s a -> EdgeTo b -> NodeRef t s b -> Write t s ()
+insertEdgeTo (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdgeTo ref1 (toMemberEdge edge) ref2
+
+deleteEdgeTo :: (IsMemberEdgeOf (EdgeTo b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+                NodeRef t s a -> EdgeTo b -> NodeRef t s b -> Write t s ()
+deleteEdgeTo (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdgeTo ref1 (toMemberEdge edge) ref2
 
 deleteEdge :: (IsMemberEdgeOf (EdgeTo b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-              NodeRef t s a -> EdgeTo b -> NodeRef t s b -> Write t s ()
-deleteEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdge ref1 (toMemberEdge edge) ref2
+              NodeRef t s a -> EdgeTo b -> Write t s ()
+deleteEdge (NodeRef ref1) edge = Graph.deleteEdge ref1 (toMemberEdge edge)
 
 
 --------------------------------------------------------------------------------

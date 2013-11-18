@@ -61,6 +61,6 @@ instance Arbitrary (Graph Int Int) where
               operation source target edge value
             where
               setValueOp source target edge value = setValue source value >> return source
-              insertEdgeOp source target edge value = insertEdge source edge target >> return target
-              deleteEdgeOp source target edge value = deleteEdge source edge target >> return source
+              insertEdgeOp source target edge value = insertEdgeTo source edge target >> return target
+              deleteEdgeOp source target edge value = deleteEdgeTo source edge target >> return source
 

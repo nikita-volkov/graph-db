@@ -19,7 +19,8 @@ module GraphDB.Graph
     Transaction.getTargets,
     Transaction.getValue,
     Transaction.setValue,
-    Transaction.insertEdge,
+    Transaction.insertEdgeTo,
+    Transaction.deleteEdgeTo,
     Transaction.deleteEdge,
 
   ) where

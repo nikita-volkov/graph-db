@@ -22,8 +22,8 @@ insertArtist :: Artist -> [Genre] -> DB.Write Catalogue s ()
 insertArtist artist genreList = do
   artistRef <- DB.newNode artist
   rootRef <- DB.getRoot
-  DB.insertEdge rootRef ArtistOf artistRef
-  DB.insertEdge rootRef (ArtistOfByName (artistName artist)) artistRef
+  DB.insertEdgeTo rootRef ArtistOf artistRef
+  DB.insertEdgeTo rootRef (ArtistOfByName (artistName artist)) artistRef
   -- Lookup existing genres and insert inexistent ones, then insert appropriate edges.
   for_ genreList $ \genre -> do
     genreRefs <- do
@@ -31,7 +31,7 @@ insertArtist artist genreList = do
       case existing of
         [] -> insertGenreAndGetRef genre >>= return . (:[])
         _ -> return existing
-    for_ genreRefs $ \genreRef -> DB.insertEdge artistRef GenreOf genreRef
+    for_ genreRefs $ \genreRef -> DB.insertEdgeTo artistRef GenreOf genreRef
 
 -- | 
 -- Since this function returns a 'DB.NodeRef' it can't be directly used with 'DB.Event',
@@ -43,9 +43,9 @@ insertGenreAndGetRef genre = do
   -- O(1):
   root <- DB.getRoot
   -- O(log n), where "n" is the number of edges from root node:
-  DB.insertEdge root (GenreOfByGenre genre) new
+  DB.insertEdgeTo root (GenreOfByGenre genre) new
   -- O(log n), where "n" is the number of edges from root node:
-  DB.insertEdge root GenreOf new
+  DB.insertEdgeTo root GenreOf new
   return new
 
 getGenresByArtistName :: Text -> DB.Read Catalogue s [Genre]

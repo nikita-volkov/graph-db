@@ -13,15 +13,26 @@ data Node n e = Node {
 instance Eq (Node n e) where
   a == b = valueRef a == valueRef b
 
-insertEdge :: (Hashable e, Eq e) => Node n e -> e -> Node n e -> IO ()
-insertEdge (Node _ table) edge target =
+insertEdgeTo :: (Hashable e, Eq e) => Node n e -> e -> Node n e -> IO ()
+insertEdgeTo (Node _ table) edge target =
   Table.lookup table edge >>=
   return . fromMaybe [] >>=
   return . (target:) >>=
   Table.insert table edge
 
-deleteEdge :: (Hashable e, Eq e) => Node n e -> e -> Node n e -> IO ()
-deleteEdge source edge target = Table.delete (edgesTable source) edge
+deleteEdge :: (Hashable e, Eq e) => Node n e -> e -> IO ()
+deleteEdge source edge = Table.delete (edgesTable source) edge
+
+deleteEdgeTo :: (Hashable e, Eq e) => Node n e -> e -> Node n e -> IO ()
+deleteEdgeTo source edge target =
+  Table.lookup table edge >>=
+  return . fromMaybe [] >>=
+  return . delete target >>=
+  \row -> if null row
+    then Table.delete table edge
+    else Table.insert table edge row
+  where
+    table = edgesTable source
 
 new :: n -> IO (Node n e)
 new value = Node <$> newIORef value <*> Table.new
@@ -101,5 +112,5 @@ instance (Serializable IO n, Serializable IO e, Hashable e, Eq e) => Serializabl
                 replicateM_ edgesCount $ do
                   edge <- deserialize
                   tardeserializeNode <- deserializeNode
-                  liftIO $ insertEdge node edge tardeserializeNode
+                  liftIO $ insertEdgeTo node edge tardeserializeNode
 
