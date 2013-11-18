@@ -132,6 +132,10 @@ caseLambda matches = lamE [varP argName] (caseE (varE argName) matches)
   where
     argName = mkName "_0"
 
+
+-- |
+-- Only checks the instances in scope of the calling site,
+-- it will not detect the declared instances, if they are not imported.
 whenNoInstance :: Monoid a => Name -> [Type] -> Q a -> Q a
 whenNoInstance name types f = do
   z <- recover (return False) (isInstance name types)

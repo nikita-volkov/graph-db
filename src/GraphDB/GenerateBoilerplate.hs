@@ -1,11 +1,11 @@
 module GraphDB.GenerateBoilerplate where
 
 import GraphDB.Prelude
-import qualified GraphDB.API as API
 import Language.Haskell.TH
-import qualified GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry; import GraphDB.GenerateBoilerplate.MembersRegistry (MembersRegistry)
 import qualified Data.Char as Char
 import qualified Data.Set as Set
+import qualified GraphDB.API as API
+import qualified GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry; import GraphDB.GenerateBoilerplate.MembersRegistry (MembersRegistry)
 import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH.Type as Type
 import qualified GraphDB.CIO as CIO; import GraphDB.CIO (CIO)
@@ -182,7 +182,6 @@ generateIsMemberEventOfInstance eventType tagType memberEventCons =
       fromMemberEvent = $fromMemberEventLambdaQ
   |]
   where
-    -- FIXME: Should be a case with a Nothing result possible
     fromMemberEventLambdaQ = Q.caseLambda [pure match1, pure match2]
       where
         match1 = Match pattern body []
