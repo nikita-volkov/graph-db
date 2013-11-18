@@ -186,7 +186,6 @@ executable graph-db-th-demo
   ghc-options:
     -threaded 
     "-with-rtsopts=-N"
-    -ddump-splices
   build-depends:
     th-expand-syns,
     attoparsec,
