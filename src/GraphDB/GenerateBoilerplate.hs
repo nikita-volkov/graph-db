@@ -118,25 +118,31 @@ generateBoilerplate tagName valueTypeNames = do
 
 reifyLocalTransactionFunctions :: Type -> Q [(Name, [Type], Type, Bool)]
 reifyLocalTransactionFunctions tagType = 
-  Q.reifyLocalFunctions >>= return . catMaybes . map transactionFunctionInfo
+  Q.reifyLocalFunctions >>= fmap catMaybes . traverse getTransactionFunctionInfo
   where
-    transactionFunctionInfo (name, argTypes, resultType) = do
-      assertZ isValid
-      return (name, argTypes, trResultType, trType == writeType)
+    getTransactionFunctionInfo (name, argTypes, resultType) = processResultType resultType
       where
-        trResultType : stateThreadType : trTagType : trType : [] = Type.unapply resultType
-        isValid = 
-          trType `elem` [writeType, readType] && 
-          trTagType == tagType &&
-          not (isNodeRef trResultType)
-          where
-            isNodeRef t = case Type.unapply t of
-              _ : _ : _ : z : [] | z == nodeRefType -> True
-              _ -> False
-              where
-                nodeRefType = Q.purify [t| API.NodeRef |]
-        writeType = Q.purify [t| API.Write |]
-        readType = Q.purify [t| API.Read |]
+        processResultType = \case
+          trType `AppT` trTagType `AppT` _ `AppT` trResultType | isValid ->
+            return $ Just (name, argTypes, trResultType, trType == writeType)
+            where
+              isValid = 
+                trType `elem` [writeType, readType] && 
+                trTagType == tagType &&
+                not (isNodeRef trResultType)
+                where
+                  isNodeRef t = case Type.unapply t of
+                    _ : _ : _ : z : [] | z == nodeRefType -> True
+                    _ -> False
+                    where
+                      nodeRefType = Q.purify [t| API.NodeRef |]
+              writeType = Q.purify [t| API.Write |]
+              readType = Q.purify [t| API.Read |]
+          t -> 
+            Q.expandRootSynType t >>= 
+            return . fmap Type.unforall >>= 
+            traverse processResultType >>= 
+            return . join
 
 -- |
 -- Get a list of all instances of 'Edge' between all possible combinations of provided types.

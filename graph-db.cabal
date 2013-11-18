@@ -59,6 +59,7 @@ library
     GraphDB.CIO
     GraphDB.API
   build-depends:
+    th-expand-syns,
     attoparsec,
     monad-stm,
     parallel-io,
@@ -122,6 +123,7 @@ executable graph-db-demo
     -threaded 
     "-with-rtsopts=-N"
   build-depends:
+    th-expand-syns,
     attoparsec,
     monad-stm,
     parallel-io,
@@ -186,6 +188,7 @@ executable graph-db-th-demo
     "-with-rtsopts=-N"
     -ddump-splices
   build-depends:
+    th-expand-syns,
     attoparsec,
     monad-stm,
     parallel-io,
@@ -248,6 +251,7 @@ test-suite graph-db-htf-test-suite
   main-is:          
     HTFTestSuite.hs
   build-depends:
+    th-expand-syns,
     attoparsec,
     monad-stm,
     parallel-io,
