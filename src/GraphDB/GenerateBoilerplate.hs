@@ -153,7 +153,7 @@ generateEvent adtName argTypes = return [declaration]
     declaration = DataD [] adtName [] [constructor] derivations
       where
         constructor = NormalC adtName $ map ((IsStrict,)) argTypes
-        derivations = map mkName ["Eq", "Generic"]
+        derivations = [''Eq, ''Generic]
 
 generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> Q [Dec]
 generateEventInstance eventType tagType eventCons functionName argTypes resultType isWrite = 
@@ -162,8 +162,8 @@ generateEventInstance eventType tagType eventCons functionName argTypes resultTy
     head = Type.apply [tagType, eventType, ConT ''API.Event]
     decs = [dec1, dec2]
       where
-        dec1 = TySynInstD (mkName "EventResult") [eventType, tagType] resultType
-        dec2 = FunD (mkName "eventTransaction") [clause]
+        dec1 = TySynInstD ''API.EventResult [eventType, tagType] resultType
+        dec2 = FunD 'API.eventTransaction [clause]
           where
             clause = Clause [pattern] body []
               where
@@ -217,24 +217,24 @@ generateIsMemberEventResultOfInstance eventResultType tagType memberEventResultN
 
 generateEqInstance :: Type -> Q [Dec]
 generateEqInstance t = 
-  Q.whenNoInstance (mkName "Eq") [t] $ [d|deriving instance Eq $(return t)|]
+  Q.whenNoInstance ''Eq [t] $ [d|deriving instance Eq $(return t)|]
 
 generateShowInstance :: Type -> Q [Dec]
 generateShowInstance t = 
-  Q.whenNoInstance (mkName "Show") [t] $ [d|deriving instance Show $(return t)|]
+  Q.whenNoInstance ''Show [t] $ [d|deriving instance Show $(return t)|]
 
 generateGenericInstance :: Type -> Q [Dec]
 generateGenericInstance t = 
-  Q.whenNoInstance (mkName "Generic") [t] $ [d|deriving instance Generic $(return t)|]
+  Q.whenNoInstance ''Generic [t] $ [d|deriving instance Generic $(return t)|]
 
 generateHashableInstance :: Type -> Q [Dec]
 generateHashableInstance t = 
-  Q.whenNoInstance (mkName "Hashable") [t] $ [d|instance Hashable $(return t)|]
+  Q.whenNoInstance ''Hashable [t] $ [d|instance Hashable $(return t)|]
 
 generateSerializableInstance :: Type -> Q [Dec]
-generateSerializableInstance t = do
-  Q.whenNoInstance (mkName "Serializable") [ConT $ mkName "IO", t] $
-    [d| instance Serializable IO $(return t) |]
+generateSerializableInstance t = 
+  Q.whenNoInstance ''Serializable [ConT ''IO, t] 
+    $ [d| instance Serializable IO $(return t) |]
 
 generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsMemberEdgeOfInstance edgeType tagType memberEdgeCons = 
