@@ -77,9 +77,17 @@ generateBoilerplate tagName valueTypeNames = do
           _ -> []
         evType = ConT evName
     in do
-      reifyLocalTransactionFunctions tagType >>= traverse_ addTransactionFunction
-      traverse_ addValueType allValueTypes
-      reifyEdgeInstances allValueTypes >>= traverse_ addEdgeType 
+      do
+        reifiedFunctions <- reifyLocalTransactionFunctions tagType
+        when (null reifiedFunctions) $ error "No transaction-functions found in module"
+        traverse_ addTransactionFunction reifiedFunctions
+      do
+        when (null valueTypeNames) $ error "No node-value types specified"
+        traverse_ addValueType allValueTypes
+      do
+        edgeInstances <- reifyEdgeInstances allValueTypes
+        when (null edgeInstances) $ error "No appropriate `EdgeTo` instances found"
+        traverse_ addEdgeType edgeInstances
 
       [t| API.MemberEdge $(return tagType) |] 
         >>= applyAll [generateHashableInstance, generateSerializableInstance]
