@@ -14,7 +14,7 @@ module GraphDB.API
     -- * Transactions
     Write,
     Read,
-    EdgeTo,
+    Edge,
     NodeRef,
 
     -- ** Transaction building blocks
@@ -23,9 +23,9 @@ module GraphDB.API
     getTargets,
     getValue,
     setValue,
-    insertEdgeTo,
-    deleteEdgeTo,
+    insertEdge,
     deleteEdge,
+    deleteEdges,
 
     -- * Server
     ServerMode(..),
@@ -154,11 +154,11 @@ shutdownEngine engine = case engine of
 -- Properties of an edge from any source node to /target/ node. E.g.:
 -- 
 -- @
--- data instance GraphDB.EdgeTo Artist = ArtistOf | ArtistOfByName Text
--- data instance GraphDB.EdgeTo Genre = GenreOf
+-- data instance GraphDB.Edge Artist = ArtistOf | ArtistOfByName Text
+-- data instance GraphDB.Edge Genre = GenreOf
 -- @
 -- 
-data family EdgeTo target
+data family Edge target
 
 newtype NodeRef t s a = NodeRef (Graph.NodeRef (MemberValue t) (MemberEdge t) s)
 
@@ -168,8 +168,8 @@ getRoot = NodeRef `liftM` Graph.getRoot
 newNode :: (IsMemberValueOf a t) => a -> Read t s (NodeRef t s a)
 newNode value = NodeRef `liftM` Graph.newNode (toMemberValue value)
 
-getTargets :: (IsMemberEdgeOf (EdgeTo b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-              EdgeTo b -> NodeRef t s a -> Read t s [NodeRef t s b]
+getTargets :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+              Edge b -> NodeRef t s a -> Read t s [NodeRef t s b]
 getTargets edge (NodeRef ref) = map NodeRef `liftM` Graph.getTargets (toMemberEdge edge) ref
 
 getValue :: (IsMemberValueOf a t) => NodeRef t s a -> Read t s a
@@ -179,17 +179,17 @@ getValue (NodeRef ref) = liftM (fromMaybe bug . fromMemberValue) $ Graph.getValu
 setValue :: (IsMemberValueOf a t) => NodeRef t s a -> a -> Write t s ()
 setValue (NodeRef ref) value = Graph.setValue ref (toMemberValue value)
 
-insertEdgeTo :: (IsMemberEdgeOf (EdgeTo b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-                NodeRef t s a -> EdgeTo b -> NodeRef t s b -> Write t s ()
-insertEdgeTo (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdgeTo ref1 (toMemberEdge edge) ref2
+insertEdge :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+              NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
+insertEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdge ref1 (toMemberEdge edge) ref2
 
-deleteEdgeTo :: (IsMemberEdgeOf (EdgeTo b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-                NodeRef t s a -> EdgeTo b -> NodeRef t s b -> Write t s ()
-deleteEdgeTo (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdgeTo ref1 (toMemberEdge edge) ref2
+deleteEdge :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+              NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
+deleteEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdge ref1 (toMemberEdge edge) ref2
 
-deleteEdge :: (IsMemberEdgeOf (EdgeTo b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-              NodeRef t s a -> EdgeTo b -> Write t s ()
-deleteEdge (NodeRef ref1) edge = Graph.deleteEdge ref1 (toMemberEdge edge)
+deleteEdges :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+               NodeRef t s a -> Edge b -> Write t s ()
+deleteEdges (NodeRef ref1) edge = Graph.deleteEdges ref1 (toMemberEdge edge)
 
 
 --------------------------------------------------------------------------------

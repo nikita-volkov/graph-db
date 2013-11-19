@@ -87,7 +87,7 @@ generateBoilerplate tagName valueTypeNames = do
         traverse_ addValueType allValueTypes
       do
         edgeInstances <- reifyEdgeInstances allValueTypes
-        when (null edgeInstances) $ error "No appropriate `EdgeTo` instances found"
+        when (null edgeInstances) $ error "No appropriate `Edge` instances found"
         traverse_ addEdgeType edgeInstances
 
       [t| API.MemberEdge $(return tagType) |] 
@@ -172,7 +172,7 @@ reifyEdgeInstances :: [Type] -> Q [Type]
 reifyEdgeInstances types = do
   decs <- fmap nub $ fmap join $ sequence $ do
     toType <- types
-    return $ reifyInstances ''API.EdgeTo [toType]
+    return $ reifyInstances ''API.Edge [toType]
   return $ catMaybes $ map Type.fromDataInstanceDec decs
 
 isEdge :: Type -> Bool
@@ -180,7 +180,7 @@ isEdge t = case Type.unapply t of
   _ : _ : t : [] | t == edgeT -> True
   _ -> False
   where
-    edgeT = Q.purify [t| API.EdgeTo |]
+    edgeT = Q.purify [t| API.Edge |]
 
 generateEvent :: Name -> [Type] -> Q [Dec]
 generateEvent adtName argTypes = return [declaration]

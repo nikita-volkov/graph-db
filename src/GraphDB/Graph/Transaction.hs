@@ -37,25 +37,25 @@ setValue ref value = do
     node <- NodeRef.getNode ref
     Node.setValue node value
 
-insertEdgeTo :: (Hashable e, Eq e) => NodeRef n e s -> e -> NodeRef n e s -> Write n e s ()
-insertEdgeTo refA edge refB = do
+insertEdge :: (Hashable e, Eq e) => NodeRef n e s -> e -> NodeRef n e s -> Write n e s ()
+insertEdge refA edge refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
-    Node.insertEdgeTo nodeA edge nodeB
+    Node.insertEdge nodeA edge nodeB
 
-deleteEdgeTo :: (Hashable e, Eq e) => NodeRef n e s -> e -> NodeRef n e s -> Write n e s ()
-deleteEdgeTo refA edge refB = do
+deleteEdge :: (Hashable e, Eq e) => NodeRef n e s -> e -> NodeRef n e s -> Write n e s ()
+deleteEdge refA edge refB = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
     nodeB <- NodeRef.getNode refB
-    Node.deleteEdgeTo nodeA edge nodeB
+    Node.deleteEdge nodeA edge nodeB
 
-deleteEdge :: (Hashable e, Eq e) => NodeRef n e s -> e -> Write n e s ()
-deleteEdge refA edge = do
+deleteEdges :: (Hashable e, Eq e) => NodeRef n e s -> e -> Write n e s ()
+deleteEdges refA edge = do
   liftIO $ do
     nodeA <- NodeRef.getNode refA
-    Node.deleteEdge nodeA edge
+    Node.deleteEdges nodeA edge
 
 
 

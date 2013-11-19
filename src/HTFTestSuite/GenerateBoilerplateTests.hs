@@ -19,8 +19,8 @@ readEvent1 name = undefined
 data Catalogue
 data Artist = Artist {artistName :: Text} deriving (Show, Eq)
 data Genre = Genre {genreName :: Text} deriving (Show, Eq)
-data instance API.EdgeTo Artist = ArtistOf | ArtistOfByName Text deriving (Show, Eq, Generic)
-data instance API.EdgeTo Genre = GenreOf | GenreOfByGenre Genre deriving (Show, Eq, Generic)
+data instance API.Edge Artist = ArtistOf | ArtistOfByName Text deriving (Show, Eq, Generic)
+data instance API.Edge Genre = GenreOf | GenreOfByGenre Genre deriving (Show, Eq, Generic)
 
 data WriteEvent1 = WriteEvent1 Artist [Genre]
 
