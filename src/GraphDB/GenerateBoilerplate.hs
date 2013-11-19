@@ -5,6 +5,7 @@ import Language.Haskell.TH
 import qualified Data.Char as Char
 import qualified Data.Set as Set
 import qualified GraphDB.API as API
+import qualified GraphDB.Graph.Transaction as Transaction
 import qualified GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry; import GraphDB.GenerateBoilerplate.MembersRegistry (MembersRegistry)
 import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH.Type as Type
@@ -120,38 +121,58 @@ reifyLocalTransactionFunctions :: Type -> Q [(Name, [Type], Type, Bool)]
 reifyLocalTransactionFunctions tagType = 
   Q.reifyLocalFunctions >>= fmap catMaybes . traverse getTransactionFunctionInfo
   where
-    getTransactionFunctionInfo (name, argTypes, resultType) = processResultType resultType
+    getTransactionFunctionInfo (name, argTypes, resultType) =
+      reifyTransaction resultType >>= return . join . fmap fromTransactionType
       where
-        processResultType = \case
-          trType `AppT` trTagType `AppT` _ `AppT` trResultType | isValid ->
-            return $ Just (name, argTypes, trResultType, trType == writeType)
-            where
-              isValid = 
-                trType `elem` [writeType, readType] && 
-                trTagType == tagType &&
-                not (isNodeRef trResultType)
-                where
-                  isNodeRef t = case Type.unapply t of
-                    _ : _ : _ : z : [] | z == nodeRefType -> True
-                    _ -> False
-                    where
-                      nodeRefType = Q.purify [t| API.NodeRef |]
-              writeType = Q.purify [t| API.Write |]
-              readType = Q.purify [t| API.Read |]
-          t -> 
-            Q.expandRootSynType t >>= 
-            return . fmap Type.unforall >>= 
-            traverse processResultType >>= 
-            return . join
+        fromTransactionType (isWrite, trTagType, trResultType) = do
+          assertZ $ trTagType == tagType
+          return (name, argTypes, trResultType, isWrite)
+
+reifyTransaction :: Type -> Q (Maybe (Bool, Type, Type))
+reifyTransaction = \case
+  trType `AppT` tagType `AppT` _ `AppT` resultType 
+    | isNodeRef -> return Nothing
+    | isTransaction -> return $ Just (trType == writeType, tagType, resultType)
+    where
+      isTransaction = trType `elem` [writeType, readType]
+      isNodeRef = case Type.unapply resultType of
+        _ : _ : _ : z : [] | z == nodeRefType -> True
+        _ -> False
+        where
+          nodeRefType = Q.purify [t| API.NodeRef |]
+      writeType = Q.purify [t| API.Write |]
+      readType = Q.purify [t| API.Read |]
+  -- A very special case for `Any` type-synonym:
+  ForallT 
+    [_, KindedTV tVarName _] 
+    constraints 
+    (AppT
+      (AppT
+        (AppT
+          (AppT (VarT tVarName') (AppT memberValueType tagType))
+          (AppT memberEdgeType tagType'))
+        _)
+      resultType)
+    | memberValueType == ConT ''API.MemberValue,
+      memberEdgeType == ConT ''API.MemberEdge,
+      tVarName == tVarName',
+      tagType == tagType',
+      any ((== Just tVarName) . transactionConstraintVarName) constraints ->
+    return $ Just (False, tagType, resultType)
+    where
+      transactionConstraintVarName = \case
+        ClassP className [VarT varName] | className == ''Transaction.Transaction -> Just varName
+        _ -> Nothing
+  t@ForallT{} -> reifyTransaction $ Type.unforall t
+  t -> Q.expandRootSynType t >>= fmap join . traverse reifyTransaction
 
 -- |
 -- Get a list of all instances of 'Edge' between all possible combinations of provided types.
 reifyEdgeInstances :: [Type] -> Q [Type]
 reifyEdgeInstances types = do
-  ConT familyName <- [t| API.EdgeTo |]
-  decs <- fmap join $ sequence $ do
+  decs <- fmap nub $ fmap join $ sequence $ do
     toType <- types
-    return $ reifyInstances familyName [toType]
+    return $ reifyInstances ''API.EdgeTo [toType]
   return $ catMaybes $ map Type.fromDataInstanceDec decs
 
 isEdge :: Type -> Bool
