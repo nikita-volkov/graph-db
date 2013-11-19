@@ -95,19 +95,7 @@ data URL =
 -- Loading may take a while. Naturally, the time it takes is proportional to the size of database.
 -- The startup time also depends on whether the engine was shutdown previously, 
 -- since servicing of persistence files takes place on 'shutdownEngine'. 
-startEngine ::
-  (
-    Tag t,
-    IsMemberValueOf () t, 
-    Hashable (MemberEdge t), 
-    Eq (MemberEdge t), 
-    Serializable IO (MemberEdge t), 
-    Serializable IO (MemberValue t), 
-    Serializable IO (MemberEvent t), 
-    Serializable IO (MemberEventResult t) 
-  ) => 
-  Mode -> 
-  IO (Engine t)
+startEngine :: (Tag t) => Mode -> IO (Engine t)
 startEngine mode = case mode of
   Mode_Local (Just (eventsPersistenceBufferSize, storagePaths)) -> do
     eventsPersistenceBuffer <- IOQueue.start eventsPersistenceBufferSize
@@ -135,10 +123,7 @@ data Engine t =
   Engine_Persistent (IOQueue.IOQueue) (Storage.Storage (Graph t) (MemberEvent t)) (Graph t) |
   Engine_NonPersistent (Graph t)
 
-shutdownEngine ::
-  ( Hashable (MemberEdge t), Serializable IO (MemberEdge t), Eq (MemberEdge t), 
-    Hashable (MemberValue t), Serializable IO (MemberValue t), Eq (MemberValue t) ) =>
-  Engine t -> IO ()
+shutdownEngine :: (Tag t) => Engine t -> IO ()
 shutdownEngine engine = case engine of
   Engine_Persistent buffer storage graph -> do
     IOQueue.shutdown buffer
@@ -228,20 +213,30 @@ type Read t s a = Transaction.Any (MemberValue t) (MemberEdge t) s a
 
 type Graph t = Graph.Graph (MemberValue t) (MemberEdge t)
 
-class Tag t where
-  data MemberEvent t
-  data MemberEventResult t
-  data MemberValue t
-  data MemberEdge t
-  memberEventTransaction :: MemberEvent t -> Transaction t (MemberEventResult t)
+class 
+  (
+    IsMemberValueOf () t, 
+    Hashable (MemberEdge t), 
+    Eq (MemberEdge t), 
+    Serializable IO (MemberEdge t), 
+    Serializable IO (MemberValue t), 
+    Serializable IO (MemberEvent t), 
+    Serializable IO (MemberEventResult t) 
+  ) =>
+  Tag t where
+    data MemberEvent t
+    data MemberEventResult t
+    data MemberValue t
+    data MemberEdge t
+    memberEventTransaction :: MemberEvent t -> Transaction t (MemberEventResult t)
 
-class Event e t where
-  type EventResult e t
-  eventTransaction :: e -> Transaction t (EventResult e t)
+class 
+  ( IsMemberEventOf e t, Serializable IO (MemberEvent t), IsMemberEventResultOf (EventResult e t) t ) => 
+  Event e t where
+    type EventResult e t
+    eventTransaction :: e -> Transaction t (EventResult e t)
 
-runEvent :: 
-  (Event e t, IsMemberEventOf e t, Serializable IO (MemberEvent t), IsMemberEventResultOf (EventResult e t) t) => 
-  Engine t -> e -> IO (EventResult e t)
+runEvent :: (Event e t) => Engine t -> e -> IO (EventResult e t)
 runEvent engine event = case engine of
   Engine_Persistent buffer storage graph -> case eventTransaction event of
     Write write -> do
