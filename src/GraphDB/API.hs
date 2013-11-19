@@ -201,8 +201,8 @@ instance Functor (Transaction t) where
     Write write -> Write $ fmap f write
     Read read -> Read $ fmap f read
 
-type Write t s a = Graph.Write (MemberValue t) (MemberEdge t) s a
-type Read t s a = forall r r'. (Graph.Reads r, r' ~ r (MemberValue t) (MemberEdge t) s, MonadIO r', Applicative r', Functor r') => r' a
+type Write t s a = Transaction.Write (MemberValue t) (MemberEdge t) s a
+type Read t s a = Transaction.Any (MemberValue t) (MemberEdge t) s a
 
 type Graph t = Graph.Graph (MemberValue t) (MemberEdge t)
 

@@ -8,7 +8,7 @@ module GraphDB.Graph
     -- * Transactions
     Transaction.Write,
     Transaction.Read,
-    Transaction.Reads,
+    Transaction.Any,
     runWrite,
     runRead,
     Transaction.NodeRef,

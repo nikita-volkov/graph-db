@@ -1,26 +1,26 @@
 module GraphDB.Graph.Transaction where
 
-import GraphDB.Prelude hiding (Read, Write)
+import GraphDB.Prelude hiding (Read, Write, Any)
 import qualified GraphDB.Graph.Node as Node; import GraphDB.Graph.Node (Node)
 import qualified GraphDB.Graph.Transaction.NodeRefRegistry as NodeRefRegistry; import GraphDB.Graph.Transaction.NodeRefRegistry (NodeRefRegistry)
 import qualified GraphDB.Graph.Transaction.NodeRef as NodeRef; import GraphDB.Graph.Transaction.NodeRef (NodeRef)
 
 
 
-getRoot :: (Reads t, MonadIO (t n e s)) => t n e s (NodeRef n e s)
+getRoot :: Any n e s (NodeRef n e s)
 getRoot = do
   root <- getRootNode
   registry <- getNodeRefRegistry
   liftIO $ NodeRefRegistry.newNodeRef registry root
 
-newNode :: (Reads t, MonadIO (t n e s)) => n -> t n e s (NodeRef n e s)
+newNode :: n -> Any n e s (NodeRef n e s)
 newNode value = do
   registry <- getNodeRefRegistry
   liftIO $ do
     node <- Node.new value
     NodeRefRegistry.newNodeRef registry node
 
-getTargets :: (Reads t, MonadIO (t n e s), Hashable e, Eq e) => e -> NodeRef n e s -> t n e s [NodeRef n e s]
+getTargets :: (Hashable e, Eq e) => e -> NodeRef n e s -> Any n e s [NodeRef n e s]
 getTargets edge refA = do
   registry <- getNodeRefRegistry
   liftIO $ do
@@ -28,7 +28,7 @@ getTargets edge refA = do
     nodesB <- Node.getTargets nodeA edge
     forM nodesB $ \node -> NodeRefRegistry.newNodeRef registry node
 
-getValue :: (Reads t, MonadIO (t n e s)) => NodeRef n e s -> t n e s n
+getValue :: NodeRef n e s -> Any n e s n
 getValue ref = liftIO $ NodeRef.getNode ref >>= Node.getValue
 
 setValue :: NodeRef n e s -> n -> Write n e s ()
@@ -59,16 +59,16 @@ deleteEdge refA edge = do
 
 
 
--- | Support for read operations of transaction.
-class Reads t where
+-- | Support for common operations of transaction.
+class Transaction t where
   getRootNode :: t n e s (Node n e)
   getNodeRefRegistry :: t n e s (NodeRefRegistry n e)
 
-instance Reads Write where
+instance Transaction Write where
   getRootNode = Write $ \z _ -> return z
   getNodeRefRegistry = Write $ \_ z -> return z
 
-instance Reads Read where
+instance Transaction Read where
   getRootNode = Read $ \z _ -> return z
   getNodeRefRegistry = Read $ \_ z -> return z
 
@@ -139,3 +139,5 @@ runRead :: Node n e -> (forall s. Read n e s r) -> IO r
 runRead root (Read run) = NodeRefRegistry.new >>= run root
 
 
+
+type Any n e s r = forall t. (Transaction t, MonadIO (t n e s), Applicative (t n e s)) => t n e s r
