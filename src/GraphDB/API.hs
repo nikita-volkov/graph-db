@@ -125,8 +125,11 @@ startEngine mode = case mode of
         URL_Host name port password -> Client.Host name port password
         URL_Socket path -> Client.Socket path
 
--- | The component managing datastructure, persistence and connection to remote server.
+-- | 
+-- The component managing datastructure, persistence and connection to remote server.
 -- What it does exactly depends on its startup mode.
+-- 
+-- [@t@] A tag-type determining all the associated types with db.
 data Engine t = 
   Engine_Remote (Client.Client (MemberEvent t) (MemberEventResult t)) |
   Engine_Persistent (IOQueue.IOQueue) (Storage.Storage (Graph t) (MemberEvent t)) (Graph t) |
