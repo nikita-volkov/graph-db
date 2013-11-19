@@ -162,31 +162,50 @@ data family Edge target
 
 newtype NodeRef t s a = NodeRef (Graph.NodeRef (MemberValue t) (MemberEdge t) s)
 
+-- |
+-- Get the root node.
 getRoot :: Read t s (NodeRef t s a)
 getRoot = NodeRef `liftM` Graph.getRoot
 
-newNode :: (IsMemberValueOf a t) => a -> Read t s (NodeRef t s a)
+-- |
+-- Create a new node. 
+-- 
+-- This node won't get stored if you don't insert at least a single edge 
+-- from another stored node to it.
+newNode :: (IsMemberValueOf a t) => a -> Write t s (NodeRef t s a)
 newNode value = NodeRef `liftM` Graph.newNode (toMemberValue value)
 
+-- |
+-- Get targets of the edge from the node.
 getTargets :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
               Edge b -> NodeRef t s a -> Read t s [NodeRef t s b]
 getTargets edge (NodeRef ref) = map NodeRef `liftM` Graph.getTargets (toMemberEdge edge) ref
 
+-- | 
+-- Get a value of the node.
 getValue :: (IsMemberValueOf a t) => NodeRef t s a -> Read t s a
 getValue (NodeRef ref) = liftM (fromMaybe bug . fromMemberValue) $ Graph.getValue ref where
   bug = error "Unexpected value. This is a bug. Please report it."
 
+-- | 
+-- Replace a value of the specified node.
 setValue :: (IsMemberValueOf a t) => NodeRef t s a -> a -> Write t s ()
 setValue (NodeRef ref) value = Graph.setValue ref (toMemberValue value)
 
+-- | 
+-- Insert the edge from the source to the target.
 insertEdge :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
               NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
 insertEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdge ref1 (toMemberEdge edge) ref2
 
+-- | 
+-- Delete from the source the edge to the target.
 deleteEdge :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
               NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
 deleteEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdge ref1 (toMemberEdge edge) ref2
 
+-- | 
+-- Delete from the source the edge to all targets.
 deleteEdges :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
                NodeRef t s a -> Edge b -> Write t s ()
 deleteEdges (NodeRef ref1) edge = Graph.deleteEdges ref1 (toMemberEdge edge)
