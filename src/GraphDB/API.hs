@@ -161,8 +161,7 @@ newNode value = NodeRef `liftM` Graph.newNode (toMemberValue value)
 
 -- |
 -- Get targets of the edge from the node.
-getTargets :: (IsEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-              Edge b -> NodeRef t s a -> Read t s [NodeRef t s b]
+getTargets :: (IsEdgeOf (Edge b) t) => Edge b -> NodeRef t s a -> Read t s [NodeRef t s b]
 getTargets edge (NodeRef ref) = map NodeRef `liftM` Graph.getTargets (toMemberEdge edge) ref
 
 -- | 
@@ -178,20 +177,17 @@ setValue (NodeRef ref) value = Graph.setValue ref (toMemberValue value)
 
 -- | 
 -- Insert the edge from the source to the target.
-insertEdge :: (IsEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-              NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
+insertEdge :: (IsEdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
 insertEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdge ref1 (toMemberEdge edge) ref2
 
 -- | 
 -- Delete from the source the edge to the target.
-deleteEdge :: (IsEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-              NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
+deleteEdge :: (IsEdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
 deleteEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdge ref1 (toMemberEdge edge) ref2
 
 -- | 
 -- Delete from the source the edge to all targets.
-deleteEdges :: (IsEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
-               NodeRef t s a -> Edge b -> Write t s ()
+deleteEdges :: (IsEdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> Write t s ()
 deleteEdges (NodeRef ref1) edge = Graph.deleteEdges ref1 (toMemberEdge edge)
 
 
@@ -247,7 +243,7 @@ class IsValueOf a t where
 
 -- |
 -- Functions for converting an edge to and from a union value.
-class IsEdgeOf a t where
+class (Hashable (MemberEdge t), Eq (MemberEdge t)) => IsEdgeOf a t where
   toMemberEdge :: a -> MemberEdge t
   fromMemberEdge :: MemberEdge t -> Maybe a
 
