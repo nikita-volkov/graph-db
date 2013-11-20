@@ -7,6 +7,7 @@ import qualified Data.Set as Set
 import qualified GraphDB.API as API
 import qualified GraphDB.Graph.Transaction as Transaction
 import qualified GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry; import GraphDB.GenerateBoilerplate.MembersRegistry (MembersRegistry)
+import qualified GraphDB.TH as TH
 import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH.Type as Type
 import qualified GraphDB.CIO as CIO; import GraphDB.CIO (CIO)
@@ -63,10 +64,9 @@ generateBoilerplate tagName valueTypeNames = do
     addValueOrEdgeType t = if isEdge t then addEdgeType t else addValueType t
     addTransactionFunction (name, argTypes, evResultType, isWrite) = do
       addDecs =<< generateEvent evName argTypes
-      addDecs =<< generateEventInstance evType tagType evName name argTypes evResultType isWrite
       addDecs =<< generateSerializableInstance evType
       memberEventName <- liftSTM $ MembersRegistry.resolve eventMR evType
-      addDecs =<< generateIsEventOfInstance evType tagType memberEventName
+      addDecs =<< generateIsEventOfInstance evType tagType evName name argTypes evResultType isWrite memberEventName
       memberEventResultName <- liftSTM $ MembersRegistry.resolve eventResultMR evResultType
       addDecs =<< generateIsEventResultOfInstance evResultType tagType memberEventResultName
       liftCIO $ TagInstanceBuilder.addMemberEventConstructor tib memberEventName evType
@@ -190,44 +190,40 @@ generateEvent adtName argTypes = return [declaration]
         constructor = NormalC adtName $ map ((IsStrict,)) argTypes
         derivations = [''Eq, ''Generic]
 
-generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> Q [Dec]
-generateEventInstance eventType tagType eventCons functionName argTypes resultType isWrite = 
-  pure $ (:[]) $ InstanceD [] head decs
+generateIsEventOfInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> Name -> Q [Dec]
+generateIsEventOfInstance eventType tagType eventName functionName argTypes resultType isWrite memberEventName = 
+  pure $ (:[]) $ InstanceD [] instanceHead decs
   where
-    head = Type.apply [tagType, eventType, ConT ''API.Event]
-    decs = [dec1, dec2]
+    instanceHead = Type.apply [tagType, eventType, ConT ''API.IsEventOf]
+    decs = [dec1, dec2, dec3, dec4]
       where
         dec1 = TySynInstD ''API.EventResult [eventType, tagType] resultType
         dec2 = FunD 'API.eventTransaction [clause]
           where
             clause = Clause [pattern] body []
               where
-                pattern = ConP eventCons $ map VarP argList
+                pattern = ConP eventName $ map VarP argList
                 body = 
                   NormalB $ AppE constructor $ foldl AppE (VarE functionName) $ map VarE argList
                   where
                     constructor = if isWrite then ConE 'API.Write else ConE 'API.Read
                 argList = zipWith (\i _ -> mkName $ "_" ++ show i) [0..] argTypes
-
-generateIsEventOfInstance :: Type -> Type -> Name -> Q [Dec]
-generateIsEventOfInstance eventType tagType memberEventCons = 
-  [d|
-    instance API.IsEventOf $(return eventType) $(return tagType) where
-      toMemberEvent = $(conE memberEventCons)
-      fromMemberEvent = $fromMemberEventLambdaQ
-  |]
-  where
-    fromMemberEventLambdaQ = Q.caseLambda [pure match1, pure match2]
-      where
-        match1 = Match pattern body []
+        dec3 = FunD 'API.toMemberEvent [clause]
           where
-            pattern = ConP memberEventCons [VarP patternVarName]
-            patternVarName = mkName "_0"
-            body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
-        match2 = Match pattern body []
+            clause = Clause [] (NormalB $ ConE memberEventName) []
+        dec4 = FunD 'API.fromMemberEvent [clause]
           where
-            pattern = WildP
-            body = NormalB $ Q.purify [e| Nothing |]
+            clause = Clause [] (NormalB $ TH.caseLambda [match1, match2]) []
+              where
+                match1 = Match pattern body []
+                  where
+                    pattern = ConP memberEventName [VarP patternVarName]
+                    patternVarName = mkName "_0"
+                    body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
+                match2 = Match pattern body []
+                  where
+                    pattern = WildP
+                    body = NormalB $ Q.purify [e| Nothing |]
 
 generateIsEventResultOfInstance :: Type -> Type -> Name -> Q [Dec]
 generateIsEventResultOfInstance eventResultType tagType memberEventResultName =  

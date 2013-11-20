@@ -110,12 +110,10 @@ instance DB.IsEdgeOf (DB.Edge Genre) Catalogue where
 
 data InsertArtist = InsertArtist Artist [Genre]
 
-instance DB.Event InsertArtist Catalogue where
+instance DB.IsEventOf InsertArtist Catalogue where
   type EventResult InsertArtist Catalogue = ()
   eventTransaction (InsertArtist artist genres) = 
     DB.Write $ insertArtist artist genres
-
-instance DB.IsEventOf InsertArtist Catalogue where
   toMemberEvent = MemberEvent_InsertArtist
   fromMemberEvent (MemberEvent_InsertArtist z) = Just z
   fromMemberEvent _ = Nothing
@@ -127,12 +125,10 @@ instance DB.IsEventResultOf () Catalogue where
 
 data GetGenresByArtistName = GetGenresByArtistName Text
 
-instance DB.Event GetGenresByArtistName Catalogue where
+instance DB.IsEventOf GetGenresByArtistName Catalogue where
   type EventResult GetGenresByArtistName Catalogue = [Genre]
   eventTransaction (GetGenresByArtistName name) = 
     DB.Read $ getGenresByArtistName name
-
-instance DB.IsEventOf GetGenresByArtistName Catalogue where
   toMemberEvent = MemberEvent_GetGenresByArtistName
   fromMemberEvent (MemberEvent_GetGenresByArtistName z) = Just z
   fromMemberEvent _ = Nothing  

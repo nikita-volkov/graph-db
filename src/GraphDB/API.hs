@@ -35,12 +35,11 @@ module GraphDB.API
 
     -- * Boilerplate
     Tag(..),
-    Event(..),
     Transaction(..),
-    IsValueOf(..),
-    IsEdgeOf(..),
     IsEventOf(..),
     IsEventResultOf(..),
+    IsValueOf(..),
+    IsEdgeOf(..),
   ) 
   where
 
@@ -230,13 +229,29 @@ class
     data MemberEdge t
     memberEventTransaction :: MemberEvent t -> Transaction t (MemberEventResult t)
 
-class 
-  ( IsEventOf e t, Serializable IO (MemberEvent t), IsEventResultOf (EventResult e t) t ) => 
-  Event e t where
-    type EventResult e t
-    eventTransaction :: e -> Transaction t (EventResult e t)
+class (Serializable IO (MemberEvent t), IsEventResultOf (EventResult a t) t) => IsEventOf a t where
+  type EventResult a t
+  eventTransaction :: a -> Transaction t (EventResult a t)
+  toMemberEvent :: a -> MemberEvent t
+  fromMemberEvent :: MemberEvent t -> Maybe a
 
-runEvent :: (Event e t) => Engine t -> e -> IO (EventResult e t)
+class IsEventResultOf a t where
+  toMemberEventResult :: a -> MemberEventResult t
+  fromMemberEventResult :: MemberEventResult t -> Maybe a
+
+-- |
+-- Functions for converting a value to and from a union value.
+class IsValueOf a t where
+  toMemberValue :: a -> MemberValue t
+  fromMemberValue :: MemberValue t -> Maybe a
+
+-- |
+-- Functions for converting an edge to and from a union value.
+class IsEdgeOf a t where
+  toMemberEdge :: a -> MemberEdge t
+  fromMemberEdge :: MemberEdge t -> Maybe a
+
+runEvent :: (IsEventOf e t) => Engine t -> e -> IO (EventResult e t)
 runEvent engine event = case engine of
   Engine_Persistent buffer storage graph -> case eventTransaction event of
     Write write -> do
@@ -266,26 +281,6 @@ runMemberEvent engine memberEvent = case engine of
     Write write -> Graph.runWrite graph write
     Read read -> Graph.runRead graph read
   Engine_Remote client -> Client.request client memberEvent
-
-class IsEventOf a t where
-  toMemberEvent :: a -> MemberEvent t
-  fromMemberEvent :: MemberEvent t -> Maybe a
-
-class IsEventResultOf a t where
-  toMemberEventResult :: a -> MemberEventResult t
-  fromMemberEventResult :: MemberEventResult t -> Maybe a
-
--- |
--- Functions for converting a value to and from a union value.
-class IsValueOf a t where
-  toMemberValue :: a -> MemberValue t
-  fromMemberValue :: MemberValue t -> Maybe a
-
--- |
--- Functions for converting an edge to and from a union value.
-class IsEdgeOf a t where
-  toMemberEdge :: a -> MemberEdge t
-  fromMemberEdge :: MemberEdge t -> Maybe a
 
 --------------------------------------------------------------------------------
 

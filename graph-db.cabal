@@ -43,6 +43,7 @@ library
     GraphDB
   other-modules:
     GraphDB.IOStableNameSet
+    GraphDB.TH
     GraphDB.TH.Q
     GraphDB.TH.Type
     GraphDB.GenerateBoilerplate.MembersRegistry
