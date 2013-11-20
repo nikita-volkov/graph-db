@@ -82,27 +82,27 @@ instance DB.Tag Catalogue where
     MemberEvent_InsertArtist e -> MemberEventResult_Unit <$> DB.eventTransaction e
     MemberEvent_GetGenresByArtistName e -> MemberEventResult_Genres <$> DB.eventTransaction e
 
-instance DB.IsValueOf () Catalogue where
+instance DB.ValueOf () Catalogue where
   toMemberValue = MemberValue_Unit
   fromMemberValue (MemberValue_Unit z) = Just z
   fromMemberValue _ = Nothing
 
-instance DB.IsValueOf Artist Catalogue where
+instance DB.ValueOf Artist Catalogue where
   toMemberValue = MemberValue_Artist
   fromMemberValue (MemberValue_Artist z) = Just z
   fromMemberValue _ = Nothing
 
-instance DB.IsValueOf Genre Catalogue where
+instance DB.ValueOf Genre Catalogue where
   toMemberValue = MemberValue_Genre
   fromMemberValue (MemberValue_Genre z) = Just z
   fromMemberValue _ = Nothing
 
-instance DB.IsEdgeOf (DB.Edge Artist) Catalogue where
+instance DB.EdgeOf (DB.Edge Artist) Catalogue where
   toMemberEdge = MemberEdge_Artist
   fromMemberEdge (MemberEdge_Artist z) = Just z
   fromMemberEdge _ = Nothing
 
-instance DB.IsEdgeOf (DB.Edge Genre) Catalogue where
+instance DB.EdgeOf (DB.Edge Genre) Catalogue where
   toMemberEdge = MemberEdge_Genre
   fromMemberEdge (MemberEdge_Genre z) = Just z
   fromMemberEdge _ = Nothing
@@ -110,7 +110,7 @@ instance DB.IsEdgeOf (DB.Edge Genre) Catalogue where
 
 data InsertArtist = InsertArtist Artist [Genre]
 
-instance DB.IsEventOf InsertArtist Catalogue where
+instance DB.EventOf InsertArtist Catalogue where
   type EventResult InsertArtist Catalogue = ()
   eventTransaction (InsertArtist artist genres) = 
     DB.Write $ insertArtist artist genres
@@ -118,14 +118,14 @@ instance DB.IsEventOf InsertArtist Catalogue where
   fromMemberEvent (MemberEvent_InsertArtist z) = Just z
   fromMemberEvent _ = Nothing
 
-instance DB.IsEventResultOf () Catalogue where
+instance DB.EventResultOf () Catalogue where
   toMemberEventResult = MemberEventResult_Unit
   fromMemberEventResult (MemberEventResult_Unit z) = Just z
   fromMemberEventResult _ = Nothing
 
 data GetGenresByArtistName = GetGenresByArtistName Text
 
-instance DB.IsEventOf GetGenresByArtistName Catalogue where
+instance DB.EventOf GetGenresByArtistName Catalogue where
   type EventResult GetGenresByArtistName Catalogue = [Genre]
   eventTransaction (GetGenresByArtistName name) = 
     DB.Read $ getGenresByArtistName name
@@ -133,7 +133,7 @@ instance DB.IsEventOf GetGenresByArtistName Catalogue where
   fromMemberEvent (MemberEvent_GetGenresByArtistName z) = Just z
   fromMemberEvent _ = Nothing  
 
-instance DB.IsEventResultOf [Genre] Catalogue where
+instance DB.EventResultOf [Genre] Catalogue where
   toMemberEventResult = MemberEventResult_Genres
   fromMemberEventResult (MemberEventResult_Genres z) = Just z
   fromMemberEventResult _ = Nothing

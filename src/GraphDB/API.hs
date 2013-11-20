@@ -36,10 +36,10 @@ module GraphDB.API
     -- * Boilerplate
     Tag(..),
     Transaction(..),
-    IsEventOf(..),
-    IsEventResultOf(..),
-    IsValueOf(..),
-    IsEdgeOf(..),
+    EventOf(..),
+    EventResultOf(..),
+    ValueOf(..),
+    EdgeOf(..),
   ) 
   where
 
@@ -156,38 +156,38 @@ getRoot = NodeRef `liftM` Graph.getRoot
 -- 
 -- This node won't get stored if you don't insert at least a single edge 
 -- from another stored node to it.
-newNode :: (IsValueOf a t) => a -> Write t s (NodeRef t s a)
+newNode :: (ValueOf a t) => a -> Write t s (NodeRef t s a)
 newNode value = NodeRef `liftM` Graph.newNode (toMemberValue value)
 
 -- |
 -- Get targets of the edge from the node.
-getTargets :: (IsEdgeOf (Edge b) t) => Edge b -> NodeRef t s a -> Read t s [NodeRef t s b]
+getTargets :: (EdgeOf (Edge b) t) => Edge b -> NodeRef t s a -> Read t s [NodeRef t s b]
 getTargets edge (NodeRef ref) = map NodeRef `liftM` Graph.getTargets (toMemberEdge edge) ref
 
 -- | 
 -- Get a value of the node.
-getValue :: (IsValueOf a t) => NodeRef t s a -> Read t s a
+getValue :: (ValueOf a t) => NodeRef t s a -> Read t s a
 getValue (NodeRef ref) = liftM (fromMaybe bug . fromMemberValue) $ Graph.getValue ref where
   bug = error "Unexpected value. This is a bug. Please report it."
 
 -- | 
 -- Replace a value of the specified node.
-setValue :: (IsValueOf a t) => NodeRef t s a -> a -> Write t s ()
+setValue :: (ValueOf a t) => NodeRef t s a -> a -> Write t s ()
 setValue (NodeRef ref) value = Graph.setValue ref (toMemberValue value)
 
 -- | 
 -- Insert the edge from the source to the target.
-insertEdge :: (IsEdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
+insertEdge :: (EdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
 insertEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdge ref1 (toMemberEdge edge) ref2
 
 -- | 
 -- Delete from the source the edge to the target.
-deleteEdge :: (IsEdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
+deleteEdge :: (EdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
 deleteEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdge ref1 (toMemberEdge edge) ref2
 
 -- | 
 -- Delete from the source the edge to all targets.
-deleteEdges :: (IsEdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> Write t s ()
+deleteEdges :: (EdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> Write t s ()
 deleteEdges (NodeRef ref1) edge = Graph.deleteEdges ref1 (toMemberEdge edge)
 
 
@@ -210,7 +210,7 @@ type Graph t = Graph.Graph (MemberValue t) (MemberEdge t)
 
 class 
   (
-    IsValueOf () t, 
+    ValueOf () t, 
     Hashable (MemberEdge t), 
     Eq (MemberEdge t), 
     Serializable IO (MemberEdge t), 
@@ -225,29 +225,29 @@ class
     data MemberEdge t
     memberEventTransaction :: MemberEvent t -> Transaction t (MemberEventResult t)
 
-class (Serializable IO (MemberEvent t), IsEventResultOf (EventResult a t) t) => IsEventOf a t where
+class (Serializable IO (MemberEvent t), EventResultOf (EventResult a t) t) => EventOf a t where
   type EventResult a t
   eventTransaction :: a -> Transaction t (EventResult a t)
   toMemberEvent :: a -> MemberEvent t
   fromMemberEvent :: MemberEvent t -> Maybe a
 
-class IsEventResultOf a t where
+class EventResultOf a t where
   toMemberEventResult :: a -> MemberEventResult t
   fromMemberEventResult :: MemberEventResult t -> Maybe a
 
 -- |
 -- Functions for converting a value to and from a union value.
-class IsValueOf a t where
+class ValueOf a t where
   toMemberValue :: a -> MemberValue t
   fromMemberValue :: MemberValue t -> Maybe a
 
 -- |
 -- Functions for converting an edge to and from a union value.
-class (Hashable (MemberEdge t), Eq (MemberEdge t)) => IsEdgeOf a t where
+class (Hashable (MemberEdge t), Eq (MemberEdge t)) => EdgeOf a t where
   toMemberEdge :: a -> MemberEdge t
   fromMemberEdge :: MemberEdge t -> Maybe a
 
-runEvent :: (IsEventOf e t) => Engine t -> e -> IO (EventResult e t)
+runEvent :: (EventOf e t) => Engine t -> e -> IO (EventResult e t)
 runEvent engine event = case engine of
   Engine_Persistent buffer storage graph -> case eventTransaction event of
     Write write -> do

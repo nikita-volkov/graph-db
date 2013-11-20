@@ -35,16 +35,16 @@ test_generateEvent = do
   where
     expected = "data WriteEvent1 = WriteEvent1 !HTFTestSuite.GenerateBoilerplateTests.Artist !([HTFTestSuite.GenerateBoilerplateTests.Genre]) deriving (GHC.Classes.Eq, GHC.Generics.Generic)"
 
-test_generateIsEventOfInstance = do
+test_generateEventOfInstance = do
   actual <- decsQToStringsIO $ do
     eventType <- [t|WriteEvent1|]
     tagType <- [t|Catalogue|]
     argTypes <- sequence [[t|Artist|], [t|Genre|]]
     resultType <- [t|()|]
-    generateIsEventOfInstance eventType tagType 'WriteEvent1 'writeEvent1 argTypes resultType True (mkName "A") -- '
+    generateEventOfInstance eventType tagType 'WriteEvent1 'writeEvent1 argTypes resultType True (mkName "A") -- '
   assertEqual expected actual
   where
-    expected = "instance GraphDB.API.IsEventOf HTFTestSuite.GenerateBoilerplateTests.WriteEvent1 HTFTestSuite.GenerateBoilerplateTests.Catalogue where type GraphDB.API.EventResult HTFTestSuite.GenerateBoilerplateTests.WriteEvent1 HTFTestSuite.GenerateBoilerplateTests.Catalogue = () GraphDB.API.eventTransaction (HTFTestSuite.GenerateBoilerplateTests.WriteEvent1 _0 _1) = GraphDB.API.Write (HTFTestSuite.GenerateBoilerplateTests.writeEvent1 _0 _1) GraphDB.API.toMemberEvent = A GraphDB.API.fromMemberEvent = \\_0 -> case _0 of A _0 -> Data.Maybe.Just _0 _ -> Data.Maybe.Nothing"
+    expected = "instance GraphDB.API.EventOf HTFTestSuite.GenerateBoilerplateTests.WriteEvent1 HTFTestSuite.GenerateBoilerplateTests.Catalogue where type GraphDB.API.EventResult HTFTestSuite.GenerateBoilerplateTests.WriteEvent1 HTFTestSuite.GenerateBoilerplateTests.Catalogue = () GraphDB.API.eventTransaction (HTFTestSuite.GenerateBoilerplateTests.WriteEvent1 _0 _1) = GraphDB.API.Write (HTFTestSuite.GenerateBoilerplateTests.writeEvent1 _0 _1) GraphDB.API.toMemberEvent = A GraphDB.API.fromMemberEvent = \\_0 -> case _0 of A _0 -> Data.Maybe.Just _0 _ -> Data.Maybe.Nothing"
 
 
 
