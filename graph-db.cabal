@@ -178,7 +178,7 @@ executable graph-db-demo
     Haskell2010
 
 
-executable graph-db-th-demo
+executable graph-db-generate-boilerplate-demo
   hs-source-dirs:
     src
   main-is:
