@@ -3,34 +3,39 @@ module GraphDB.Graph.Node where
 import GraphDB.Prelude
 import qualified Data.HashTable.IO as Table
 import qualified GraphDB.DIOVector as DIOVector; import GraphDB.DIOVector (DIOVector)
+import qualified GraphDB.IOStableNameSet as IOStableNameSet; import GraphDB.IOStableNameSet (IOStableNameSet)
 
 
 data Node n e = Node { 
   valueRef :: IORef n,
-  edgesTable :: Table.BasicHashTable e [Node n e]
+  edgesTable :: Table.BasicHashTable e (IOStableNameSet (Node n e))
 }
 
 instance Eq (Node n e) where
   a == b = valueRef a == valueRef b
 
 insertEdge :: (Hashable e, Eq e) => Node n e -> e -> Node n e -> IO ()
-insertEdge (Node _ table) edge target =
-  Table.lookup table edge >>=
-  return . fromMaybe [] >>=
-  return . (target:) >>=
-  Table.insert table edge
+insertEdge (Node _ table) edge target = do
+  Table.lookup table edge >>= \case
+    Just sns -> do
+      IOStableNameSet.insert sns target
+    Nothing -> do
+      sns <- IOStableNameSet.new
+      IOStableNameSet.insert sns target
+      Table.insert table edge sns
 
 deleteEdges :: (Hashable e, Eq e) => Node n e -> e -> IO ()
 deleteEdges source edge = Table.delete (edgesTable source) edge
 
 deleteEdge :: (Hashable e, Eq e) => Node n e -> e -> Node n e -> IO ()
-deleteEdge source edge target =
-  Table.lookup table edge >>=
-  return . fromMaybe [] >>=
-  return . delete target >>=
-  \row -> if null row
-    then Table.delete table edge
-    else Table.insert table edge row
+deleteEdge source edge target = do
+  Table.lookup table edge >>= \case
+    Just sns -> do
+      IOStableNameSet.delete sns target
+      IOStableNameSet.getNull sns >>= \case
+        True -> Table.delete table edge
+        False -> return ()
+    Nothing -> return ()
   where
     table = edgesTable source
 
@@ -44,12 +49,14 @@ setValue :: Node n e -> n -> IO ()
 setValue (Node valueRef _) value = writeIORef valueRef value
 
 getTargets :: (Hashable e, Eq e) => Node n e -> e -> IO [Node n e]
-getTargets (Node _ edgesTable) edge = fromMaybe [] <$> Table.lookup edgesTable edge
+getTargets (Node _ edgesTable) edge = 
+  Table.lookup edgesTable edge >>= maybe (return []) IOStableNameSet.getList
 
 foldEdgesM :: Node n e -> z -> (z -> (e, Node n e) -> IO z) -> IO z
-foldEdgesM node z zToEdgeNodeToIOZ = Table.foldM zToEdgeNodeListToIOZ z $ edgesTable node
+foldEdgesM node z zToEdgeNodeToIOZ = Table.foldM zToEdgeNodesToIOZ z $ edgesTable node
   where
-    zToEdgeNodeListToIOZ z (edge, nodeList) = foldM zToEdgeNodeToIOZ z $ map (edge,) nodeList
+    zToEdgeNodesToIOZ z (edge, nodes) = 
+      IOStableNameSet.foldM nodes (\z node -> zToEdgeNodeToIOZ z (edge, node)) z
 
 
 instance (Serializable IO n, Serializable IO e, Hashable e, Eq e) => Serializable IO (Node n e) where

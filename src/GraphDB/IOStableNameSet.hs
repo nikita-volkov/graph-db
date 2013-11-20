@@ -1,6 +1,16 @@
-module GraphDB.IOStableNameSet where
+module GraphDB.IOStableNameSet
+  (IOStableNameSet,
+   new,
+   insert,
+   delete,
+   lookup,
+   foldM,
+   getSize,
+   getNull,
+   getList)
+  where
 
-import GraphDB.Prelude hiding (lookup, foldM)
+import GraphDB.Prelude hiding (insert, delete, lookup, foldM)
 import qualified Data.HashTable.IO as Table
 
 
@@ -41,7 +51,7 @@ new = fromEnv <$> newTable <*> newIORef 0
 getNull :: IOStableNameSet a -> IO Bool
 getNull = getSize >=> return . (<= 0)
 
-toList :: IOStableNameSet a -> IO [a]
-toList sns = foldM sns (\li el -> return $ el : li) []
+getList :: IOStableNameSet a -> IO [a]
+getList sns = foldM sns (\li el -> return $ el : li) []
 
 
