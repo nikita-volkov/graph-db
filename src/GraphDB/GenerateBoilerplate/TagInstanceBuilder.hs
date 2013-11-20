@@ -3,7 +3,7 @@ module GraphDB.GenerateBoilerplate.TagInstanceBuilder where
 import GraphDB.Prelude
 import Language.Haskell.TH
 import qualified GraphDB.API as API
-import qualified GraphDB.CIO as CIO; import GraphDB.CIO (CIO)
+import qualified CIO as CIO; import CIO (CIO)
 import qualified GraphDB.TH.Q as Q
 
 data TagInstanceBuilder = TagInstanceBuilder {

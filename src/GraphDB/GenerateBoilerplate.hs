@@ -10,7 +10,7 @@ import qualified GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry;
 import qualified GraphDB.TH as TH
 import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH.Type as Type
-import qualified GraphDB.CIO as CIO; import GraphDB.CIO (CIO)
+import qualified CIO as CIO; import CIO (CIO)
 import qualified GraphDB.GenerateBoilerplate.TagInstanceBuilder as TagInstanceBuilder
 
 -- |

@@ -58,13 +58,12 @@ library
     GraphDB.Graph.Transaction.NodeRefRegistry
     GraphDB.DIOVector
     GraphDB.IOQueue
-    GraphDB.CIO
     GraphDB.API
   build-depends:
     th-expand-syns,
     attoparsec,
     monad-stm,
-    parallel-io,
+    cio,
     containers,
     template-haskell,
     errors,
@@ -128,7 +127,7 @@ executable graph-db-demo
     th-expand-syns,
     attoparsec,
     monad-stm,
-    parallel-io,
+    cio,
     containers,
     template-haskell,
     errors,
@@ -192,7 +191,7 @@ executable graph-db-generate-boilerplate-demo
     th-expand-syns,
     attoparsec,
     monad-stm,
-    parallel-io,
+    cio,
     containers,
     template-haskell,
     errors,
@@ -255,7 +254,7 @@ test-suite graph-db-htf-test-suite
     th-expand-syns,
     attoparsec,
     monad-stm,
-    parallel-io,
+    cio,
     containers,
     template-haskell,
     errors,
