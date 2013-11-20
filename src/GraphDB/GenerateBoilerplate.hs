@@ -104,7 +104,7 @@ generateBoilerplate tagName valueTypeNames = do
         >>= addDecs . join
 
   addDecs =<< return . (:[]) =<< liftCIO (TagInstanceBuilder.getDec tib)
-  getDecs
+  nub <$> getDecs
 
   where
     newDecsAccumulator = do

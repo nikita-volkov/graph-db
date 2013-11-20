@@ -24,19 +24,19 @@ new tagType = do
   memberEventTransactionMatchesVar <- liftSTM $ newTVar []
   let
     addMemberValueConstructor name t =
-      liftSTM $ modifyTVar memberValueConstructorsVar (c:)
+      liftSTM $ modifyTVar memberValueConstructorsVar (addIfNotElem c)
       where
         c = NormalC name [(IsStrict, t)]
     addMemberEdgeConstructor name t =
-      liftSTM $ modifyTVar memberEdgeConstructorsVar (c:)
+      liftSTM $ modifyTVar memberEdgeConstructorsVar (addIfNotElem c)
       where
         c = NormalC name [(IsStrict, t)]
     addMemberEventConstructor name t =
-      liftSTM $ modifyTVar memberEventConstructorsVar (c:)
+      liftSTM $ modifyTVar memberEventConstructorsVar (addIfNotElem c)
       where
         c = NormalC name [(IsStrict, t)]
     addMemberEventResultConstructor name t =
-      liftSTM $ modifyTVar memberEventResultConstructorsVar (c:)
+      liftSTM $ modifyTVar memberEventResultConstructorsVar (addIfNotElem c)
       where
         c = NormalC name [(IsStrict, t)]
     addMemberEventTransactionClause eventName resultName = 
@@ -49,7 +49,7 @@ new tagType = do
             body = NormalB $ Q.purify $
               [e| $(conE resultName) <$> API.eventTransaction $(varE patternVarName) |]
             decs = []
-
+    addIfNotElem a b = if elem a b then b else a:b
     getDec = InstanceD <$> pure [] <*> getHead <*> getDecs
       where
         getHead = pure $ AppT (ConT ''API.Tag) tagType
@@ -66,25 +66,25 @@ new tagType = do
               where
                 name = mkName "MemberValue"
                 getConstructors = liftSTM $ readTVar memberValueConstructorsVar
-                derivations = map mkName ["Eq", "Generic"]
+                derivations = [''Eq, ''Generic]
             getMemberEdgeDec =
               DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure derivations
               where
                 name = mkName "MemberEdge"
                 getConstructors = liftSTM $ readTVar memberEdgeConstructorsVar
-                derivations = map mkName ["Eq", "Generic"]
+                derivations = [''Eq, ''Generic]
             getMemberEventDec =
               DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure derivations
               where
                 name = mkName "MemberEvent"
                 getConstructors = liftSTM $ readTVar memberEventConstructorsVar
-                derivations = map mkName ["Eq", "Generic"]
+                derivations = [''Eq, ''Generic]
             getMemberEventResultDec =
               DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure derivations
               where
                 name = mkName "MemberEventResult"
                 getConstructors = liftSTM $ readTVar memberEventResultConstructorsVar
-                derivations = map mkName ["Eq", "Generic"]
+                derivations = [''Eq, ''Generic]
             getMemberEventTransactionDec = FunD <$> pure name <*> sequence [getClause]
               where
                 name = mkName "memberEventTransaction"
@@ -102,4 +102,5 @@ new tagType = do
         addMemberEventResultConstructor
         addMemberEventTransactionClause
         getDec
+
 
