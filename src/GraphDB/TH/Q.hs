@@ -13,97 +13,28 @@ import qualified Language.Haskell.TH.ExpandSyns as ExpandSyns
 
 reifyLocalFunctions :: Q [(Name, [Type], Type)]
 reifyLocalFunctions =
-  listLocalFunctions >>=
+  listTopLevelFunctionLikeNames >>=
   mapM (\name -> reifyFunction name >>= mapM (\(a, b) -> return (name, a, b))) >>=
   return . catMaybes
-
-listLocalFunctions :: Q [Name]
-listLocalFunctions = do 
-  loc <- location
-  text <- runIO $ Text.readFile $ loc_filename loc
-  return $ map (mkName . Text.unpack) $ nub $ parse text
   where
-    parse text = 
-      either (error . ("Local function name parsing failure: " ++)) id $
-      AP.parseOnly parser text
+    listTopLevelFunctionLikeNames = do 
+      loc <- location
+      text <- runIO $ Text.readFile $ loc_filename loc
+      return $ map (mkName . Text.unpack) $ nub $ parse text
       where
-        parser = 
-          AP.sepBy (optional topLevelFunctionP <* AP.skipWhile (not . AP.isEndOfLine)) 
-                   AP.endOfLine >>=
-          return . catMaybes
+        parse text = 
+          either (error . ("Local function name parsing failure: " ++)) id $
+          AP.parseOnly parser text
           where
-            -- NOTE: Actually, there's no need in precise parsing fuss, 
-            -- since we're down to error-handling strategy using 'tryToReify'.
-            topLevelFunctionP = do
-              name <- valNameP
-              many (AP.skipSpace *> unscopedPatternP)
-              AP.skipSpace
-              AP.char '='
-              return name
+            parser = 
+              AP.sepBy (optional topLevelFunctionP <* AP.skipWhile (not . AP.isEndOfLine)) 
+                       AP.endOfLine >>=
+              return . catMaybes
               where
-                valNameP = do
+                topLevelFunctionP = do
                   head <- AP.satisfy Char.isLower
                   tail <- many (AP.satisfy (\c -> Char.isAlphaNum c || c `elem` ['_', '\'']))
                   return $ Text.pack $ head : tail
-                unscopedPatternP = 
-                  void valNameP <|> litP <|> tupP <|> parensP <|> asP <|> wildP <|> recP <|> listP
-                parensP = AP.char '(' *> scopedPatternP <* AP.char ')'
-                scopedPatternP = unscopedPatternP <|> conP
-                litP = void charP <|> void stringP <|> void AP.number
-                  where
-                    charP = AP.char '\'' *> AP.anyChar <* AP.char '\''
-                    stringP = AP.char '\"' *> AP.takeWhile (/= '\"') <* AP.char '\"'
-                tupP = do
-                  AP.char '('
-                  AP.skipSpace
-                  AP.sepBy scopedPatternP sepP
-                  AP.skipSpace
-                  AP.char ')'
-                  return ()
-                  where
-                    sepP = AP.skipSpace *> AP.char ',' <* AP.skipSpace
-                asP = do
-                  valNameP
-                  AP.skipSpace
-                  AP.char '@'
-                  AP.skipSpace
-                  unscopedPatternP
-                wildP = AP.char '_' *> pure ()
-                recP = do
-                  typeNameP
-                  AP.skipSpace
-                  AP.char '{'
-                  AP.skipSpace
-                  AP.sepBy fieldPatP sepP
-                  AP.skipSpace
-                  AP.char '}'
-                  return ()
-                  where
-                    fieldPatP = nameToPatP <|> wildCardP
-                      where
-                        nameToPatP = do
-                          valNameP
-                          AP.skipSpace
-                          AP.char '='
-                          AP.skipSpace
-                          scopedPatternP
-                          return ()
-                        wildCardP = AP.string ".." *> pure ()
-                    sepP = AP.skipSpace *> AP.char ',' <* AP.skipSpace
-                typeNameP = do
-                  head <- AP.satisfy Char.isUpper
-                  tail <- many (AP.satisfy (\c -> Char.isAlphaNum c || c `elem` ['_', '\'']))
-                  return $ Text.pack $ head : tail
-                listP = do
-                  AP.char '['
-                  AP.skipSpace
-                  AP.sepBy scopedPatternP sepP
-                  AP.skipSpace
-                  AP.char ']'
-                  return ()
-                  where
-                    sepP = AP.skipSpace *> AP.char ',' <* AP.skipSpace
-                conP = typeNameP *> many (AP.skipSpace *> unscopedPatternP) *> pure ()
 
 reifyFunction :: Name -> Q (Maybe ([Type], Type))
 reifyFunction name = do
