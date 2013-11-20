@@ -36,6 +36,7 @@ import Data.Data as Exports
 import Text.Read as Exports (readMaybe, readEither)
 import Control.Exception as Exports hiding (tryJust)
 import Control.Concurrent as Exports hiding (yield)
+import System.Mem.StableName as Exports
 import System.Timeout as Exports
 import System.Exit as Exports
 import System.IO.Unsafe as Exports
