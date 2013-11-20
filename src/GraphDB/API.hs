@@ -37,10 +37,10 @@ module GraphDB.API
     Tag(..),
     Event(..),
     Transaction(..),
-    IsMemberValueOf(..),
-    IsMemberEdgeOf(..),
-    IsMemberEventOf(..),
-    IsMemberEventResultOf(..),
+    IsValueOf(..),
+    IsEdgeOf(..),
+    IsEventOf(..),
+    IsEventResultOf(..),
   ) 
   where
 
@@ -157,41 +157,41 @@ getRoot = NodeRef `liftM` Graph.getRoot
 -- 
 -- This node won't get stored if you don't insert at least a single edge 
 -- from another stored node to it.
-newNode :: (IsMemberValueOf a t) => a -> Write t s (NodeRef t s a)
+newNode :: (IsValueOf a t) => a -> Write t s (NodeRef t s a)
 newNode value = NodeRef `liftM` Graph.newNode (toMemberValue value)
 
 -- |
 -- Get targets of the edge from the node.
-getTargets :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+getTargets :: (IsEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
               Edge b -> NodeRef t s a -> Read t s [NodeRef t s b]
 getTargets edge (NodeRef ref) = map NodeRef `liftM` Graph.getTargets (toMemberEdge edge) ref
 
 -- | 
 -- Get a value of the node.
-getValue :: (IsMemberValueOf a t) => NodeRef t s a -> Read t s a
+getValue :: (IsValueOf a t) => NodeRef t s a -> Read t s a
 getValue (NodeRef ref) = liftM (fromMaybe bug . fromMemberValue) $ Graph.getValue ref where
   bug = error "Unexpected value. This is a bug. Please report it."
 
 -- | 
 -- Replace a value of the specified node.
-setValue :: (IsMemberValueOf a t) => NodeRef t s a -> a -> Write t s ()
+setValue :: (IsValueOf a t) => NodeRef t s a -> a -> Write t s ()
 setValue (NodeRef ref) value = Graph.setValue ref (toMemberValue value)
 
 -- | 
 -- Insert the edge from the source to the target.
-insertEdge :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+insertEdge :: (IsEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
               NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
 insertEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdge ref1 (toMemberEdge edge) ref2
 
 -- | 
 -- Delete from the source the edge to the target.
-deleteEdge :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+deleteEdge :: (IsEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
               NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
 deleteEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdge ref1 (toMemberEdge edge) ref2
 
 -- | 
 -- Delete from the source the edge to all targets.
-deleteEdges :: (IsMemberEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
+deleteEdges :: (IsEdgeOf (Edge b) t, Hashable (MemberEdge t), Eq (MemberEdge t)) => 
                NodeRef t s a -> Edge b -> Write t s ()
 deleteEdges (NodeRef ref1) edge = Graph.deleteEdges ref1 (toMemberEdge edge)
 
@@ -215,7 +215,7 @@ type Graph t = Graph.Graph (MemberValue t) (MemberEdge t)
 
 class 
   (
-    IsMemberValueOf () t, 
+    IsValueOf () t, 
     Hashable (MemberEdge t), 
     Eq (MemberEdge t), 
     Serializable IO (MemberEdge t), 
@@ -231,7 +231,7 @@ class
     memberEventTransaction :: MemberEvent t -> Transaction t (MemberEventResult t)
 
 class 
-  ( IsMemberEventOf e t, Serializable IO (MemberEvent t), IsMemberEventResultOf (EventResult e t) t ) => 
+  ( IsEventOf e t, Serializable IO (MemberEvent t), IsEventResultOf (EventResult e t) t ) => 
   Event e t where
     type EventResult e t
     eventTransaction :: e -> Transaction t (EventResult e t)
@@ -267,23 +267,23 @@ runMemberEvent engine memberEvent = case engine of
     Read read -> Graph.runRead graph read
   Engine_Remote client -> Client.request client memberEvent
 
-class IsMemberEventOf a t where
+class IsEventOf a t where
   toMemberEvent :: a -> MemberEvent t
   fromMemberEvent :: MemberEvent t -> Maybe a
 
-class IsMemberEventResultOf a t where
+class IsEventResultOf a t where
   toMemberEventResult :: a -> MemberEventResult t
   fromMemberEventResult :: MemberEventResult t -> Maybe a
 
 -- |
 -- Functions for converting a value to and from a union value.
-class IsMemberValueOf a t where
+class IsValueOf a t where
   toMemberValue :: a -> MemberValue t
   fromMemberValue :: MemberValue t -> Maybe a
 
 -- |
 -- Functions for converting an edge to and from a union value.
-class IsMemberEdgeOf a t where
+class IsEdgeOf a t where
   toMemberEdge :: a -> MemberEdge t
   fromMemberEdge :: MemberEdge t -> Maybe a
 

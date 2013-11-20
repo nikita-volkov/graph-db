@@ -51,13 +51,13 @@ generateBoilerplate tagName valueTypeNames = do
     addValueType t = do
       memberName <- liftSTM $ MembersRegistry.resolve valueMR t
       liftCIO $ TagInstanceBuilder.addMemberValueConstructor tib memberName t
-      addDecs =<< generateIsMemberValueOfInstance t tagType memberName
+      addDecs =<< generateIsValueOfInstance t tagType memberName
       addDecs =<< generateHashableInstance t
       addDecs =<< generateSerializableInstance t
     addEdgeType t = do
       memberName <- liftSTM $ MembersRegistry.resolve edgeMR t
       liftCIO $ TagInstanceBuilder.addMemberEdgeConstructor tib memberName t
-      addDecs =<< generateIsMemberEdgeOfInstance t tagType memberName
+      addDecs =<< generateIsEdgeOfInstance t tagType memberName
       addDecs =<< generateHashableInstance t
       addDecs =<< generateSerializableInstance t
     addValueOrEdgeType t = if isEdge t then addEdgeType t else addValueType t
@@ -66,9 +66,9 @@ generateBoilerplate tagName valueTypeNames = do
       addDecs =<< generateEventInstance evType tagType evName name argTypes evResultType isWrite
       addDecs =<< generateSerializableInstance evType
       memberEventName <- liftSTM $ MembersRegistry.resolve eventMR evType
-      addDecs =<< generateIsMemberEventOfInstance evType tagType memberEventName
+      addDecs =<< generateIsEventOfInstance evType tagType memberEventName
       memberEventResultName <- liftSTM $ MembersRegistry.resolve eventResultMR evResultType
-      addDecs =<< generateIsMemberEventResultOfInstance evResultType tagType memberEventResultName
+      addDecs =<< generateIsEventResultOfInstance evResultType tagType memberEventResultName
       liftCIO $ TagInstanceBuilder.addMemberEventConstructor tib memberEventName evType
       liftCIO $ TagInstanceBuilder.addMemberEventResultConstructor tib memberEventResultName evResultType
       liftCIO $ TagInstanceBuilder.addMemberEventTransactionClause tib memberEventName memberEventResultName
@@ -209,10 +209,10 @@ generateEventInstance eventType tagType eventCons functionName argTypes resultTy
                     constructor = if isWrite then ConE 'API.Write else ConE 'API.Read
                 argList = zipWith (\i _ -> mkName $ "_" ++ show i) [0..] argTypes
 
-generateIsMemberEventOfInstance :: Type -> Type -> Name -> Q [Dec]
-generateIsMemberEventOfInstance eventType tagType memberEventCons = 
+generateIsEventOfInstance :: Type -> Type -> Name -> Q [Dec]
+generateIsEventOfInstance eventType tagType memberEventCons = 
   [d|
-    instance API.IsMemberEventOf $(return eventType) $(return tagType) where
+    instance API.IsEventOf $(return eventType) $(return tagType) where
       toMemberEvent = $(conE memberEventCons)
       fromMemberEvent = $fromMemberEventLambdaQ
   |]
@@ -229,10 +229,10 @@ generateIsMemberEventOfInstance eventType tagType memberEventCons =
             pattern = WildP
             body = NormalB $ Q.purify [e| Nothing |]
 
-generateIsMemberEventResultOfInstance :: Type -> Type -> Name -> Q [Dec]
-generateIsMemberEventResultOfInstance eventResultType tagType memberEventResultName =  
+generateIsEventResultOfInstance :: Type -> Type -> Name -> Q [Dec]
+generateIsEventResultOfInstance eventResultType tagType memberEventResultName =  
   [d|
-    instance API.IsMemberEventResultOf $(return eventResultType) $(return tagType) where
+    instance API.IsEventResultOf $(return eventResultType) $(return tagType) where
       toMemberEventResult = $(conE memberEventResultName)
       fromMemberEventResult = $(fromMemberEventResultLambdaQ)
   |]
@@ -271,10 +271,10 @@ generateSerializableInstance t =
   Q.whenNoInstance ''Serializable [ConT ''IO, t] 
     $ [d| instance Serializable IO $(return t) |]
 
-generateIsMemberEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]
-generateIsMemberEdgeOfInstance edgeType tagType memberEdgeCons = 
+generateIsEdgeOfInstance :: Type -> Type -> Name -> Q [Dec]
+generateIsEdgeOfInstance edgeType tagType memberEdgeCons = 
   [d|
-    instance API.IsMemberEdgeOf $(return edgeType) $(return tagType) where
+    instance API.IsEdgeOf $(return edgeType) $(return tagType) where
       toMemberEdge = $(conE memberEdgeCons)
       fromMemberEdge = $fromMemberEdgeLambdaQ
   |]
@@ -291,10 +291,10 @@ generateIsMemberEdgeOfInstance edgeType tagType memberEdgeCons =
             pattern = WildP
             body = NormalB $ Q.purify [e| Nothing |]
 
-generateIsMemberValueOfInstance :: Type -> Type -> Name -> Q [Dec]
-generateIsMemberValueOfInstance valueType tagType memberValueCons = 
+generateIsValueOfInstance :: Type -> Type -> Name -> Q [Dec]
+generateIsValueOfInstance valueType tagType memberValueCons = 
   [d|
-    instance API.IsMemberValueOf $(return valueType) $(return tagType) where
+    instance API.IsValueOf $(return valueType) $(return tagType) where
       toMemberValue = $(conE memberValueCons)
       fromMemberValue = $fromMemberValueLambdaQ
   |]
