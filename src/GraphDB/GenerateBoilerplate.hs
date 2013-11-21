@@ -121,12 +121,19 @@ reifyLocalTransactionFunctions :: Type -> Q [(Name, [Type], Type, Bool)]
 reifyLocalTransactionFunctions tagType = 
   Q.reifyLocalFunctions >>= fmap catMaybes . traverse getTransactionFunctionInfo
   where
-    getTransactionFunctionInfo (name, argTypes, resultType) =
-      reifyTransaction resultType >>= return . join . fmap fromTransactionType
+    getTransactionFunctionInfo (name, argTypes, resultType) = 
+      if all containsNoVarT argTypes
+        then reifyTransaction resultType >>= return . join . fmap fromTransactionType
+        else return Nothing
       where
         fromTransactionType (isWrite, trTagType, trResultType) = do
           assertZ $ trTagType == tagType
           return (name, argTypes, trResultType, isWrite)
+        containsNoVarT = \case
+          ForallT _ _ t -> containsNoVarT t
+          AppT a b -> containsNoVarT a && containsNoVarT b
+          VarT{} -> False
+          _ -> True
 
 reifyTransaction :: Type -> Q (Maybe (Bool, Type, Type))
 reifyTransaction = \case
