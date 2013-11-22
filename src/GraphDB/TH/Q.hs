@@ -11,10 +11,10 @@ import qualified Language.Haskell.TH.ExpandSyns as ExpandSyns
 
 
 
-reifyLocalFunctions :: Q [(Name, [Type], Type)]
+reifyLocalFunctions :: Q [(Name, Type)]
 reifyLocalFunctions =
   listTopLevelFunctionLikeNames >>=
-  mapM (\name -> reifyFunction name >>= mapM (\(a, b) -> return (name, a, b))) >>=
+  mapM (\name -> reifyFunction name >>= mapM (return . (name, ))) >>=
   return . catMaybes
   where
     listTopLevelFunctionLikeNames = do 
@@ -36,17 +36,15 @@ reifyLocalFunctions =
                   tail <- many (AP.satisfy (\c -> Char.isAlphaNum c || c `elem` ['_', '\'']))
                   return $ Text.pack $ head : tail
 
-reifyFunction :: Name -> Q (Maybe ([Type], Type))
+reifyFunction :: Name -> Q (Maybe Type)
 reifyFunction name = do
-  info <- tryToReify name
-  case info of
-    Just (VarI _ t _ _) -> return $ Just $ Type.argsAndResult $ Type.unforall t
+  tryToReify name >>= \case
+    Just (VarI _ t _ _) -> return $ Just $ t
     _ -> return Nothing
 
 reifyType :: Name -> Q (Maybe Type)
 reifyType name = do
-  info <- tryToReify name
-  case info of
+  tryToReify name >>= \case
     Just (TyConI _) -> Just <$> conT name
     _ -> return Nothing
 

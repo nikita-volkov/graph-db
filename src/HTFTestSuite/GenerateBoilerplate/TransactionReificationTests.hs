@@ -33,32 +33,32 @@ test_reifyLocalTransactionFunctions = do
 
 test_isWrite = do
   assertBool $ read $(
-      reifyTransaction (ConT ''Write `AppT` ConT ''Int) >>=
+      processTransactionFunctionResult (ConT ''Write `AppT` ConT ''Int) >>=
       stringE . show . (== Just True) . fmap (\(a, _, _) -> a)
     )
   assertBool $ read $(
-      reifyTransaction (ConT ''Write' `AppT` ConT ''Int) >>=
+      processTransactionFunctionResult (ConT ''Write' `AppT` ConT ''Int) >>=
       stringE . show . (== Just True) . fmap (\(a, _, _) -> a)
     )
   assertBool $ not $ read $(
-      reifyTransaction (ConT ''Read `AppT` ConT ''Int) >>=
+      processTransactionFunctionResult (ConT ''Read `AppT` ConT ''Int) >>=
       stringE . show . (== Just True) . fmap (\(a, _, _) -> a)
     )
   assertBool $ not $ read $(
-      reifyTransaction (ConT ''Read' `AppT` ConT ''Int) >>=
+      processTransactionFunctionResult (ConT ''Read' `AppT` ConT ''Int) >>=
       stringE . show . (== Just True) . fmap (\(a, _, _) -> a)
     )
 
 test_writeSynExpansion = do
   assertBool $ read $(
       stringE . show . isJust =<< 
-      reifyTransaction (ConT ''Write `AppT` ConT ''Int)
+      processTransactionFunctionResult (ConT ''Write `AppT` ConT ''Int)
     )
 
 test_readSynExpansion = do
   assertBool $ read $(
       stringE . show . isJust =<< 
-      reifyTransaction (ConT ''Read `AppT` ConT ''Int)
+      processTransactionFunctionResult (ConT ''Read `AppT` ConT ''Int)
     )
 
 

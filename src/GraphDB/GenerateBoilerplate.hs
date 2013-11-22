@@ -118,24 +118,33 @@ generateBoilerplate tagName valueTypeNames = do
 
 reifyLocalTransactionFunctions :: Type -> Q [(Name, [Type], Type, Bool)]
 reifyLocalTransactionFunctions tagType = 
-  Q.reifyLocalFunctions >>= fmap catMaybes . traverse getTransactionFunctionInfo
+  Q.reifyLocalFunctions >>= fmap catMaybes . traverse processTransactionFunction
   where
-    getTransactionFunctionInfo (name, argTypes, resultType) = 
-      if all containsNoVarT argTypes
-        then reifyTransaction resultType >>= return . join . fmap fromTransactionType
-        else return Nothing
+    processTransactionFunction (name, t) =
+      sequence [process1, process2] >>= return . msum
       where
-        fromTransactionType (isWrite, trTagType, trResultType) = do
+        process1 = 
+          processTransactionFunctionResult t >>= 
+          return . join . fmap (fromTransactionType [])
+        process2 = do
+          if all containsNoVarT args
+            then 
+              processTransactionFunctionResult result >>= 
+              return . join . fmap (fromTransactionType args)
+            else return Nothing
+          where
+            (args, result) = Type.argsAndResult $ Type.unforall t
+            containsNoVarT = \case
+              ForallT _ _ t -> containsNoVarT t
+              AppT a b -> containsNoVarT a && containsNoVarT b
+              VarT{} -> False
+              _ -> True
+        fromTransactionType args (isWrite, trTagType, trResultType) = do
           assertZ $ trTagType == tagType
-          return (name, argTypes, trResultType, isWrite)
-        containsNoVarT = \case
-          ForallT _ _ t -> containsNoVarT t
-          AppT a b -> containsNoVarT a && containsNoVarT b
-          VarT{} -> False
-          _ -> True
+          return (name, args, trResultType, isWrite)
 
-reifyTransaction :: Type -> Q (Maybe (Bool, Type, Type))
-reifyTransaction = \case
+processTransactionFunctionResult :: Type -> Q (Maybe (Bool, Type, Type))
+processTransactionFunctionResult = \case
   trType `AppT` tagType `AppT` _ `AppT` resultType 
     | isNodeRef -> return Nothing
     | isTransaction -> return $ Just (trType == writeType, tagType, resultType)
@@ -169,8 +178,8 @@ reifyTransaction = \case
       transactionConstraintVarName = \case
         ClassP className [VarT varName] | className == ''Transaction.Transaction -> Just varName
         _ -> Nothing
-  t@ForallT{} -> reifyTransaction $ Type.unforall t
-  t -> Q.expandRootSynType t >>= fmap join . traverse reifyTransaction
+  t@ForallT{} -> processTransactionFunctionResult $ Type.unforall t
+  t -> Q.expandRootSynType t >>= fmap join . traverse processTransactionFunctionResult
 
 -- |
 -- Get a list of all instances of 'Edge' between all possible combinations of provided types.
