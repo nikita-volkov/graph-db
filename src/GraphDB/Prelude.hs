@@ -90,6 +90,9 @@ import PipesCerealPlus as Exports
 -- either
 import Control.Error as Exports
 
+-- cio
+import CIO as Exports
+
 
 import qualified Data.ByteString.Lazy
 import qualified Data.Text.Lazy

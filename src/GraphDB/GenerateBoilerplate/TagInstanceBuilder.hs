@@ -3,7 +3,6 @@ module GraphDB.GenerateBoilerplate.TagInstanceBuilder where
 import GraphDB.Prelude
 import Language.Haskell.TH
 import qualified GraphDB.API as API
-import qualified CIO as CIO; import CIO (CIO)
 import qualified GraphDB.TH.Q as Q
 
 data TagInstanceBuilder = TagInstanceBuilder {
@@ -54,7 +53,7 @@ new tagType = do
       where
         getHead = pure $ AppT (ConT ''API.Tag) tagType
         getDecs = 
-          CIO.sequenceInterleaved 
+          sequenceConcurrently
             [ getMemberValueDec, 
               getMemberEdgeDec, 
               getMemberEventDec, 

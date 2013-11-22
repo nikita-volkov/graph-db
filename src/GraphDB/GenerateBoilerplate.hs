@@ -10,7 +10,6 @@ import qualified GraphDB.GenerateBoilerplate.MembersRegistry as MembersRegistry;
 import qualified GraphDB.TH as TH
 import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH.Type as Type
-import qualified CIO as CIO; import CIO (CIO)
 import qualified GraphDB.GenerateBoilerplate.TagInstanceBuilder as TagInstanceBuilder
 
 -- |
@@ -114,7 +113,7 @@ generateBoilerplate tagName valueTypeNames = do
         addDecs decsVar decs = liftSTM $ modifyTVar decsVar (decs ++)
         getDecs decsVar = liftSTM $ readTVar decsVar
     liftSTM = runIO . atomically
-    liftCIO = runIO . CIO.run'
+    liftCIO = liftIO . runCIO'
     liftIO = runIO
 
 reifyLocalTransactionFunctions :: Type -> Q [(Name, [Type], Type, Bool)]
