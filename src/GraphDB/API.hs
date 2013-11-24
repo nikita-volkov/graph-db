@@ -6,7 +6,7 @@ module GraphDB.API
     shutdownEngine,
     runEvent,
     Mode(..),
-    Storage.pathsFromName,
+    pathsFromName,
     Storage.pathsFromDirectory,
     Storage.Paths,
     URL(..),
@@ -50,6 +50,7 @@ import qualified GraphDB.Graph.Transaction as Transaction
 import qualified AcidIO.Storage as Storage
 import qualified AcidIO.Server as Server
 import qualified AcidIO.Client as Client
+import qualified Filesystem.Path.CurrentOS as FilePath
 
 
 -- | 
@@ -86,6 +87,12 @@ data URL =
   URL_Socket FilePath |
   -- | Host name, port and password.
   URL_Host Text Int (Maybe ByteString)
+
+-- | 
+-- Determine paths from a unique name among all storages running on this machine. 
+-- It will be used to set default values for storage paths under \"~\/.graph-db\/\[name\]\/\".
+pathsFromName :: Text -> IO Storage.Paths
+pathsFromName name = Storage.pathsFromDirectory ("~/.graph-db/" <> FilePath.fromText name)
 
 -- |
 -- Start the engine.
