@@ -1,7 +1,7 @@
 name:
   graph-db
 version:
-  0.1.0
+  0.2.0
 synopsis:
   Native Haskell graph database.
 description:
@@ -42,28 +42,34 @@ library
   exposed-modules:
     GraphDB
   other-modules:
+    GraphDB.Macros.BoilerplateBuilder
+    GraphDB.Macros.GraphTagInstanceBuilder
+    GraphDB.Macros.GraphDBTagInstanceBuilder
+    GraphDB.Macros.NamesRegistry
+    GraphDB.Macros
+    GraphDB.API
+    GraphDB.Graph.Node
+    GraphDB.Graph.TypedNode
+    GraphDB.Graph.DynamicNode
+    GraphDB.Graph.Types
+    GraphDB.Graph.Dispatcher
+    GraphDB.Graph.Transaction
+    GraphDB.Graph
+    GraphDB.IOTable
     GraphDB.IOStableNameSet
     GraphDB.TH
     GraphDB.TH.Q
     GraphDB.TH.Type
-    GraphDB.GenerateBoilerplate.MembersRegistry
-    GraphDB.GenerateBoilerplate.TagInstanceBuilder
-    GraphDB.GenerateBoilerplate
-    GraphDB.Graph
-    GraphDB.Prelude
-    GraphDB.Graph.Dispatcher
-    GraphDB.Graph.Node
-    GraphDB.Graph.Transaction
-    GraphDB.Graph.Transaction.NodeRef
-    GraphDB.Graph.Transaction.NodeRefRegistry
     GraphDB.DIOVector
     GraphDB.IOQueue
-    GraphDB.API
+    GraphDB.Prelude
   build-depends:
+    parsec,
     th-expand-syns,
     attoparsec,
     monad-stm,
     cio,
+    unordered-containers,
     containers,
     template-haskell,
     errors,
@@ -124,10 +130,12 @@ executable graph-db-demo
     -threaded 
     "-with-rtsopts=-N"
   build-depends:
+    parsec,
     th-expand-syns,
     attoparsec,
     monad-stm,
     cio,
+    unordered-containers,
     containers,
     template-haskell,
     errors,
@@ -143,71 +151,11 @@ executable graph-db-demo
     stm,
     transformers,
     mtl,
-    base >= 4.5 && < 5
-  default-extensions:
-    Arrows
-    DeriveGeneric
-    ImpredicativeTypes
-    BangPatterns
-    PatternGuards
-    GADTs
-    StandaloneDeriving
-    MultiParamTypeClasses
-    ScopedTypeVariables
-    FlexibleInstances
-    TypeFamilies
-    TypeOperators
-    FlexibleContexts
-    NoImplicitPrelude
-    EmptyDataDecls
-    DataKinds
-    NoMonomorphismRestriction
-    RankNTypes
-    ConstraintKinds
-    DefaultSignatures
-    TupleSections
-    OverloadedStrings
-    TemplateHaskell
-    QuasiQuotes
-    DeriveDataTypeable
-    GeneralizedNewtypeDeriving
-    RecordWildCards
-    MultiWayIf
-    LiberalTypeSynonyms
-    LambdaCase
-  default-language:
-    Haskell2010
+    base >= 4.5 && < 5,
 
-
-executable graph-db-generate-boilerplate-demo
-  hs-source-dirs:
-    src
-  main-is:
-    GenerateBoilerplateDemo.hs
-  ghc-options:
-    -threaded 
-    "-with-rtsopts=-N"
-  build-depends:
-    th-expand-syns,
-    attoparsec,
-    monad-stm,
-    cio,
-    containers,
-    template-haskell,
-    errors,
-    acid-io == 0.1.*,
-    SafeSemaphore == 0.9.*,
-    pipes-cereal-plus == 0.2.*,
-    system-filepath == 0.4.*,
-    vector,
-    hashtables == 1.1.*,
-    hashable == 1.2.*,
-    text,
-    bytestring,
-    stm,
-    transformers,
-    mtl,
-    base >= 4.5 && < 5
+    ghc-datasize,
+    old-locale,
+    time
   default-extensions:
     Arrows
     DeriveGeneric
@@ -251,10 +199,12 @@ test-suite graph-db-htf-test-suite
   main-is:          
     HTFTestSuite.hs
   build-depends:
+    parsec,
     th-expand-syns,
     attoparsec,
     monad-stm,
     cio,
+    unordered-containers,
     containers,
     template-haskell,
     errors,
@@ -272,8 +222,7 @@ test-suite graph-db-htf-test-suite
     mtl,
     base >= 4.5 && < 5,
 
-    pipes-bytestring,
-    pipes,
+    cereal-plus,
     QuickCheck,
     HUnit,
     HTF == 0.11.*

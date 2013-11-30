@@ -3,12 +3,10 @@ module HTFTestSuite.GraphTests where
 
 import Test.Framework
 import Test.QuickCheck.Monadic
-import GraphDB.Prelude hiding (assert, serialize, deserialize)
-import GraphDB.Graph
-import qualified HTFTestSuite.Model as Model
-import Pipes
-import qualified Pipes.Prelude
-import qualified Pipes.ByteString
+import GraphDB.Prelude hiding (assert)
+import qualified GraphDB.Graph as G
+import qualified CerealPlus.Serialize
+import qualified CerealPlus.Deserialize
 
 
 -- Graph equality is based on refs, so it can't be used.
@@ -19,48 +17,88 @@ import qualified Pipes.ByteString
 
 prop_deserializedGraphSerializesIntoTheSameByteString = monadicIO $ do
   a <- run $ do
-    graph :: Graph Int Int <- head <$> sample' arbitrary
-    serialize graph
+    graph :: G.Graph Ints <- head <$> sample' arbitrary
+    serializeToBS graph
   b <- run $ do
-    graph :: Graph Int Int <- fmap fromJust . deserialize $ a
-    serialize graph
+    graph :: G.Graph Ints <- deserializeFromBS $ a
+    serializeToBS graph
   assert $ a == b
-
-serialize :: Serializable IO s => s -> IO LazyByteString
-serialize s = Pipes.ByteString.toLazyM $ serializingProducer s
-
-deserialize :: Serializable IO s => LazyByteString -> IO (Maybe s)
-deserialize lbs = do
-  r <- runEitherT $ Pipes.Prelude.head $ Pipes.ByteString.fromLazy lbs >-> deserializingPipe
-  either (\m -> error $ show $ "Deserialization failure: " <> m) return r
+  where
+    serializeToBS = CerealPlus.Serialize.exec . serialize
+    deserializeFromBS bs = 
+      CerealPlus.Deserialize.runPartial deserialize bs >>= \r -> case r of
+        CerealPlus.Deserialize.Done r _ -> return r
+        _ -> error "Deserialization failure"
 
 
-instance Arbitrary (Graph Int Int) where
+data Ints = Ints deriving (Show, Eq, Generic)
+instance G.GraphTag Ints where
+  type Root Ints = Ints
+  data UnionValueType Ints =
+    UnionValueType_Ints |
+    UnionValueType_Int
+    deriving (Show, Eq, Generic)
+  data UnionValue Ints =
+    UnionValue_Ints Ints |
+    UnionValue_Int Int
+    deriving (Show, Eq, Generic)
+  unionIndexHashes = undefined
+
+instance Hashable (G.UnionValueType Ints)
+instance Serializable m (G.UnionValueType Ints)
+instance Serializable m (G.UnionValue Ints)
+instance Serializable m Ints
+instance Hashable (G.Index Ints Ints Int)
+instance Hashable (G.Index Ints Int Int)
+
+instance G.IsUnionValue Ints Ints where
+  toUnionValueType _ = UnionValueType_Ints
+  toUnionValue v = UnionValue_Ints v
+  fromUnionValue z = case z of UnionValue_Ints v -> Just v; _ -> Nothing
+
+instance G.IsUnionValue Ints Int where
+  toUnionValueType _ = UnionValueType_Int
+  toUnionValue v = UnionValue_Int v
+  fromUnionValue z = case z of UnionValue_Int v -> Just v; _ -> Nothing
+
+instance G.Reachable Ints Ints Int where
+  data Index Ints Ints Int =
+    Index_Ints_Int
+    deriving (Show, Eq, Generic)
+instance G.Reachable Ints Int Int where
+  data Index Ints Int Int =
+    Index_Int_Int
+    deriving (Show, Eq, Generic)
+
+instance Arbitrary (G.Graph Ints) where
   arbitrary = do
-    transactions <- listOf arbitraryTransaction
+    updates <- listOf arbitraryUpdate
     return $ unsafePerformIO $ do
-      graph <- new 0
-      traverse_ ($ graph) transactions
+      graph <- G.new Ints
+      mapM_ ($ graph) updates
       return graph
     where
-      arbitraryTransaction = promote $ \graph -> do
-        writes :: [NodeRef Int Int s -> Write Int Int s (NodeRef Int Int s)] <- listOf arbitraryWrite
-        return $ runWrite graph $ unsafeCoerce $ do 
-          ref <- foldr (=<<) getRoot $ writes
-          getValue ref
-        where
-          arbitraryWrite = promote $ \source -> do
-            getTargetNode <- do
-              randomNode <- arbitrary
-              elements $ [return source, getRoot] ++ replicate 10 (newNode randomNode)
-            edge <- elements [1..3]
-            value <- elements [1..20]
-            operation <- elements [setValueOp, insertEdgeOp, deleteEdgeOp]
-            return $ do
-              target <- getTargetNode
-              operation source target edge value
+      arbitraryUpdate = 
+        promote $ \graph -> do
+          transaction <- arbitraryTransaction graph
+          return $ G.runWrite graph $ unsafeCoerce transaction
+        where 
+          arbitraryTransaction graph = oneof [addRandom, removeFirst]
             where
-              setValueOp source target edge value = setValue source value >> return source
-              insertEdgeOp source target edge value = insertEdge source edge target >> return target
-              deleteEdgeOp source target edge value = deleteEdge source edge target >> return source
+              randomValue :: Gen Int
+              randomValue = elements [1..20]
+              addRandom :: Gen (G.Write Ints s ())
+              addRandom = do
+                value <- randomValue
+                return $ do
+                  node <- G.newNode value
+                  G.addTarget node =<< G.getRoot
+              removeFirst :: Gen (G.Write Ints s ())
+              removeFirst = do
+                return $ do
+                  root <- G.getRoot
+                  nodeM <- return . listToMaybe =<< G.getTargetsByType (undefined :: Int) root
+                  forM_ nodeM $ \node -> do
+                    G.removeTarget node root
+              update = undefined
 

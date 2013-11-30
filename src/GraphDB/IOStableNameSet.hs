@@ -5,53 +5,55 @@ module GraphDB.IOStableNameSet
    delete,
    lookup,
    foldM,
+   forM_,
    getSize,
    getNull,
    getList)
   where
 
-import GraphDB.Prelude hiding (insert, delete, lookup, foldM)
+import GraphDB.Prelude hiding (insert, delete, lookup, foldM, forM_)
 import qualified Data.HashTable.IO as Table
 
 
-data IOStableNameSet a = IOStableNameSet {
-  insert :: a -> IO (),
-  delete :: a -> IO (),
-  lookup :: a -> IO Bool,
-  getSize :: IO Int,
-  foldM :: forall z. (z -> a -> IO z) -> z -> IO z
-}
+data IOStableNameSet a = IOStableNameSet !(Table.LinearHashTable (StableName a) a) !(IORef Int)
 
-new :: forall a. IO (IOStableNameSet a)
-new = fromEnv <$> newTable <*> newIORef 0
-  where
-    newTable = Table.new :: IO (Table.BasicHashTable (StableName a) a)
-    fromEnv table sizeRef = IOStableNameSet insert delete lookup getSize foldM
-      where
-        insert a = do
-          sn <- makeStableName a
-          Table.lookup table sn >>= \case
-            Just _ -> return ()
-            Nothing -> do
-              Table.insert table sn a
-              modifyIORef sizeRef succ
-        delete a = do
-          sn <- makeStableName a
-          Table.lookup table sn >>= \case
-            Just _ -> do
-              Table.delete table sn
-              modifyIORef sizeRef pred
-            Nothing -> return ()
-        lookup = makeStableName >=> Table.lookup table >=> return . isJust
-        getSize = readIORef sizeRef
-        foldM :: (z -> a -> IO z) -> z -> IO z
-        foldM f z = Table.foldM f' z table
-          where f' z (_, a) = f z a
+new :: IO (IOStableNameSet a)
+new = IOStableNameSet <$> Table.new <*> newIORef 0
+
+insert :: IOStableNameSet a -> a -> IO ()
+insert (IOStableNameSet table sizeRef) a = do
+  sn <- makeStableName a
+  Table.lookup table sn >>= \case
+    Just _ -> return ()
+    Nothing -> do
+      Table.insert table sn a
+      modifyIORef sizeRef succ
+
+delete :: IOStableNameSet a -> a -> IO Bool
+delete (IOStableNameSet table sizeRef) a = do
+  sn <- makeStableName a
+  Table.lookup table sn >>= \case
+    Just _ -> do
+      Table.delete table sn
+      modifyIORef sizeRef pred
+      return True
+    Nothing -> return False
+
+lookup :: IOStableNameSet a -> a -> IO Bool
+lookup (IOStableNameSet table sizeRef) = makeStableName >=> Table.lookup table >=> return . isJust
+
+getSize :: IOStableNameSet a -> IO Int
+getSize (IOStableNameSet table sizeRef) = readIORef sizeRef
+
+foldM :: IOStableNameSet a -> z -> (z -> a -> IO z) -> IO z
+foldM (IOStableNameSet table sizeRef) z f = Table.foldM f' z table
+  where f' z (_, a) = f z a
 
 getNull :: IOStableNameSet a -> IO Bool
 getNull = getSize >=> return . (<= 0)
 
 getList :: IOStableNameSet a -> IO [a]
-getList sns = foldM sns (\li el -> return $ el : li) []
+getList sns = foldM sns [] (\li el -> return $ el : li)
 
-
+forM_ :: IOStableNameSet a -> (a -> IO ()) -> IO ()
+forM_ sns f = foldM sns () (\() el -> f el)

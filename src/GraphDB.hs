@@ -2,10 +2,10 @@ module GraphDB
   (
     module GraphDB.API,
     -- * Template Haskell 
-    module GraphDB.GenerateBoilerplate,
+    module GraphDB.Macros,
   ) 
   where
 
 import GraphDB.Prelude
 import GraphDB.API
-import GraphDB.GenerateBoilerplate (generateBoilerplate)
+import GraphDB.Macros (generateBoilerplate)

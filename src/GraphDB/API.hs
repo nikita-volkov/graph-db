@@ -12,20 +12,21 @@ module GraphDB.API
     URL(..),
 
     -- * Transactions
-    Write,
-    Read,
-    Edge,
-    NodeRef,
+    Graph.Write,
+    Graph.Read,
+    Graph.ReadOrWrite,
+    Graph.Node,
+    Graph.Reachable(..),
 
     -- ** Transaction building blocks
-    getRoot,
-    newNode,
-    getTargets,
-    getValue,
-    setValue,
-    insertEdge,
-    deleteEdge,
-    deleteEdges,
+    Graph.getRoot,
+    Graph.newNode,
+    Graph.getTargetsByType,
+    Graph.getTargetsByIndex,
+    Graph.addTarget,
+    Graph.removeTarget,
+    Graph.getValue,
+    Graph.setValue,
 
     -- * Server
     ServerMode(..),
@@ -34,19 +35,18 @@ module GraphDB.API
     shutdownServer,
 
     -- * Boilerplate
-    Tag(..),
+    GraphDBTag(..),
+    Graph.GraphTag(..),
     Transaction(..),
-    EventOf(..),
-    EventResultOf(..),
-    ValueOf(..),
-    EdgeOf(..),
+    Graph.IsUnionValue(..),
+    IsUnionEvent(..),
+    IsUnionEventResult(..),
   ) 
   where
 
 import GraphDB.Prelude hiding (Read, log)
 import qualified GraphDB.IOQueue as IOQueue; import GraphDB.IOQueue (IOQueue)
 import qualified GraphDB.Graph as Graph
-import qualified GraphDB.Graph.Transaction as Transaction
 import qualified AcidIO.Storage as Storage
 import qualified AcidIO.Server as Server
 import qualified AcidIO.Client as Client
@@ -98,21 +98,22 @@ pathsFromName name = Storage.pathsFromDirectory ("~/.graph-db/" <> FilePath.from
 -- Start the engine.
 -- 
 -- In case of local persisted mode, loads the latest state. 
--- Loading may take a while. Naturally, the time it takes is proportional to the size of database.
+-- Loading may take a while. 
+-- Naturally, the time it takes is proportional to the size of database.
 -- The startup time also depends on whether the engine was shutdown previously, 
 -- since servicing of persistence files takes place on 'shutdownEngine'. 
-startEngine :: (Tag t) => Mode -> IO (Engine t)
-startEngine mode = case mode of
+startEngine :: (GraphDBTag t) => Graph.Root t -> Mode -> IO (Engine t)
+startEngine root mode = case mode of
   Mode_Local (Just (eventsPersistenceBufferSize, storagePaths)) -> do
     eventsPersistenceBuffer <- IOQueue.start eventsPersistenceBufferSize
-    (storage, graph) <- Storage.acquireAndLoad initGraph applyMemberEvent storagePaths
+    (storage, graph) <- Storage.acquireAndLoad initGraph applyUnionEvent storagePaths
     return $ Engine_Persistent eventsPersistenceBuffer storage graph
     where
-      initGraph = Graph.new $ toMemberValue ()
-      applyMemberEvent graph memberEvent = case memberEventTransaction memberEvent of
+      initGraph = Graph.new root
+      applyUnionEvent graph unionEvent = case unionEventTransaction unionEvent of
         Write write -> void $ Graph.runWrite graph write
         Read read -> error "Unexpected read-event"
-  Mode_Local Nothing -> Engine_NonPersistent <$> (Graph.new $ toMemberValue ())
+  Mode_Local Nothing -> Engine_NonPersistent <$> (Graph.new root)
   Mode_Remote url -> Engine_Remote <$> Client.connect clientURL
     where
       clientURL = case url of
@@ -125,11 +126,11 @@ startEngine mode = case mode of
 -- 
 -- [@t@] A tag-type determining all the associated types with db.
 data Engine t = 
-  Engine_Remote (Client.Client (MemberEvent t) (MemberEventResult t)) |
-  Engine_Persistent (IOQueue.IOQueue) (Storage.Storage (Graph t) (MemberEvent t)) (Graph t) |
-  Engine_NonPersistent (Graph t)
+  Engine_Remote (Client.Client (UnionEvent t) (UnionEventResult t)) |
+  Engine_Persistent (IOQueue.IOQueue) (Storage.Storage (Graph.Graph t) (UnionEvent t)) (Graph.Graph t) |
+  Engine_NonPersistent (Graph.Graph t)
 
-shutdownEngine :: (Tag t) => Engine t -> IO ()
+shutdownEngine :: (GraphDBTag t) => Engine t -> IO ()
 shutdownEngine engine = case engine of
   Engine_Persistent buffer storage graph -> do
     IOQueue.shutdown buffer
@@ -141,124 +142,39 @@ shutdownEngine engine = case engine of
 
 --------------------------------------------------------------------------------
 
--- |
--- Properties of an edge from any source node to /target/ node. E.g.:
--- 
--- @
--- data instance GraphDB.Edge Artist = ArtistOf | ArtistOfByName Text
--- data instance GraphDB.Edge Genre = GenreOf
--- @
--- 
-data family Edge target
-
-newtype NodeRef t s a = NodeRef (Graph.NodeRef (MemberValue t) (MemberEdge t) s)
-
--- |
--- Get the root node.
-getRoot :: Read t s (NodeRef t s a)
-getRoot = NodeRef `liftM` Graph.getRoot
-
--- |
--- Create a new node. 
--- 
--- This node won't get stored if you don't insert at least a single edge 
--- from another stored node to it.
-newNode :: (ValueOf a t) => a -> Write t s (NodeRef t s a)
-newNode value = NodeRef `liftM` Graph.newNode (toMemberValue value)
-
--- |
--- Get targets of the edge from the node.
-getTargets :: (EdgeOf (Edge b) t) => Edge b -> NodeRef t s a -> Read t s [NodeRef t s b]
-getTargets edge (NodeRef ref) = map NodeRef `liftM` Graph.getTargets (toMemberEdge edge) ref
-
--- | 
--- Get a value of the node.
-getValue :: (ValueOf a t) => NodeRef t s a -> Read t s a
-getValue (NodeRef ref) = liftM (fromMaybe bug . fromMemberValue) $ Graph.getValue ref where
-  bug = error "Unexpected value. This is a bug. Please report it."
-
--- | 
--- Replace a value of the specified node.
-setValue :: (ValueOf a t) => NodeRef t s a -> a -> Write t s ()
-setValue (NodeRef ref) value = Graph.setValue ref (toMemberValue value)
-
--- | 
--- Insert the edge from the source to the target.
-insertEdge :: (EdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
-insertEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.insertEdge ref1 (toMemberEdge edge) ref2
-
--- | 
--- Delete from the source the edge to the target.
-deleteEdge :: (EdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> NodeRef t s b -> Write t s ()
-deleteEdge (NodeRef ref1) edge (NodeRef ref2) = Graph.deleteEdge ref1 (toMemberEdge edge) ref2
-
--- | 
--- Delete from the source the edge to all targets.
-deleteEdges :: (EdgeOf (Edge b) t) => NodeRef t s a -> Edge b -> Write t s ()
-deleteEdges (NodeRef ref1) edge = Graph.deleteEdges ref1 (toMemberEdge edge)
-
-
---------------------------------------------------------------------------------
-
 -- | A packed transaction
 data Transaction t a =
-  Write (forall s. Write t s a) |
-  Read (forall s. Read t s a)
+  Write (forall s. Graph.Write t s a) |
+  Read (forall s. Graph.Read t s a)
 
 instance Functor (Transaction t) where
   fmap f t = case t of
     Write write -> Write $ fmap f write
     Read read -> Read $ fmap f read
 
-type Write t s a = Transaction.Write (MemberValue t) (MemberEdge t) s a
-type Read t s a = Transaction.Any (MemberValue t) (MemberEdge t) s a
-
-type Graph t = Graph.Graph (MemberValue t) (MemberEdge t)
-
 class 
-  (
-    ValueOf () t, 
-    Hashable (MemberEdge t), 
-    Eq (MemberEdge t), 
-    Serializable IO (MemberEdge t), 
-    Serializable IO (MemberValue t), 
-    Serializable IO (MemberEvent t), 
-    Serializable IO (MemberEventResult t) 
-  ) =>
-  Tag t where
-    data MemberEvent t
-    data MemberEventResult t
-    data MemberValue t
-    data MemberEdge t
-    memberEventTransaction :: MemberEvent t -> Transaction t (MemberEventResult t)
+  (Graph.GraphTag t, Serializable IO (UnionEvent t), Serializable IO (UnionEventResult t)) =>
+  GraphDBTag t
+  where
+    data UnionEvent t
+    data UnionEventResult t
+    unionEventTransaction :: UnionEvent t -> Transaction t (UnionEventResult t)
 
-class (Serializable IO (MemberEvent t), EventResultOf (EventResult a t) t) => EventOf a t where
-  type EventResult a t
-  eventTransaction :: a -> Transaction t (EventResult a t)
-  toMemberEvent :: a -> MemberEvent t
-  fromMemberEvent :: MemberEvent t -> Maybe a
+class (Serializable IO (UnionEvent t), IsUnionEventResult t (EventResult t a)) => IsUnionEvent t a where
+  type EventResult t a
+  eventTransaction :: a -> Transaction t (EventResult t a)
+  toUnionEvent :: a -> UnionEvent t
+  fromUnionEvent :: UnionEvent t -> Maybe a
 
-class EventResultOf a t where
-  toMemberEventResult :: a -> MemberEventResult t
-  fromMemberEventResult :: MemberEventResult t -> Maybe a
+class IsUnionEventResult t a where
+  toUnionEventResult :: a -> UnionEventResult t
+  fromUnionEventResult :: UnionEventResult t -> Maybe a
 
--- |
--- Functions for converting a value to and from a union value.
-class ValueOf a t where
-  toMemberValue :: a -> MemberValue t
-  fromMemberValue :: MemberValue t -> Maybe a
-
--- |
--- Functions for converting an edge to and from a union value.
-class (Hashable (MemberEdge t), Eq (MemberEdge t)) => EdgeOf a t where
-  toMemberEdge :: a -> MemberEdge t
-  fromMemberEdge :: MemberEdge t -> Maybe a
-
-runEvent :: (EventOf e t) => Engine t -> e -> IO (EventResult e t)
+runEvent :: (IsUnionEvent t e) => Engine t -> e -> IO (EventResult t e)
 runEvent engine event = case engine of
   Engine_Persistent buffer storage graph -> case eventTransaction event of
     Write write -> do
-      IOQueue.enqueue buffer $ Storage.persistEvent storage $ toMemberEvent event
+      IOQueue.enqueue buffer $ Storage.persistEvent storage $ toUnionEvent event
       Graph.runWrite graph write
     Read read -> do
       Graph.runRead graph read
@@ -266,24 +182,24 @@ runEvent engine event = case engine of
     Write write -> Graph.runWrite graph write
     Read read -> Graph.runRead graph read
   Engine_Remote client -> 
-    (Client.request client $ toMemberEvent event) >>=
-    return . fromMemberEventResult >>=
+    (Client.request client $ toUnionEvent event) >>=
+    return . fromUnionEventResult >>=
     return . fromMaybe (error "Unexpected event result")
 
-runMemberEvent :: 
-  (Tag t, Serializable IO (MemberEvent t)) =>
-  Engine t -> MemberEvent t -> IO (MemberEventResult t)
-runMemberEvent engine memberEvent = case engine of
-  Engine_Persistent buffer storage graph -> case memberEventTransaction memberEvent of
+runUnionEvent :: 
+  (GraphDBTag t, Serializable IO (UnionEvent t)) =>
+  Engine t -> UnionEvent t -> IO (UnionEventResult t)
+runUnionEvent engine unionEvent = case engine of
+  Engine_Persistent buffer storage graph -> case unionEventTransaction unionEvent of
     Write write -> do
-      IOQueue.enqueue buffer $ Storage.persistEvent storage memberEvent
+      IOQueue.enqueue buffer $ Storage.persistEvent storage unionEvent
       Graph.runWrite graph write
     Read read -> do
       Graph.runRead graph read
-  Engine_NonPersistent graph -> case memberEventTransaction memberEvent of
+  Engine_NonPersistent graph -> case unionEventTransaction unionEvent of
     Write write -> Graph.runWrite graph write
     Read read -> Graph.runRead graph read
-  Engine_Remote client -> Client.request client memberEvent
+  Engine_Remote client -> Client.request client unionEvent
 
 --------------------------------------------------------------------------------
 
@@ -306,7 +222,7 @@ data Server t = Server {
 }
 
 startServer :: 
-  (Tag t, Serializable IO (MemberEvent t), Serializable IO (MemberEventResult t)) =>
+  (GraphDBTag t, Serializable IO (UnionEvent t), Serializable IO (UnionEventResult t)) =>
   Engine t -> ServerMode -> IO (Server t)
 startServer engine serverMode = do
   acidServer <- Server.start (void . return) (5 * 60 * 10^6) acidServerMode processRequest
@@ -316,4 +232,4 @@ startServer engine serverMode = do
       ServerMode_Socket path -> Server.Socket path
       ServerMode_Host port passwords -> Server.Host port passwords
     shutdownServer acidServer = Server.shutdown acidServer
-    processRequest memberEvent = runMemberEvent engine memberEvent
+    processRequest unionEvent = runUnionEvent engine unionEvent

@@ -4,63 +4,46 @@ module GraphDB.Graph
   (
     Graph,
     new,
-
-    -- * Transactions
-    Transaction.Write,
-    Transaction.Read,
-    Transaction.Any,
     runWrite,
     runRead,
-    Transaction.NodeRef,
-
-    -- ** Transaction building blocks
-    Transaction.getRoot,
-    Transaction.newNode,
-    Transaction.getTargets,
-    Transaction.getValue,
-    Transaction.setValue,
-    Transaction.insertEdge,
-    Transaction.deleteEdge,
-    Transaction.deleteEdges,
-
-  ) where
+    module GraphDB.Graph.Transaction,
+    module GraphDB.Graph.Types,
+  )
+  where
 
 import GraphDB.Prelude
+import GraphDB.Graph.Types
+import GraphDB.Graph.Transaction hiding (runWrite, runRead)
 import qualified GraphDB.Graph.Dispatcher as Dispatcher; import GraphDB.Graph.Dispatcher (Dispatcher)
-import qualified GraphDB.Graph.Node as Node; import GraphDB.Graph.Node (Node)
+import qualified GraphDB.Graph.TypedNode as TypedNode; import GraphDB.Graph.TypedNode (TypedNode)
 import qualified GraphDB.Graph.Transaction as Transaction
-import qualified GraphDB.Graph.Transaction.NodeRef as Transaction
 
 
-
--- | A mutable graph data structure over node properties and edge properties.
-data Graph n e = Graph {
-  root :: Node n e,
+-- | A mutable graph data structure over nodes of supported types.
+data Graph t = Graph {
+  root :: TypedNode t (Root t),
   dispatcher :: Dispatcher
 }
 
-instance Eq (Graph n e) where
-  a == b = root a == root b
-
-instance (Serializable IO n, Serializable IO e, Hashable e, Eq e) => Serializable IO (Graph n e) where
-  serialize = serialize . root
-  deserialize = Graph <$> deserialize <*> (liftIO $ Dispatcher.new)
-
 
 -- | Initialize a 'Graph' with a value for a root-node.
-new :: n -> IO (Graph n e)
-new value = Graph <$> Node.new value <*> Dispatcher.new
+new :: Root t -> IO (Graph t)
+new value = Graph <$> TypedNode.new value <*> Dispatcher.new
 
 
 -- |
 -- Run a write-transaction. 
 -- /s/ is a state-thread making the escape of 'NodeRef's from transaction impossible.
-runWrite :: Graph n e -> (forall s. Transaction.Write n e s r) -> IO r
+runWrite :: Graph t -> (forall s. Transaction.Write t s z) -> IO z
 runWrite graph = Dispatcher.runWrite (dispatcher graph) . Transaction.runWrite (root graph)
 
 -- |
 -- Run a read-transaction. 
 -- /s/ is a state-thread making the escape of 'NodeRef's from transaction impossible.
-runRead :: Graph n e -> (forall s. Transaction.Read n e s r) -> IO r
+runRead :: Graph t -> (forall s. Transaction.Read t s z) -> IO z
 runRead graph = Dispatcher.runRead (dispatcher graph) . Transaction.runRead (root graph)
 
+
+instance (GraphTag t) => Serializable IO (Graph t) where
+  serialize (Graph root _) = serialize root
+  deserialize = Graph <$> deserialize <*> liftIO Dispatcher.new

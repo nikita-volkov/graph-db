@@ -10,7 +10,6 @@ import qualified Data.Char as Char
 import qualified Language.Haskell.TH.ExpandSyns as ExpandSyns
 
 
-
 reifyLocalFunctions :: Q [(Name, Type)]
 reifyLocalFunctions =
   listTopLevelFunctionLikeNames >>=
@@ -101,3 +100,6 @@ whenNoInstance name types f = do
   if z
     then return mempty
     else f
+
+liftSTM :: STM a -> Q a
+liftSTM = runIO . atomically

@@ -1,4 +1,4 @@
-module GraphDB.GenerateBoilerplate.MembersRegistry where
+module GraphDB.Macros.NamesRegistry where
 
 import GraphDB.Prelude
 import qualified GraphDB.API as API
@@ -6,17 +6,18 @@ import Language.Haskell.TH
 import qualified Data.Map as Map
 
 
-data MembersRegistry = MembersRegistry {
+data NamesRegistry = NamesRegistry {
   resolve :: Type -> STM Name,
-  getMembers :: STM [Name],
+  getTypes :: STM [Type],
+  getNames :: STM [Name],
   getPairs :: STM [(Type, Name)]
 }
 
-new :: String -> STM MembersRegistry
+new :: String -> STM NamesRegistry
 new prefix = do
   tableVar <- newTVar []
   sizeVar <- newTVar 0
-  return $ MembersRegistry (resolve tableVar sizeVar) (getMembers tableVar) (getPairs tableVar)
+  return $ NamesRegistry (resolve tableVar sizeVar) (getTypes tableVar) (getNames tableVar) (getPairs tableVar)
   where
     resolve tableVar sizeVar ty = do
       table <- readTVar tableVar
@@ -28,6 +29,7 @@ new prefix = do
           modifyTVar sizeVar succ
           return memberName
         Just memberName -> return memberName
-    getMembers tableVar = map snd <$> readTVar tableVar
+    getTypes tableVar = map fst <$> readTVar tableVar
+    getNames tableVar = map snd <$> readTVar tableVar
     getPairs tableVar = readTVar tableVar
 

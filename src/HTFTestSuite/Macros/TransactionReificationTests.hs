@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
-module HTFTestSuite.GenerateBoilerplate.TransactionReificationTests where
+module HTFTestSuite.Macros.TransactionReificationTests where
 
 import Test.Framework
 import GraphDB.Prelude hiding (assert, elements, Read)
-import GraphDB.GenerateBoilerplate
+import GraphDB.Macros
 import Language.Haskell.TH
 import qualified GraphDB.API as API
 

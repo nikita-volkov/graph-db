@@ -1,143 +1,145 @@
 module GraphDB.Graph.Transaction where
 
-import GraphDB.Prelude hiding (Read, Write, Any)
-import qualified GraphDB.Graph.Node as Node; import GraphDB.Graph.Node (Node)
-import qualified GraphDB.Graph.Transaction.NodeRefRegistry as NodeRefRegistry; import GraphDB.Graph.Transaction.NodeRefRegistry (NodeRefRegistry)
-import qualified GraphDB.Graph.Transaction.NodeRef as NodeRef; import GraphDB.Graph.Transaction.NodeRef (NodeRef)
+import GraphDB.Prelude hiding (Read, Write, ReadOrWrite)
+import GraphDB.Graph.Types
+import qualified GraphDB.Graph.TypedNode as TypedNode; import GraphDB.Graph.TypedNode (TypedNode)
 
 
 
-getRoot :: Any n e s (NodeRef n e s)
-getRoot = do
-  root <- getRootNode
-  registry <- getNodeRefRegistry
-  liftIO $ NodeRefRegistry.newNodeRef registry root
+-- |
+-- A transaction-local reference to node. 
+-- 
+-- The /s/ is a state-thread making the escape of nodes from transaction
+-- impossible. Much inspired by the realization of 'ST'.
+newtype Node t s v = Node (TypedNode t v)
 
-newNode :: n -> Any n e s (NodeRef n e s)
-newNode value = do
-  registry <- getNodeRefRegistry
-  liftIO $ do
-    node <- Node.new value
-    NodeRefRegistry.newNodeRef registry node
+-- |
+-- Get the root node.
+getRoot :: ReadOrWrite t s (Node t s (Root t))
+getRoot = fmap Node getRootTypedNode
 
-getTargets :: (Hashable e, Eq e) => e -> NodeRef n e s -> Any n e s [NodeRef n e s]
-getTargets edge refA = do
-  registry <- getNodeRefRegistry
-  liftIO $ do
-    nodeA <- NodeRef.getNode refA
-    nodesB <- Node.getTargets nodeA edge
-    forM nodesB $ \node -> NodeRefRegistry.newNodeRef registry node
+-- |
+-- Create a new node. 
+-- 
+-- This node won't get stored if you don't insert at least a single edge 
+-- from another stored node to it.
+newNode :: v -> ReadOrWrite t s (Node t s v)
+newNode = fmap Node . liftIO . TypedNode.new
 
-getValue :: NodeRef n e s -> Any n e s n
-getValue ref = liftIO $ NodeRef.getNode ref >>= Node.getValue
+-- |
+-- Get all linked nodes with values of the provided type.
+-- Supposed to be used like this:
+-- 
+-- > getTargetsByType (undefined :: Artist) ...
+-- 
+getTargetsByType :: (Reachable t v v', GraphTag t) => v' -> Node t s v -> ReadOrWrite t s [Node t s v']
+getTargetsByType _ (Node source) = 
+  liftIO $ map Node <$> TypedNode.getTargetsByType undefined source
 
-setValue :: NodeRef n e s -> n -> Write n e s ()
-setValue ref value = do
-  liftIO $ do
-    node <- NodeRef.getNode ref
-    Node.setValue node value
+-- |
+-- Get target nodes reachable by the provided index.
+getTargetsByIndex :: (Reachable t v v', GraphTag t) => Index t v v' -> Node t s v -> ReadOrWrite t s [Node t s v']
+getTargetsByIndex i (Node source) = 
+  liftIO $ map Node <$> TypedNode.getTargetsByIndex i source
 
-insertEdge :: (Hashable e, Eq e) => NodeRef n e s -> e -> NodeRef n e s -> Write n e s ()
-insertEdge refA edge refB = do
-  liftIO $ do
-    nodeA <- NodeRef.getNode refA
-    nodeB <- NodeRef.getNode refB
-    Node.insertEdge nodeA edge nodeB
+-- |
+-- Add a link to the provided target node /v'/, 
+-- while automatically generating all the indexes.
+addTarget :: (Reachable t v v', GraphTag t) => Node t s v' -> Node t s v -> Write t s ()
+addTarget (Node target) (Node source) = 
+  liftIO $ TypedNode.addTarget target source
 
-deleteEdge :: (Hashable e, Eq e) => NodeRef n e s -> e -> NodeRef n e s -> Write n e s ()
-deleteEdge refA edge refB = do
-  liftIO $ do
-    nodeA <- NodeRef.getNode refA
-    nodeB <- NodeRef.getNode refB
-    Node.deleteEdge nodeA edge nodeB
+-- |
+-- Remove the target node /v'/ and all its indexes from the source node /v/.
+removeTarget :: (Reachable t v v', GraphTag t) => Node t s v' -> Node t s v -> Write t s ()
+removeTarget (Node target) (Node source) = 
+  liftIO $ TypedNode.removeTarget target source
 
-deleteEdges :: (Hashable e, Eq e) => NodeRef n e s -> e -> Write n e s ()
-deleteEdges refA edge = do
-  liftIO $ do
-    nodeA <- NodeRef.getNode refA
-    Node.deleteEdges nodeA edge
+-- | 
+-- Get a value of the node.
+getValue :: Node t s v -> ReadOrWrite t s v
+getValue (Node n) = liftIO $ TypedNode.getValue n
+
+-- | 
+-- Replace a value of the specified node.
+setValue :: v -> Node t s v -> Write t s ()
+setValue a (Node n) = liftIO $ TypedNode.setValue a n
 
 
 
 -- | Support for common operations of transaction.
 class Transaction t where
-  getRootNode :: t n e s (Node n e)
-  getNodeRefRegistry :: t n e s (NodeRefRegistry n e)
+  getRootTypedNode :: t tag s (TypedNode tag (Root tag))
 
 instance Transaction Write where
-  getRootNode = Write $ \z _ -> return z
-  getNodeRefRegistry = Write $ \_ z -> return z
+  getRootTypedNode = Write $ \z -> return z
 
 instance Transaction Read where
-  getRootNode = Read $ \z _ -> return z
-  getNodeRefRegistry = Read $ \_ z -> return z
+  getRootTypedNode = Read $ \z -> return z
 
 
 
 -- |
--- A write and read transaction. Only a single write-transaction executes at a time.
+-- A write and read transaction.
 -- 
--- Here the /s/ is a state-thread making the escape of node-refs from transaction
--- impossible. Much inspired by the realization of 'ST'.
--- 
-newtype Write n e s r = Write (Node n e -> NodeRefRegistry n e -> IO r)
+newtype Write t s z = Write (TypedNode t (Root t) -> IO z)
 
-instance MonadIO (Write n e s) where
-  liftIO io = Write $ \_ _ -> io
+instance MonadIO (Write t s) where
+  liftIO io = Write $ \_ -> io
 
-instance Monad (Write n e s) where
-  return a = Write $ \_ _ -> return a
-  writeA >>= aToWriteB = Write rootToRegToIO where
-    rootToRegToIO tag reg = ioA >>= aToIOB where
-      Write rootToRegToIOA = writeA
-      ioA = rootToRegToIOA tag reg
+instance Monad (Write t s) where
+  return a = Write $ \_ -> return a
+  writeA >>= aToWriteB = Write rootToIO where
+    rootToIO root = ioA >>= aToIOB where
+      Write rootToIOA = writeA
+      ioA = rootToIOA root
       aToIOB a = ioB where
-        Write rootToRegToIOB = aToWriteB a
-        ioB = rootToRegToIOB tag reg
+        Write rootToIOB = aToWriteB a
+        ioB = rootToIOB root
 
-instance Applicative (Write n e s) where
+instance Applicative (Write t s) where
   pure = return
   (<*>) = ap
 
-instance Functor (Write n e s) where
+instance Functor (Write t s) where
   fmap = liftM
 
-runWrite :: Node n e -> (forall s. Write n e s r) -> IO r
-runWrite root (Write run) = NodeRefRegistry.new >>= run root
+runWrite :: TypedNode t (Root t) -> (forall s. Write t s z) -> IO z
+runWrite root (Write run) = run root
 
 
 
 -- |
 -- A read-only transaction. Gets executed concurrently.
 -- 
--- Here the /s/ is a state-thread making the escape of node-refs from transaction
--- impossible. Much inspired by the realization of 'ST'.
--- 
-newtype Read n e s r = Read (Node n e -> NodeRefRegistry n e -> IO r)
+newtype Read t s z = Read (TypedNode t (Root t) -> IO z)
 
-instance MonadIO (Read n e s) where
-  liftIO io = Read $ \_ _ -> io
+instance MonadIO (Read t s) where
+  liftIO io = Read $ \_ -> io
 
-instance Monad (Read n e s) where
-  return a = Read $ \_ _ -> return a
-  readA >>= aToReadB = Read rootToRegToIO where
-    rootToRegToIO tag reg = ioA >>= aToIOB where
-      Read rootToRegToIOA = readA
-      ioA = rootToRegToIOA tag reg
+instance Monad (Read t s) where
+  return a = Read $ \_ -> return a
+  readA >>= aToReadB = Read rootToIO where
+    rootToIO root = ioA >>= aToIOB where
+      Read rootToIOA = readA
+      ioA = rootToIOA root
       aToIOB a = ioB where
-        Read rootToRegToIOB = aToReadB a
-        ioB = rootToRegToIOB tag reg
+        Read rootToIOB = aToReadB a
+        ioB = rootToIOB root
 
-instance Applicative (Read n e s) where
+instance Applicative (Read t s) where
   pure = return
   (<*>) = ap
 
-instance Functor (Read n e s) where
+instance Functor (Read t s) where
   fmap = liftM
 
-runRead :: Node n e -> (forall s. Read n e s r) -> IO r
-runRead root (Read run) = NodeRefRegistry.new >>= run root
+runRead :: TypedNode t (Root t) -> (forall s. Read t s z) -> IO z
+runRead root (Read run) = run root
 
 
-
-type Any n e s r = forall t. (Transaction t, MonadIO (t n e s), Applicative (t n e s)) => t n e s r
+-- |
+-- An abstract type. 
+-- Transactions of this type can be composed with both 'Read' and 'Write'.
+type ReadOrWrite t s z = 
+  forall tr. (Transaction tr, MonadIO (tr t s), Applicative (tr t s)) => tr t s z

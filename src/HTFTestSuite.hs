@@ -5,8 +5,8 @@ import GraphDB.Prelude
 
 import {-@ HTF_TESTS @-} HTFTestSuite.GraphTests
 import {-@ HTF_TESTS @-} HTFTestSuite.GraphDBTests
-import {-@ HTF_TESTS @-} HTFTestSuite.GenerateBoilerplateTests
-import {-@ HTF_TESTS @-} HTFTestSuite.GenerateBoilerplate.TransactionReificationTests
+import {-@ HTF_TESTS @-} HTFTestSuite.MacrosTests
+import {-@ HTF_TESTS @-} HTFTestSuite.Macros.TransactionReificationTests
 
 
 

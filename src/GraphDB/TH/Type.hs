@@ -48,3 +48,6 @@ fromDataInstanceDec :: Dec -> Maybe Type
 fromDataInstanceDec dec = case dec of
   DataInstD _ name types _ _ -> Just $ apply $ reverse $ ConT name : types
   _ -> Nothing
+
+tuple :: [Type] -> Type
+tuple ts = foldl' AppT (TupleT (length ts)) ts

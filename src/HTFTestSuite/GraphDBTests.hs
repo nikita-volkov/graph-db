@@ -5,8 +5,6 @@ import Test.Framework
 import GraphDB.Prelude
 import GraphDB
 
-import qualified HTFTestSuite.Model as Model
-
 
 
 test_startupShutdown = unitTestPending ""

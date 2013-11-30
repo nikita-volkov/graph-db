@@ -19,7 +19,7 @@ import Control.Monad as Exports hiding (mapM_, sequence_, forM_, msum, mapM, seq
 import Control.Applicative as Exports
 import Control.Arrow as Exports hiding (left, right)
 import Control.Category as Exports
-import Data.Monoid as Exports
+import Data.Monoid as Exports hiding (Any)
 import Data.Foldable as Exports
 import Data.Traversable as Exports hiding (for)
 import Data.Maybe as Exports
@@ -43,7 +43,7 @@ import System.IO.Unsafe as Exports
 import System.IO as Exports (Handle, hClose)
 import System.IO.Error as Exports
 import Unsafe.Coerce as Exports
-import GHC.Exts as Exports (groupWith, sortWith)
+import GHC.Exts as Exports hiding (traceEvent)
 import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import Debug.Trace as Exports
@@ -55,7 +55,7 @@ import Control.Monad.ST as Exports
 import Control.Monad.Identity as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
 import Control.Monad.State as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
 import Control.Monad.Reader as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
-import Control.Monad.Writer as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
+import Control.Monad.Writer as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM, Any)
 import Control.Monad.Trans as Exports
 
 -- stm
