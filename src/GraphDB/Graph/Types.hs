@@ -20,12 +20,17 @@ class
     -- | A more memory-efficient alternative to 'TypeRep', used for grouping by type.
     data UnionValueType t
     data UnionValue t
-    unionIndexHashes :: (UnionValue t, UnionValueType t) -> [Int]
+    unionValueIndexHashes :: UnionValueType t -> UnionValue t -> [Int]
+    unionValueAny :: UnionValue t -> Any
+    unionValueType :: UnionValue t -> UnionValueType t
+    unionValueTypeValue :: Any -> UnionValueType t -> UnionValue t
+
+-- TODO: eliminate it
+toUnionValueType :: (IsUnionValue t v, GraphTag t) => v -> UnionValueType t
+toUnionValueType = unionValueType . toUnionValue
 
 class (Serializable IO v) => IsUnionValue t v where
-  toUnionValueType :: v -> UnionValueType t
   toUnionValue :: v -> UnionValue t
-  fromUnionValue :: UnionValue t -> Maybe v
 
 -- |
 -- Defines a specific set of indexes on nodes of value /v'/ for nodes of value /v/.

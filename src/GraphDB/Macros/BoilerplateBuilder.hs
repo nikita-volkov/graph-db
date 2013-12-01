@@ -46,7 +46,7 @@ new (tagName, tagType) = do
       addValue target
     addValue t = do
       (uvName, uvtName) <- GraphTagInstanceBuilder.addValue graphTagInstBldr t
-      addDecs =<< generateIsUnionValueInstance t tagType uvName uvtName
+      addDecs =<< generateIsUnionValueInstance t tagType uvName
       addDecs =<< generateHashableInstance t
       addDecs =<< generateSerializableInstance t
     addTransactionFunction (name, argTypes, evResultType, isWrite) = do
@@ -64,7 +64,7 @@ new (tagName, tagType) = do
     getDecs' = do
       decs <- getDecs
       dec1 <- GraphDBTagInstanceBuilder.getDec graphDBTagInstBldr
-      dec2 <- GraphTagInstanceBuilder.getDec graphTagInstBldr
+      dec2 <- GraphTagInstanceBuilder.render graphTagInstBldr
       return $ dec1 : dec2 : decs
 
   return $ 
@@ -154,24 +154,9 @@ generateSerializableInstance t =
   Q.whenNoInstance ''Serializable [ConT ''IO, t] $ 
     [d| instance Serializable IO $(return t) |]
 
-generateIsUnionValueInstance :: Type -> Type -> Name -> Name -> Q [Dec]
-generateIsUnionValueInstance valueType tagType unionValueName unionValueTypeName = 
+generateIsUnionValueInstance :: Type -> Type -> Name -> Q [Dec]
+generateIsUnionValueInstance valueType tagType unionValueName = 
   [d|
     instance API.IsUnionValue $(return tagType) $(return valueType) where
-      toUnionValueType _ = $(conE unionValueTypeName)
       toUnionValue = $(conE unionValueName)
-      fromUnionValue = $fromUnionValueLambdaQ
   |]
-  where
-    fromUnionValueLambdaQ = Q.caseLambda [pure match1, pure match2]
-      where
-        match1 = Match pattern body []
-          where
-            pattern = ConP unionValueName [VarP patternVarName]
-            patternVarName = mkName "_0"
-            body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
-        match2 = Match pattern body []
-          where
-            pattern = WildP
-            body = NormalB $ Q.purify [e| Nothing |]
-

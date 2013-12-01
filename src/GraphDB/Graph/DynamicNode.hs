@@ -11,15 +11,17 @@ import qualified Data.HashTable.IO as HashTables
 
 newtype DynamicNode t = DynamicNode (UnionValueType t, Node t)
 
-new :: UnionValue t -> IO (DynamicNode t)
-new uv = undefined
+new :: (GraphTag t) => UnionValue t -> IO (DynamicNode t)
+new uv = DynamicNode <$> ((,) <$> (pure $ unionValueType uv) <*> (Node.new $ unionValueAny uv))
 
-getValue :: DynamicNode t -> IO (UnionValue t)
-getValue = undefined
+getValue :: (GraphTag t) => DynamicNode t -> IO (UnionValue t)
+getValue (DynamicNode (t, n)) = do
+  any <- Node.getValue n
+  return $ unionValueTypeValue any t
 
 addTarget :: GraphTag t => DynamicNode t -> DynamicNode t -> IO ()
 addTarget target@(DynamicNode (targetUVT, targetNode)) (DynamicNode (sourceUVT, sourceNode)) = do
-  targetIndexHashes <- unionIndexHashes <$> ((,) <$> getValue target <*> pure sourceUVT)
+  targetIndexHashes <- unionValueIndexHashes <$> pure sourceUVT <*> getValue target
   Node.addTarget (targetNode, targetUVT, targetIndexHashes) sourceNode
 
 forMTargets_ :: DynamicNode t -> (DynamicNode t -> IO ()) -> IO ()
@@ -34,13 +36,14 @@ forMAllNodes_ :: DynamicNode t -> (DynamicNode t -> IO ()) -> IO ()
 forMAllNodes_ n f = do
   visitedNodes <- IOStableNameSet.new
   let
-    visitNode node = do
-      f node
-      IOStableNameSet.insert visitedNodes node
-      forMTargets_ node $ \target -> do
-        IOStableNameSet.lookup visitedNodes target >>= \case
+    visitNode dn = do
+      f dn
+      forMTargets_ dn $ \target@(DynamicNode (_, n)) -> do
+        IOStableNameSet.lookup visitedNodes n >>= \case
           True -> return ()
-          False -> visitNode target
+          False -> do
+            IOStableNameSet.insert visitedNodes n
+            visitNode target
   visitNode n
 
 
@@ -77,7 +80,7 @@ instance (GraphTag t) => Serializable IO (DynamicNode t) where
           head : tail -> writeIORef traversalQueue tail >> return (Just head)
           [] -> return Nothing
       insertToTraversalQueue node = 
-        undefined
+        liftIO $ modifyIORef traversalQueue (node:)
       serializeNodeRef node = do
         sn <- liftIO $ makeStableName node
         (liftIO $ HashTables.lookup indexTable sn) >>= \case

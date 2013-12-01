@@ -16,13 +16,20 @@ import qualified CerealPlus.Deserialize
 --   assert $ Just graph == r
 
 prop_deserializedGraphSerializesIntoTheSameByteString = monadicIO $ do
-  a <- run $ do
+  (a, n) <- run $ do
     graph :: G.Graph Ints <- head <$> sample' arbitrary
-    serializeToBS graph
+    bs <- serializeToBS graph
+    n <- G.runRead graph $ G.getRoot >>= G.countTargets
+    return (bs, n)
+
+  pre (n > 0)
+
   b <- run $ do
-    graph :: G.Graph Ints <- deserializeFromBS $ a
+    graph :: G.Graph Ints <- deserializeFromBS a
     serializeToBS graph
+
   assert $ a == b
+
   where
     serializeToBS = CerealPlus.Serialize.exec . serialize
     deserializeFromBS bs = 
@@ -42,7 +49,16 @@ instance G.GraphTag Ints where
     UnionValue_Ints Ints |
     UnionValue_Int Int
     deriving (Show, Eq, Generic)
-  unionIndexHashes = undefined
+  unionValueIndexHashes UnionValueType_Ints (UnionValue_Int v) =
+    map hash (G.indexes v :: [G.Index Ints Ints Int])
+  unionValueIndexHashes UnionValueType_Int (UnionValue_Int v) =
+    map hash (G.indexes v :: [G.Index Ints Int Int])
+  unionValueAny (UnionValue_Ints v) = unsafeCoerce v
+  unionValueAny (UnionValue_Int v) = unsafeCoerce v
+  unionValueType (UnionValue_Ints v) = UnionValueType_Ints
+  unionValueType (UnionValue_Int v) = UnionValueType_Int
+  unionValueTypeValue any UnionValueType_Ints = UnionValue_Ints (unsafeCoerce any)
+  unionValueTypeValue any UnionValueType_Int = UnionValue_Int (unsafeCoerce any)
 
 instance Hashable (G.UnionValueType Ints)
 instance Serializable m (G.UnionValueType Ints)
@@ -52,14 +68,10 @@ instance Hashable (G.Index Ints Ints Int)
 instance Hashable (G.Index Ints Int Int)
 
 instance G.IsUnionValue Ints Ints where
-  toUnionValueType _ = UnionValueType_Ints
   toUnionValue v = UnionValue_Ints v
-  fromUnionValue z = case z of UnionValue_Ints v -> Just v; _ -> Nothing
 
 instance G.IsUnionValue Ints Int where
-  toUnionValueType _ = UnionValueType_Int
   toUnionValue v = UnionValue_Int v
-  fromUnionValue z = case z of UnionValue_Int v -> Just v; _ -> Nothing
 
 instance G.Reachable Ints Ints Int where
   data Index Ints Ints Int =
