@@ -26,7 +26,7 @@ setValue :: v -> TypedNode t v -> IO ()
 setValue v (TypedNode node) = Node.setValue (unsafeCoerce v) node
 
 getValue :: TypedNode t v -> IO v
-getValue = unsafeCoerce . Node.getValue . node
+getValue = fmap unsafeCoerce . Node.getValue . node
 
 getTargetsByType :: (Reachable t v v', GraphTag t) => v' -> TypedNode t v -> IO [TypedNode t v']
 getTargetsByType v' (TypedNode node) =
