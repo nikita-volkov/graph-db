@@ -6,12 +6,12 @@ import GraphDB.Prelude
 import GraphDB.Graph.Types
 import qualified GraphDB.Graph.Node as Node; import GraphDB.Graph.Node (Node)
 import qualified GraphDB.Graph.DynamicNode as DynamicNode; import GraphDB.Graph.DynamicNode (DynamicNode)
+import qualified GraphDB.IOStableNameSet as IOStableNameSet; import GraphDB.IOStableNameSet (IOStableNameSet)
 
 newtype TypedNode t v = TypedNode { node :: Node t }
 
 instance (GraphTag t, IsUnionValue t v) => Serializable IO (TypedNode t v) where
-  serialize (TypedNode node) = do
-    serialize $ DynamicNode.DynamicNode (toUnionValueType (undefined :: v), node)
+  serialize = serialize . toDynamicNode
   deserialize = do
     DynamicNode.DynamicNode (_, node) <- deserialize
     return $ TypedNode node
@@ -55,3 +55,14 @@ removeTarget target source = do
     targetUVT = toUnionValueType (undefined :: v')
     sourceNode = node source
 
+countTargets :: TypedNode t v -> IO Int
+countTargets (TypedNode node) = Node.foldTargets node 0 $ \z _ -> return $ succ z
+
+countAllNodes :: (GraphTag t, IsUnionValue t v) => TypedNode t v -> IO Int
+countAllNodes tn = do
+  countRef <- newIORef 0
+  DynamicNode.forMAllNodes_ (toDynamicNode tn) $ \_ -> modifyIORef countRef succ
+  readIORef countRef
+
+toDynamicNode :: forall t v. (GraphTag t, IsUnionValue t v) => TypedNode t v -> DynamicNode t
+toDynamicNode (TypedNode node) = DynamicNode.DynamicNode (toUnionValueType (undefined :: v), node)

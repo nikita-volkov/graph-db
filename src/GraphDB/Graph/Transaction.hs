@@ -65,6 +65,20 @@ getValue (Node n) = liftIO $ TypedNode.getValue n
 setValue :: v -> Node t s v -> Write t s ()
 setValue a (Node n) = liftIO $ TypedNode.setValue a n
 
+-- |
+-- Count how many targets the node has.
+countTargets :: Node t s v -> ReadOrWrite t s Int
+countTargets (Node n) = liftIO $ TypedNode.countTargets n
+
+-- |
+-- Count the total amount of distinct nodes in the graph.
+-- 
+-- Requires traversal of the whole graph, so beware.
+countAllNodes :: (GraphTag t) => ReadOrWrite t s Int
+countAllNodes = do
+  Node tn <- getRoot
+  liftIO $ TypedNode.countAllNodes tn
+
 
 
 -- | Support for common operations of transaction.

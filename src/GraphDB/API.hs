@@ -27,6 +27,8 @@ module GraphDB.API
     Graph.removeTarget,
     Graph.getValue,
     Graph.setValue,
+    Graph.countTargets,
+    Graph.countAllNodes,
 
     -- * Server
     ServerMode(..),

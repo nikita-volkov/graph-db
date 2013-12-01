@@ -28,6 +28,20 @@ forMTargets_ (DynamicNode (t, n)) f = Node.forMTargets_ n $ \tn -> f (DynamicNod
 foldTargets :: DynamicNode t -> z -> (z -> DynamicNode t -> IO z) -> IO z
 foldTargets (DynamicNode (t, n)) z f = Node.foldTargets n z $ \z tn -> f z (DynamicNode tn)
 
+-- |
+-- Traverse all nodes.
+forMAllNodes_ :: DynamicNode t -> (DynamicNode t -> IO ()) -> IO ()
+forMAllNodes_ n f = do
+  visitedNodes <- IOStableNameSet.new
+  let
+    visitNode node = do
+      f node
+      IOStableNameSet.insert visitedNodes node
+      forMTargets_ node $ \target -> do
+        IOStableNameSet.lookup visitedNodes target >>= \case
+          True -> return ()
+          False -> visitNode target
+  visitNode n
 
 
 instance (GraphTag t) => Serializable IO (DynamicNode t) where
