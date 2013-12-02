@@ -15,9 +15,9 @@ import qualified CerealPlus.Deserialize
 --   r <- run $ deserialize =<< serialize graph
 --   assert $ Just graph == r
 
-prop_deserializedGraphSerializesIntoTheSameByteString = monadicIO $ do
+prop_deserializedGraphSerializesIntoTheSameByteString :: G.Graph Ints -> Property
+prop_deserializedGraphSerializesIntoTheSameByteString graph = monadicIO $ do
   (a, n) <- run $ do
-    graph :: G.Graph Ints <- head <$> sample' arbitrary
     bs <- serializeToBS graph
     n <- G.runRead graph $ G.getRoot >>= G.countTargets
     return (bs, n)
@@ -37,6 +37,14 @@ prop_deserializedGraphSerializesIntoTheSameByteString = monadicIO $ do
         CerealPlus.Deserialize.Done r _ -> return r
         _ -> error "Deserialization failure"
 
+-- Required by QuickCheck.
+instance Show (G.Graph Ints) where
+  show graph = "Graph " <> show stats
+    where
+      stats = unsafePerformIO $ G.runRead graph G.getStats
+
+instance Eq (G.Graph Ints) where
+  a == b = error "TODO: testing graph equality"
 
 data Ints = Ints deriving (Show, Eq, Generic)
 instance G.GraphTag Ints where
@@ -59,20 +67,16 @@ instance G.GraphTag Ints where
   unionValueType (UnionValue_Int v) = UnionValueType_Int
   unionValueTypeValue any UnionValueType_Ints = UnionValue_Ints (unsafeCoerce any)
   unionValueTypeValue any UnionValueType_Int = UnionValue_Int (unsafeCoerce any)
-
 instance Hashable (G.UnionValueType Ints)
 instance Serializable m (G.UnionValueType Ints)
 instance Serializable m (G.UnionValue Ints)
 instance Serializable m Ints
 instance Hashable (G.Index Ints Ints Int)
 instance Hashable (G.Index Ints Int Int)
-
 instance G.IsUnionValue Ints Ints where
   toUnionValue v = UnionValue_Ints v
-
 instance G.IsUnionValue Ints Int where
   toUnionValue v = UnionValue_Int v
-
 instance G.Reachable Ints Ints Int where
   data Index Ints Ints Int =
     Index_Ints_Int
@@ -95,7 +99,7 @@ instance Arbitrary (G.Graph Ints) where
           transaction <- arbitraryTransaction graph
           return $ G.runWrite graph $ unsafeCoerce transaction
         where 
-          arbitraryTransaction graph = oneof [addRandom, removeFirst]
+          arbitraryTransaction graph = oneof [addRandom, addRandom, removeFirst]
             where
               randomValue :: Gen Int
               randomValue = elements [1..20]
