@@ -140,3 +140,20 @@ foldTargets (Node _ trTable _) z f =
   IOTable.foldM trTable z $ \z (t, (plainRefs, _)) ->
     IOStableNameSet.foldM plainRefs z $ \z node -> 
       f z (t, node)
+
+getStats :: Node t -> IO (Int, Int)
+getStats n = do
+  visitedNodes <- IOStableNameSet.new
+  nodesAmount <- newIORef 0
+  edgesAmount <- newIORef 0
+  let
+    visitNode n = do
+      modifyIORef nodesAmount succ
+      IOStableNameSet.insert visitedNodes n
+      forMTargets_ n $ \(_, tn) -> do
+        modifyIORef edgesAmount succ
+        IOStableNameSet.lookup visitedNodes tn >>= \case
+          True -> return ()
+          False -> visitNode tn
+  visitNode n
+  (,) <$> readIORef nodesAmount <*> readIORef edgesAmount

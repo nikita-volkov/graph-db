@@ -215,8 +215,8 @@ getRecordingsByArtistUID uid =
   return . concat >>=
   mapM G.getValue
 
-countAllNodes :: G.Read Catalogue s Int
-countAllNodes = G.countAllNodes
+getStats :: G.Read Catalogue s (Int, Int)
+getStats = G.getStats
 
 -----------
 -- Boilerplate.
@@ -271,8 +271,8 @@ main = do
 
   putStrLn "Memory footprint (bytes):"
   print =<< GHC.DataSize.recursiveSize db
-  putStrLn "Total amount of nodes in the graph:"
-  print =<< G.runEvent db CountAllNodes
+  putStrLn "Total amounts of nodes and edges in the graph:"
+  print =<< G.runEvent db GetStats
 
   G.shutdownEngine db
 

@@ -28,7 +28,7 @@ module GraphDB.API
     Graph.getValue,
     Graph.setValue,
     Graph.countTargets,
-    Graph.countAllNodes,
+    Graph.getStats,
 
     -- * Server
     ServerMode(..),

@@ -71,13 +71,13 @@ countTargets :: Node t s v -> ReadOrWrite t s Int
 countTargets (Node n) = liftIO $ TypedNode.countTargets n
 
 -- |
--- Count the total amount of distinct nodes in the graph.
+-- Count the total amount of distinct nodes and edges in the graph.
 -- 
 -- Requires traversal of the whole graph, so beware.
-countAllNodes :: (GraphTag t) => ReadOrWrite t s Int
-countAllNodes = do
+getStats :: (GraphTag t) => ReadOrWrite t s (Int, Int)
+getStats = do
   Node tn <- getRoot
-  liftIO $ TypedNode.countAllNodes tn
+  liftIO $ TypedNode.getStats tn
 
 
 

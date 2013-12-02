@@ -58,11 +58,8 @@ removeTarget target source = do
 countTargets :: TypedNode t v -> IO Int
 countTargets (TypedNode node) = Node.foldTargets node 0 $ \z _ -> return $ succ z
 
-countAllNodes :: (GraphTag t, IsUnionValue t v) => TypedNode t v -> IO Int
-countAllNodes tn = do
-  countRef <- newIORef 0
-  DynamicNode.forMAllNodes_ (toDynamicNode tn) $ \_ -> modifyIORef countRef succ
-  readIORef countRef
+getStats :: TypedNode t v -> IO (Int, Int)
+getStats (TypedNode n) = Node.getStats n
 
 toDynamicNode :: forall t v. (GraphTag t, IsUnionValue t v) => TypedNode t v -> DynamicNode t
 toDynamicNode (TypedNode node) = DynamicNode.DynamicNode (toUnionValueType (undefined :: v), node)
