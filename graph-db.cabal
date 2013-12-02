@@ -198,6 +198,9 @@ test-suite graph-db-htf-test-suite
     src
   main-is:          
     HTFTestSuite.hs
+  ghc-options:
+    -threaded
+    "-with-rtsopts=-N"
   build-depends:
     parsec,
     th-expand-syns,
@@ -222,7 +225,14 @@ test-suite graph-db-htf-test-suite
     mtl,
     base >= 4.5 && < 5,
 
+    ghc-datasize,
+    directory,
+    system-fileio,
+    old-locale,
+    time,
     cereal-plus,
+    quickcheck-instances,
+    QuickCheck-GenT == 0.1.*,
     QuickCheck,
     HUnit,
     HTF == 0.11.*

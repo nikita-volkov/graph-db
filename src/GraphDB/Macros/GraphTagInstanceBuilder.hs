@@ -59,7 +59,7 @@ new (tagName, tagType) = do
                 getConstructors = do
                   names <- Q.liftSTM $ NamesRegistry.getNames valueTypeNamesRegistry
                   forM names $ \n -> return $ NormalC n []
-                derivations = [''Eq, ''Generic]
+                derivations = [''Eq, ''Generic, ''Show, ''Bounded, ''Enum]
             unionValueIndexHashesFunDecQ = FunD <$> pure 'API.unionValueIndexHashes <*> clausesQ
               where
                 clausesQ = do

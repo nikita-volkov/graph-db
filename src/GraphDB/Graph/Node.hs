@@ -31,6 +31,8 @@ type TargetRefs t = (IOStableNameSet (Node t), IOTable Int (IOStableNameSet (Nod
 -- Also linking to root-node is redundant, so we are protected from this list being huge.
 type SourceRefs t = IOStableNameSet (Node t)
 
+instance Eq (Node t) where
+  Node ref _ _ == Node ref' _ _ = ref == ref'
 
 new :: Any -> IO (Node t)
 new a = Node <$> newIORef a <*> IOTable.new <*> IOStableNameSet.new
@@ -91,9 +93,10 @@ addSourceRef source (Node _ _ sRefs) = do
 
 removeTarget :: (GraphTag t) => (Node t, UnionValueType t, [Int]) -> Node t -> IO ()
 removeTarget (target, targetType, targetIndexes) source = do
-  removeTargetRefs (target, targetType, targetIndexes) source
-  removeSourceRef source target
-  maintain target
+  found <- removeSourceRef source target
+  when found $ do
+    removeTargetRefs (target, targetType, targetIndexes) source
+    maintain target
 
 removeTargetRefs :: (GraphTag t) => (Node t, UnionValueType t, [Int]) -> Node t -> IO ()
 removeTargetRefs (target, targetType, targetIndexes) (Node _ ttTable _) =
@@ -109,11 +112,8 @@ removeTargetRefs (target, targetType, targetIndexes) (Node _ ttTable _) =
               True -> return ()
               False -> error "Target ref not found"
 
-removeSourceRef :: Node t -> Node t -> IO ()
-removeSourceRef source (Node _ _ sRefs) = do
-  IOStableNameSet.delete sRefs source >>= \case
-    False -> error "Source ref not found"
-    True -> return ()
+removeSourceRef :: Node t -> Node t -> IO Bool
+removeSourceRef source (Node _ _ sRefs) = IOStableNameSet.delete sRefs source
 
 -- |
 -- If after being removed the target node has no edges to it left, 

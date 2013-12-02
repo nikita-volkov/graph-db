@@ -11,7 +11,7 @@ import qualified GraphDB.Graph.TypedNode as TypedNode; import GraphDB.Graph.Type
 -- 
 -- The /s/ is a state-thread making the escape of nodes from transaction
 -- impossible. Much inspired by the realization of 'ST'.
-newtype Node t s v = Node (TypedNode t v)
+newtype Node t s v = Node (TypedNode t v) deriving (Eq)
 
 -- |
 -- Get the root node.

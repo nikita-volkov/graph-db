@@ -32,6 +32,8 @@ foldTargets (DynamicNode (t, n)) z f = Node.foldTargets n z $ \z tn -> f z (Dyna
 
 -- |
 -- Traverse all nodes.
+-- TODO: Rename to traverseAllNodes, since we're not trying to match the existing conventions with
+-- fold already.
 forMAllNodes_ :: DynamicNode t -> (DynamicNode t -> IO ()) -> IO ()
 forMAllNodes_ n f = do
   visitedNodes <- IOStableNameSet.new
@@ -48,7 +50,7 @@ forMAllNodes_ n f = do
 
 
 instance (GraphTag t) => Serializable IO (DynamicNode t) where
-  
+
   serialize root = do
     traversalQueue <- liftIO $ newIORef []
     indexTable 
@@ -104,8 +106,12 @@ instance (GraphTag t) => Serializable IO (DynamicNode t) where
     indexedNodes <- liftIO $ DIOVector.new
     unpopulatedNodes <- liftIO $ newIORef []
     let
-      fetchUnpopulatedNode = liftIO $ readIORef unpopulatedNodes >>= headZ
-      enqueueUnpopulatedNode node = liftIO $ modifyIORef unpopulatedNodes (node:)
+      fetchUnpopulatedNode = 
+        liftIO $ atomicModifyIORef' unpopulatedNodes $ \case
+          head : tail -> (tail, Just head)
+          _ -> ([], Nothing)
+      enqueueUnpopulatedNode node = 
+        liftIO $ modifyIORef unpopulatedNodes (node:)
       deserializeNode = do
         deserialize >>= \case
           True -> liftIO . DIOVector.unsafeLookup indexedNodes =<< deserialize
@@ -115,11 +121,14 @@ instance (GraphTag t) => Serializable IO (DynamicNode t) where
             enqueueUnpopulatedNode newNode
             return newNode
       loopAddTargets = do
-        source <- fetchUnpopulatedNode
-        count <- deserialize
-        replicateM count $ do
-          target <- deserializeNode
-          liftIO $ addTarget target source
+        fetchUnpopulatedNode >>= \case
+          Nothing -> return ()
+          Just source -> do
+            count <- deserialize
+            replicateM_ count $ do
+              target <- deserializeNode
+              liftIO $ addTarget target source
+            loopAddTargets
 
     node <- deserializeNode
     loopAddTargets

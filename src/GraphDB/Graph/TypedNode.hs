@@ -8,7 +8,7 @@ import qualified GraphDB.Graph.Node as Node; import GraphDB.Graph.Node (Node)
 import qualified GraphDB.Graph.DynamicNode as DynamicNode; import GraphDB.Graph.DynamicNode (DynamicNode)
 import qualified GraphDB.IOStableNameSet as IOStableNameSet; import GraphDB.IOStableNameSet (IOStableNameSet)
 
-newtype TypedNode t v = TypedNode { node :: Node t }
+newtype TypedNode t v = TypedNode { node :: Node t } deriving (Eq)
 
 instance (GraphTag t, IsUnionValue t v) => Serializable IO (TypedNode t v) where
   serialize = serialize . toDynamicNode

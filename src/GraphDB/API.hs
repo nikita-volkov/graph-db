@@ -4,6 +4,7 @@ module GraphDB.API
     Engine,
     startEngine,
     shutdownEngine,
+    shutdownEngine',
     runEvent,
     Mode(..),
     pathsFromName,
@@ -137,6 +138,15 @@ shutdownEngine engine = case engine of
   Engine_Persistent buffer storage graph -> do
     IOQueue.shutdown buffer
     Storage.checkpoint storage graph
+    Storage.release storage
+  Engine_NonPersistent _ -> return ()
+  Engine_Remote client -> Client.disconnect client
+
+-- | Shutdown engine without maintenance. 
+shutdownEngine' :: (GraphDBTag t) => Engine t -> IO ()
+shutdownEngine' engine = case engine of
+  Engine_Persistent buffer storage graph -> do
+    IOQueue.shutdown buffer
     Storage.release storage
   Engine_NonPersistent _ -> return ()
   Engine_Remote client -> Client.disconnect client
