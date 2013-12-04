@@ -85,11 +85,11 @@ addTargetRefs (target, targetType, targetIndexes) (Node _ ttTable _) = do
             IOStableNameSet.insert set target
             IOTable.insert indexedRefs i set
           Just set -> do
-            IOStableNameSet.insert set target
+            void $ IOStableNameSet.insert set target
 
 addSourceRef :: Node t -> Node t -> IO ()
 addSourceRef source (Node _ _ sRefs) = do
-  IOStableNameSet.insert sRefs source
+  void $ IOStableNameSet.insert sRefs source
 
 removeTarget :: (GraphTag t) => (Node t, UnionValueType t, [Int]) -> Node t -> IO ()
 removeTarget (target, targetType, targetIndexes) source = do
@@ -142,18 +142,35 @@ foldTargets (Node _ trTable _) z f =
       f z (t, node)
 
 getStats :: Node t -> IO (Int, Int)
-getStats n = do
+getStats root = do
   visitedNodes <- IOStableNameSet.new
-  nodesAmount <- newIORef 0
-  edgesAmount <- newIORef 0
+  unvisitedNodes <- newIORef []
+  nodesCounter <- newIORef 0
+  edgesCounter <- newIORef 0
   let
-    visitNode n = do
-      modifyIORef nodesAmount succ
-      IOStableNameSet.insert visitedNodes n
-      forMTargets_ n $ \(_, tn) -> do
-        modifyIORef edgesAmount succ
-        IOStableNameSet.lookup visitedNodes tn >>= \case
-          True -> return ()
-          False -> visitNode tn
-  visitNode n
-  (,) <$> readIORef nodesAmount <*> readIORef edgesAmount
+    dequeueNode = do
+      nm <- atomicModifyIORef' unvisitedNodes $ \case
+        head : tail -> (tail, Just head)
+        [] -> ([], Nothing)
+      fmap join $ forM nm $ \n -> 
+        IOStableNameSet.insert visitedNodes n >>= \case
+          False -> dequeueNode
+          True -> return $ Just n
+    enqueueNode n = do
+      IOStableNameSet.lookup visitedNodes n >>= \case
+        False -> modifyIORef unvisitedNodes (n:)
+        True -> return ()
+    processNodes = do
+      dequeueNode >>= \case
+        Nothing -> return ()
+        Just node -> do
+          modifyIORef nodesCounter succ
+          forMTargets_ node $ \(_, target) -> do
+            enqueueNode target
+            modifyIORef edgesCounter succ
+          processNodes
+  enqueueNode root
+  processNodes
+
+  (,) <$> readIORef nodesCounter <*> readIORef edgesCounter
+

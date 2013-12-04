@@ -35,18 +35,31 @@ foldTargets (DynamicNode (t, n)) z f = Node.foldTargets n z $ \z tn -> f z (Dyna
 -- TODO: Rename to traverseAllNodes, since we're not trying to match the existing conventions with
 -- fold already.
 forMAllNodes_ :: DynamicNode t -> (DynamicNode t -> IO ()) -> IO ()
-forMAllNodes_ n f = do
+forMAllNodes_ root f = do
   visitedNodes <- IOStableNameSet.new
+  unvisitedNodes <- newIORef []
   let
-    visitNode dn = do
-      f dn
-      forMTargets_ dn $ \target@(DynamicNode (_, n)) -> do
-        IOStableNameSet.lookup visitedNodes n >>= \case
-          True -> return ()
-          False -> do
-            IOStableNameSet.insert visitedNodes n
-            visitNode target
-  visitNode n
+    dequeueNode = do
+      nm <- atomicModifyIORef' unvisitedNodes $ \case
+        head : tail -> (tail, Just head)
+        [] -> ([], Nothing)
+      fmap join $ forM nm $ \n -> 
+        IOStableNameSet.insert visitedNodes n >>= \case
+          False -> dequeueNode
+          True -> return $ Just n
+    enqueueNode n = do
+      IOStableNameSet.lookup visitedNodes n >>= \case
+        False -> modifyIORef unvisitedNodes (n:)
+        True -> return ()
+    loop = do
+      dequeueNode >>= \case
+        Nothing -> return ()
+        Just node -> do
+          f node
+          forMTargets_ node enqueueNode
+          loop
+  enqueueNode root
+  loop
 
 
 instance (GraphTag t) => Serializable IO (DynamicNode t) where

@@ -20,14 +20,18 @@ data IOStableNameSet a = IOStableNameSet !(Table.LinearHashTable (StableName a) 
 new :: IO (IOStableNameSet a)
 new = IOStableNameSet <$> Table.new <*> newIORef 0
 
-insert :: IOStableNameSet a -> a -> IO ()
+-- |
+-- Returns a boolean signifying whether an element was inserted,
+-- which would be false, if the element existed already.
+insert :: IOStableNameSet a -> a -> IO Bool
 insert (IOStableNameSet table sizeRef) a = do
   sn <- makeStableName a
   Table.lookup table sn >>= \case
-    Just _ -> return ()
+    Just _ -> return False
     Nothing -> do
       Table.insert table sn a
       modifyIORef sizeRef succ
+      return True
 
 delete :: IOStableNameSet a -> a -> IO Bool
 delete (IOStableNameSet table sizeRef) a = do
