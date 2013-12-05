@@ -154,6 +154,18 @@ instance Hashable Data.Time.Day
 -- Events.
 -----------
 
+getArtistByUID :: Int -> G.Read Catalogue s (Maybe Artist)
+getArtistByUID uid =
+  G.getRoot >>= 
+  G.getTargetsByIndex (Index_Catalogue_Artist_UID uid) >>= 
+  return . headZ >>=
+  mapM G.getValue
+
+setArtistByUID :: Artist -> Int -> G.Write Catalogue s ()
+setArtistByUID newValue uid = do
+  artists <- G.getTargetsByIndex (Index_Catalogue_Artist_UID uid) =<< G.getRoot
+  forM_ artists $ G.setValue newValue
+
 generateNewUID :: G.Write Catalogue s Int
 generateNewUID = do
   root <- G.getRoot

@@ -136,6 +136,29 @@ test_startupShutdown1 = do
     (length artistsOfAllReleases')
   assertEqualVerbose "stats' == stats" stats stats'
 
+test_setValue = do
+  prepareEnvironment
+  db <- startPersistedDB
+
+  uid <- G.runEvent db $ GenerateNewUID
+  let artist = Artist uid "A"
+  G.runEvent db $ LinkCatalogueToArtist artist
+
+  G.runEvent db (GetArtistByUID uid) >>=
+    assertEqualVerbose "Value is reachable by actual indexes" (Just artist)
+
+  uid' <- G.runEvent db $ GenerateNewUID
+  let artist' = Artist uid' "B"
+  G.runEvent db $ SetArtistByUID artist' uid
+
+  G.runEvent db (GetArtistByUID uid) >>= 
+    assertEqualVerbose "Value becomes unreachable by old indexes" Nothing
+
+  G.runEvent db (GetArtistByUID uid') >>= \vm -> do
+    assertBoolVerbose "Value is reachable by new indexes" (isJust vm)
+    forM_ vm $ assertEqualVerbose "Value is updated" artist'
+  
+
 
 startUnpersistedDB :: IO (G.Engine Catalogue)
 startUnpersistedDB = G.startEngine (Catalogue 0) =<< (return . G.Mode_Local) Nothing
