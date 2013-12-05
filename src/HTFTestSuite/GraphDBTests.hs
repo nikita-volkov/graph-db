@@ -75,15 +75,34 @@ test_startupShutdown'1 = do
   populate db
   stats <- G.runEvent db GetStats
   size <- GHC.DataSize.recursiveSize db
+  allReleases <- G.runEvent db GetAllReleases
+  artistsOfAllReleases <- 
+    fmap join $ forM allReleases $ \r -> do
+      let Release uid _ _ _ = r
+      G.runEvent db (GetArtistsByReleaseUID uid)
   G.shutdownEngine' db
 
   db' <- startPersistedDB dir
   stats' <- G.runEvent db' GetStats
   size' <- GHC.DataSize.recursiveSize db'
-  G.shutdownEngine' db
+  allReleases' <- G.runEvent db' GetAllReleases
+  artistsOfAllReleases' <- 
+    fmap join $ forM allReleases $ \r -> do
+      let Release uid _ _ _ = r
+      G.runEvent db' (GetArtistsByReleaseUID uid)
+  G.shutdownEngine' db'
 
-  assertEqual stats stats'
-
+  assertEqualVerbose "length allReleases == 1" 1 (length allReleases)
+  assertEqualVerbose "length artistsOfAllReleases == 1" 1 (length artistsOfAllReleases)
+  assertEqualVerbose 
+    "length allReleases' == length allReleases" 
+    (length allReleases) 
+    (length allReleases')
+  assertEqualVerbose 
+    "length artistsOfAllReleases' == length artistsOfAllReleases" 
+    (length artistsOfAllReleases) 
+    (length artistsOfAllReleases')
+  assertEqualVerbose "stats' == stats" stats stats'
   where
     dir = storageRoot <> "test_startupShutdown'1" <> "storage"
 
@@ -94,24 +113,34 @@ test_startupShutdown1 = do
   populate db
   stats <- G.runEvent db GetStats
   size <- GHC.DataSize.recursiveSize db
+  allReleases <- G.runEvent db GetAllReleases
+  artistsOfAllReleases <- 
+    fmap join $ forM allReleases $ \r -> do
+      let Release uid _ _ _ = r
+      G.runEvent db (GetArtistsByReleaseUID uid)
   G.shutdownEngine db
 
   db' <- startPersistedDB dir
   stats' <- G.runEvent db' GetStats
   size' <- GHC.DataSize.recursiveSize db'
-  allReleases <- G.runEvent db' GetAllReleases
-  artistsOfAllReleases <- 
+  allReleases' <- G.runEvent db' GetAllReleases
+  artistsOfAllReleases' <- 
     fmap join $ forM allReleases $ \r -> do
       let Release uid _ _ _ = r
       G.runEvent db' (GetArtistsByReleaseUID uid)
   G.shutdownEngine db'
 
-
-  assertEqualVerbose "1 == (length allReleases)" 1 (length allReleases)
-  assertEqualVerbose "1 == (length artistsOfAllReleases)" 1 (length artistsOfAllReleases)
-  assertEqual (4, 4) stats
-  assertEqual stats stats'
-
+  assertEqualVerbose "length allReleases == 1" 1 (length allReleases)
+  assertEqualVerbose "length artistsOfAllReleases == 1" 1 (length artistsOfAllReleases)
+  assertEqualVerbose 
+    "length allReleases' == length allReleases" 
+    (length allReleases) 
+    (length allReleases')
+  assertEqualVerbose 
+    "length artistsOfAllReleases' == length artistsOfAllReleases" 
+    (length artistsOfAllReleases) 
+    (length artistsOfAllReleases')
+  assertEqualVerbose "stats' == stats" stats stats'
   where
     dir = storageRoot <> "test_startupShutdown1" <> "storage"
 
@@ -143,21 +172,21 @@ populate db = do
     return $ Release uid "Load" StudioAlbum (dayFromString "1996-07-01")
   G.runEvent db $ LinkCatalogueToRelease load
   G.runEvent db $ LinkReleaseToArtist load (TitleArtist True) metallica
-  -- G.runEvent db $ LinkArtistToRelease metallica load
-  -- do
-  --   recording <- Recording <$> (G.runEvent db GenerateNewUID) <*> pure (5*60+4) <*> pure StudioRecording
-  --   -- song <- Song <$> pure "Ain't My Bitch"
-  --   G.runEvent db $ LinkCatalogueToRecording recording
-  --   G.runEvent db $ LinkReleaseToRecording load (Track 1) recording
-  --   G.runEvent db $ LinkRecordingToArtist recording (TitleArtist True) metallica
-  --   G.runEvent db $ LinkArtistToRecording metallica recording
-  -- do
-  --   recording <- Recording <$> (G.runEvent db GenerateNewUID) <*> pure (4*60+28) <*> pure StudioRecording
-  --   -- song <- Song <$> pure "Until It Sleeps"
-  --   G.runEvent db $ LinkCatalogueToRecording recording
-  --   G.runEvent db $ LinkReleaseToRecording load (Track 4) recording
-  --   G.runEvent db $ LinkRecordingToArtist recording (TitleArtist True) metallica
-  --   G.runEvent db $ LinkArtistToRecording metallica recording
+  G.runEvent db $ LinkArtistToRelease metallica load
+  do
+    recording <- Recording <$> (G.runEvent db GenerateNewUID) <*> pure (5*60+4) <*> pure StudioRecording
+    -- song <- Song <$> pure "Ain't My Bitch"
+    G.runEvent db $ LinkCatalogueToRecording recording
+    G.runEvent db $ LinkReleaseToRecording load (Track 1) recording
+    G.runEvent db $ LinkRecordingToArtist recording (TitleArtist True) metallica
+    G.runEvent db $ LinkArtistToRecording metallica recording
+  do
+    recording <- Recording <$> (G.runEvent db GenerateNewUID) <*> pure (4*60+28) <*> pure StudioRecording
+    -- song <- Song <$> pure "Until It Sleeps"
+    G.runEvent db $ LinkCatalogueToRecording recording
+    G.runEvent db $ LinkReleaseToRecording load (Track 4) recording
+    G.runEvent db $ LinkRecordingToArtist recording (TitleArtist True) metallica
+    G.runEvent db $ LinkArtistToRecording metallica recording
   where
     dayFromString = Data.Time.readTime System.Locale.defaultTimeLocale "%Y-%m-%d"
 

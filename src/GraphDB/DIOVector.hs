@@ -4,6 +4,8 @@ import GraphDB.Prelude
 import qualified Data.Vector.Mutable as IOVector
 
 -- | Dynamic mutable vector in 'IO'.
+-- 
+-- FIXME: WTF's MVar here for? It shouldn't care about concurrency.
 newtype DIOVector a = DIOVector (MVar (IOVector.IOVector a, Int))
 
 new :: IO (DIOVector a)
@@ -24,7 +26,9 @@ append (DIOVector var) value =
     return (vector', succ nextIndex)
 
 unsafeLookup :: DIOVector a -> Int -> IO a
-unsafeLookup = error "TODO: GraphDB.DIOVector.unsafeLookup"
+unsafeLookup (DIOVector var) i = do
+  (vector, _) <- readMVar var
+  IOVector.read vector i
 
 length :: DIOVector a -> IO Int
 length (DIOVector var) = readMVar var >>= return . snd

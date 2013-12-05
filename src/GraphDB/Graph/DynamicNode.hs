@@ -65,39 +65,47 @@ forMAllNodes_ root f = do
 instance (GraphTag t) => Serializable IO (DynamicNode t) where
 
   serialize root = do
-    traversalQueue <- liftIO $ newIORef []
-    indexTable 
-      :: HashTables.BasicHashTable (StableName (DynamicNode t)) Int
+    knownNodes
+      :: HashTables.BasicHashTable (StableName (Node t)) ()
       <- liftIO $ HashTables.new
-    indexTableSizeRef <- liftIO $ newIORef 0
-    traversedNodes <- liftIO $ IOStableNameSet.new
-    let 
+    unvisitedNodes <- liftIO $ newIORef []
+    indexTable 
+      :: HashTables.BasicHashTable (StableName (Node t)) Int
+      <- liftIO $ HashTables.new
+    indexCounter <- liftIO $ newIORef 0
+
+    let
+      dequeueNode = do
+        readIORef unvisitedNodes >>= \case
+          head : tail -> do
+            writeIORef unvisitedNodes tail
+            return $ Just head
+          [] -> return Nothing
+      enqueueNode dn@(DynamicNode (_, n)) = do
+        sn <- makeStableName n
+        HashTables.lookup knownNodes sn >>= \case
+          Just () -> return ()
+          Nothing -> do
+            HashTables.insert knownNodes sn ()
+            modifyIORef unvisitedNodes (dn:)
       loop = do
-        fetchFromTraversalQueue >>= \case
+        liftIO dequeueNode >>= \case
           Nothing -> return ()
           Just node -> do
             (count, serializeTargets) <- 
-              liftIO $ foldTargets node (0 :: Int, return ()) $ 
-                \(count, serializeTargets) target -> let 
+              liftIO $ foldTargets node (0 :: Int, return ()) $ \(count, serializeTargets) target -> do
+                let 
+                  -- ACHTUNG: order matters here!
                   serializeTargets' = do
                     serializeTargets
-                    serializeNodeRef target
-                    (liftIO $ IOStableNameSet.lookup traversedNodes target) >>= \case
-                      False -> insertToTraversalQueue target
-                      _ -> return ()
-                  in return (succ count, serializeTargets')
+                    void $ serializeNodeRef target
+                    liftIO $ enqueueNode target
+                return (succ count, serializeTargets')
             serialize count
             serializeTargets
-            liftIO $ IOStableNameSet.insert traversedNodes node
             loop
-      fetchFromTraversalQueue = liftIO $
-        readIORef traversalQueue >>= \case
-          head : tail -> writeIORef traversalQueue tail >> return (Just head)
-          [] -> return Nothing
-      insertToTraversalQueue node = 
-        liftIO $ modifyIORef traversalQueue (node:)
-      serializeNodeRef node = do
-        sn <- liftIO $ makeStableName node
+      serializeNodeRef dn@(DynamicNode (_, n)) = do
+        sn <- liftIO $ makeStableName n
         (liftIO $ HashTables.lookup indexTable sn) >>= \case
           Just i -> do
             serialize True
@@ -105,16 +113,16 @@ instance (GraphTag t) => Serializable IO (DynamicNode t) where
             return i
           Nothing -> do
             serialize False
-            serialize =<< (liftIO $ getValue node)
-            i <- liftIO $ readIORef indexTableSizeRef
+            serialize =<< (liftIO $ getValue dn)
+            i <- liftIO $ readIORef indexCounter
             liftIO $ HashTables.insert indexTable sn i
-            liftIO $ writeIORef indexTableSizeRef (succ i)
+            liftIO $ writeIORef indexCounter (succ i)
             return i
 
     serializeNodeRef root
-    insertToTraversalQueue root
+    liftIO $ enqueueNode root
     loop
-
+    
   deserialize = do
     indexedNodes <- liftIO $ DIOVector.new
     unpopulatedNodes <- liftIO $ newIORef []
