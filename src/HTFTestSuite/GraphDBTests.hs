@@ -14,54 +14,54 @@ import qualified System.Locale
 
 
 
-prop_shutdownDBRestoresToTheSameState :: Property
-prop_shutdownDBRestoresToTheSameState = monadicIO $ do
-  run $ prepareEnvironment
-  updates <- pick (arbitrary :: Gen [Update ()])
+-- prop_shutdownDBRestoresToTheSameState :: Property
+-- prop_shutdownDBRestoresToTheSameState = monadicIO $ do
+--   run $ prepareEnvironment
+--   updates <- pick (arbitrary :: Gen [Update ()])
 
-  (stats, stats', size, size') <- run $ do
-    db <- startPersistedDB
-    forM_ updates $ \update -> runUpdate update db
-    stats <- G.runEvent db GetStats
-    size <- GHC.DataSize.recursiveSize db
-    G.shutdownEngine db
+--   (stats, stats', size, size') <- run $ do
+--     db <- startPersistedDB
+--     forM_ updates $ \update -> runUpdate update db
+--     stats <- G.runEvent db GetStats
+--     size <- GHC.DataSize.recursiveSize db
+--     G.shutdownEngine db
 
-    db' <- startPersistedDB
-    stats' <- G.runEvent db' GetStats
-    size' <- GHC.DataSize.recursiveSize db'
-    G.shutdownEngine db'
+--     db' <- startPersistedDB
+--     stats' <- G.runEvent db' GetStats
+--     size' <- GHC.DataSize.recursiveSize db'
+--     G.shutdownEngine db'
 
-    return (stats, stats', size, size')
+--     return (stats, stats', size, size')
 
-  -- traceM $ "Comparison: " ++ show stats ++ " / " ++ show stats' ++ ",\t" ++ show size ++ " / " ++ show size'
-  pre ((case stats of (n, _) -> n) > 1)
-  assert $ stats == stats'
-  -- assert $ size == size'
+--   -- traceM $ "Comparison: " ++ show stats ++ " / " ++ show stats' ++ ",\t" ++ show size ++ " / " ++ show size'
+--   pre ((case stats of (n, _) -> n) > 1)
+--   assert $ stats == stats'
+--   -- assert $ size == size'
 
 
-prop_unshutdownDBRestoresToTheSameState :: Property
-prop_unshutdownDBRestoresToTheSameState = monadicIO $ do
-  run $ prepareEnvironment
-  updates <- pick (arbitrary :: Gen [Update ()])
+-- prop_unshutdownDBRestoresToTheSameState :: Property
+-- prop_unshutdownDBRestoresToTheSameState = monadicIO $ do
+--   run $ prepareEnvironment
+--   updates <- pick (arbitrary :: Gen [Update ()])
 
-  (stats, stats', size, size') <- run $ do
-    db <- startPersistedDB
-    forM_ updates $ \update -> runUpdate update db
-    stats <- G.runEvent db GetStats
-    size <- GHC.DataSize.recursiveSize db
-    G.shutdownEngine' db
+--   (stats, stats', size, size') <- run $ do
+--     db <- startPersistedDB
+--     forM_ updates $ \update -> runUpdate update db
+--     stats <- G.runEvent db GetStats
+--     size <- GHC.DataSize.recursiveSize db
+--     G.shutdownEngine' db
 
-    db' <- startPersistedDB
-    stats' <- G.runEvent db' GetStats
-    size' <- GHC.DataSize.recursiveSize db'
-    G.shutdownEngine' db'
+--     db' <- startPersistedDB
+--     stats' <- G.runEvent db' GetStats
+--     size' <- GHC.DataSize.recursiveSize db'
+--     G.shutdownEngine' db'
 
-    return (stats, stats', size, size')
+--     return (stats, stats', size, size')
 
-  -- traceM $ "Comparison: " ++ show stats ++ " / " ++ show stats' ++ ",\t" ++ show size ++ " / " ++ show size'
-  pre ((case stats of (n, _) -> n) > 1)
-  assert $ stats == stats'
-  -- assert $ size == size'
+--   -- traceM $ "Comparison: " ++ show stats ++ " / " ++ show stats' ++ ",\t" ++ show size ++ " / " ++ show size'
+--   pre ((case stats of (n, _) -> n) > 1)
+--   assert $ stats == stats'
+--   -- assert $ size == size'
 
 
 test_startupShutdown'1 = do
