@@ -12,9 +12,7 @@ newtype TypedNode t v = TypedNode { node :: Node t } deriving (Eq)
 
 instance (GraphTag t, IsUnionValue t v) => Serializable IO (TypedNode t v) where
   serialize = serialize . toDynamicNode
-  deserialize = do
-    DynamicNode.DynamicNode (_, node) <- deserialize
-    return $ TypedNode node
+  deserialize = fromDynamicNodeUnsafe <$> deserialize
 
 
 new :: v -> IO (TypedNode t v)
@@ -63,3 +61,11 @@ getStats (TypedNode n) = Node.getStats n
 
 toDynamicNode :: forall t v. (GraphTag t, IsUnionValue t v) => TypedNode t v -> DynamicNode t
 toDynamicNode (TypedNode node) = DynamicNode.DynamicNode (toUnionValueType (undefined :: v), node)
+
+fromDynamicNode :: forall t v. (GraphTag t, IsUnionValue t v) => DynamicNode t -> Maybe (TypedNode t v)
+fromDynamicNode (DynamicNode.DynamicNode (t, n))
+  | t == toUnionValueType (undefined :: v) = Just $ TypedNode n
+  | otherwise = Nothing
+
+fromDynamicNodeUnsafe :: DynamicNode t -> TypedNode t v
+fromDynamicNodeUnsafe (DynamicNode.DynamicNode (t, n)) = TypedNode n
