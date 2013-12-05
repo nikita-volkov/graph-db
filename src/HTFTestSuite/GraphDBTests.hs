@@ -16,19 +16,17 @@ import qualified System.Locale
 
 prop_shutdownDBRestoresToTheSameState :: Property
 prop_shutdownDBRestoresToTheSameState = monadicIO $ do
+  run $ prepareEnvironment
   updates <- pick (arbitrary :: Gen [Update ()])
-  dir <- arbitraryStorageDir
 
-  (run $ FS.getExists dir) >>= pre . not
-
-  (stats, stats', size, size') <- run $ flip finally (FS.remove dir) $ do
-    db <- startPersistedDB dir
+  (stats, stats', size, size') <- run $ do
+    db <- startPersistedDB
     forM_ updates $ \update -> runUpdate update db
     stats <- G.runEvent db GetStats
     size <- GHC.DataSize.recursiveSize db
     G.shutdownEngine db
 
-    db' <- startPersistedDB dir
+    db' <- startPersistedDB
     stats' <- G.runEvent db' GetStats
     size' <- GHC.DataSize.recursiveSize db'
     G.shutdownEngine db'
@@ -43,19 +41,17 @@ prop_shutdownDBRestoresToTheSameState = monadicIO $ do
 
 prop_unshutdownDBRestoresToTheSameState :: Property
 prop_unshutdownDBRestoresToTheSameState = monadicIO $ do
+  run $ prepareEnvironment
   updates <- pick (arbitrary :: Gen [Update ()])
-  dir <- arbitraryStorageDir
 
-  (run $ FS.getExists dir) >>= pre . not
-
-  (stats, stats', size, size') <- run $ flip finally (FS.remove dir) $ do
-    db <- startPersistedDB dir
+  (stats, stats', size, size') <- run $ do
+    db <- startPersistedDB
     forM_ updates $ \update -> runUpdate update db
     stats <- G.runEvent db GetStats
     size <- GHC.DataSize.recursiveSize db
     G.shutdownEngine' db
 
-    db' <- startPersistedDB dir
+    db' <- startPersistedDB
     stats' <- G.runEvent db' GetStats
     size' <- GHC.DataSize.recursiveSize db'
     G.shutdownEngine' db'
@@ -69,9 +65,9 @@ prop_unshutdownDBRestoresToTheSameState = monadicIO $ do
 
 
 test_startupShutdown'1 = do
-  FS.removeIfExists dir
+  prepareEnvironment
 
-  db <- startPersistedDB dir
+  db <- startPersistedDB
   populate db
   stats <- G.runEvent db GetStats
   size <- GHC.DataSize.recursiveSize db
@@ -82,7 +78,7 @@ test_startupShutdown'1 = do
       G.runEvent db (GetArtistsByReleaseUID uid)
   G.shutdownEngine' db
 
-  db' <- startPersistedDB dir
+  db' <- startPersistedDB
   stats' <- G.runEvent db' GetStats
   size' <- GHC.DataSize.recursiveSize db'
   allReleases' <- G.runEvent db' GetAllReleases
@@ -103,13 +99,11 @@ test_startupShutdown'1 = do
     (length artistsOfAllReleases) 
     (length artistsOfAllReleases')
   assertEqualVerbose "stats' == stats" stats stats'
-  where
-    dir = storageRoot <> "test_startupShutdown'1" <> "storage"
 
 test_startupShutdown1 = do
-  FS.removeIfExists dir
+  prepareEnvironment
 
-  db <- startPersistedDB dir
+  db <- startPersistedDB
   populate db
   stats <- G.runEvent db GetStats
   size <- GHC.DataSize.recursiveSize db
@@ -120,7 +114,7 @@ test_startupShutdown1 = do
       G.runEvent db (GetArtistsByReleaseUID uid)
   G.shutdownEngine db
 
-  db' <- startPersistedDB dir
+  db' <- startPersistedDB
   stats' <- G.runEvent db' GetStats
   size' <- GHC.DataSize.recursiveSize db'
   allReleases' <- G.runEvent db' GetAllReleases
@@ -141,26 +135,21 @@ test_startupShutdown1 = do
     (length artistsOfAllReleases) 
     (length artistsOfAllReleases')
   assertEqualVerbose "stats' == stats" stats stats'
-  where
-    dir = storageRoot <> "test_startupShutdown1" <> "storage"
-
 
 
 startUnpersistedDB :: IO (G.Engine Catalogue)
 startUnpersistedDB = G.startEngine (Catalogue 0) =<< (return . G.Mode_Local) Nothing
 
-startPersistedDB :: FilePath -> IO (G.Engine Catalogue)
-startPersistedDB dir = G.startEngine initRoot =<< getLocalPersistedMode
+startPersistedDB :: IO (G.Engine Catalogue)
+startPersistedDB = G.startEngine initRoot =<< getLocalPersistedMode
   where
     initRoot = Catalogue 0
-    getLocalPersistedMode = return . G.Mode_Local . Just . (100,) =<< G.pathsFromDirectory dir
+    getLocalPersistedMode = return . G.Mode_Local . Just . (100,) =<< G.pathsFromDirectory storageDir
 
-arbitraryStorageDir :: PropertyM IO FilePath
-arbitraryStorageDir = do
-  subdir <- FS.decodeString <$> pick (listOf $ elements ['a'..'z'])
-  return $ storageRoot <> subdir
+prepareEnvironment = do
+  FS.removeIfExists storageDir
 
-storageRoot = "./dist/test/GraphDBTests/"
+storageDir = "./dist/test/GraphDBTests/storage/"
 
 populate db = do
   metallica <- do
