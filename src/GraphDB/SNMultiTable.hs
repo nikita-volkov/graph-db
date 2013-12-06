@@ -11,6 +11,8 @@ data SNMultiTable k v =
     {-# UNPACK #-}
     !(IORef Int)
 
+type Key k = (Hashable k, Eq k)
+
 new :: IO (SNMultiTable k v)
 new = SNMultiTable <$> HT.new <*> newIORef 0
 
@@ -20,7 +22,7 @@ getNull = getSize >=> return . (<= 0)
 getSize :: SNMultiTable k v -> IO Int
 getSize (SNMultiTable _ r) = readIORef r
 
-insert :: (Hashable k, Eq k) => SNMultiTable k v -> (k, v) -> IO Bool
+insert :: Key k => SNMultiTable k v -> (k, v) -> IO Bool
 insert (SNMultiTable t sr) (k, v) = do
   updateTable >>= \case
     True -> do
@@ -43,7 +45,7 @@ insert (SNMultiTable t sr) (k, v) = do
               return True
             Just _ -> return False
 
-delete :: (Hashable k, Eq k) => SNMultiTable k v -> (k, v) -> IO Bool
+delete :: Key k => SNMultiTable k v -> (k, v) -> IO Bool
 delete (SNMultiTable t sr) (k, v) = do
   updateTable >>= \case
     True -> do
@@ -62,7 +64,7 @@ delete (SNMultiTable t sr) (k, v) = do
               HT.delete t' k'
               return True
 
-lookup :: (Hashable k, Eq k) => SNMultiTable k v -> (k, v) -> IO (Maybe v)
+lookup :: Key k => SNMultiTable k v -> (k, v) -> IO (Maybe v)
 lookup (SNMultiTable t _) (k, v) = do
   HT.lookup t k >>= \case
     Nothing -> return Nothing
@@ -70,20 +72,28 @@ lookup (SNMultiTable t _) (k, v) = do
       k' <- makeStableName v
       HT.lookup t' k'
 
-foldM :: SNMultiTable k v -> z -> (z -> (k, v) -> IO z) -> IO z
+lookupByKey :: Key k => SNMultiTable k v -> k -> IO [v]
+lookupByKey (SNMultiTable t _) k =
+  HT.lookup t k >>= \case
+    Nothing -> return []
+    Just t' -> HT.foldM (\li (_, v) -> return $ v : li) [] t'
+
+foldM :: SNMultiTable k v -> z -> (z -> k -> v -> IO z) -> IO z
 foldM (SNMultiTable t _) z f = HT.foldM f' z t
   where
     f' z (k, t') = HT.foldM f'' z t'
       where
-        f'' z (_, v) = f z (k, v)
+        f'' z (_, v) = f z k v
 
-traverse :: SNMultiTable k v -> ((k, v) -> IO ()) -> IO ()
-traverse t f = foldM t () (\() el -> f el)
-
-getList :: (Hashable k, Eq k) => SNMultiTable k v -> IO [(k, v)]
-getList ta = foldM ta [] (\li el -> return $ el : li)
+traverse :: SNMultiTable k v -> (k -> v -> IO ()) -> IO ()
+traverse t f = foldM t () (\() k v -> f k v)
 
 traverseKeys :: SNMultiTable k v -> (k -> IO ()) -> IO ()
 traverseKeys (SNMultiTable ta _) fu = HT.foldM fu' () ta
   where
     fu' _ (ke, _) = fu ke
+
+getList :: Key k => SNMultiTable k v -> IO [(k, v)]
+getList ta = foldM ta [] (\li ke va -> return $ (ke, va) : li)
+
+
