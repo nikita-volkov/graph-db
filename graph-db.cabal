@@ -46,10 +46,9 @@ library
     GraphDB.Engine.Dispatcher
     GraphDB.Engine
     GraphDB.Server
+    GraphDB.Macros.NamesRegistry
+    GraphDB.Macros.TagInstanceBuilder
     -- GraphDB.Macros.BoilerplateBuilder
-    -- GraphDB.Macros.GraphTagInstanceBuilder
-    -- GraphDB.Macros.GraphDBTagInstanceBuilder
-    -- GraphDB.Macros.NamesRegistry
     -- GraphDB.Macros
     GraphDB.TH
     GraphDB.TH.Q

@@ -108,10 +108,10 @@ class
     data UnionEvent t
     data UnionEventResult t
     unionIndexes :: UnionValue t -> UnionType t -> [UnionIndex t]
-    unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
+    unionIndexTargetType :: UnionIndex t -> UnionType t
     decomposeUnionValue :: UnionValue t -> (UnionType t, Any)
     composeUnionValue :: UnionType t -> Any -> UnionValue t
-    unionIndexTargetType :: UnionIndex t -> UnionType t
+    unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
 
 ----------------
 -- Adaptation of Node's API.

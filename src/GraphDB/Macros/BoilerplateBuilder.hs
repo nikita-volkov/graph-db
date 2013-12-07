@@ -8,8 +8,8 @@ import qualified GraphDB.TH as TH
 import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH.Type as Type
 import qualified GraphDB.Macros.NamesRegistry as NamesRegistry
-import qualified GraphDB.Macros.GraphDBTagInstanceBuilder as GraphDBTagInstanceBuilder
-import qualified GraphDB.Macros.GraphTagInstanceBuilder as GraphTagInstanceBuilder
+import qualified GraphDB.Macros.TagInstanceBuilder as TagInstanceBuilder
+import qualified GraphDB.Macros.TagInstanceBuilder as TagInstanceBuilder
 import qualified Data.Char as Char
 
 data BoilerplateBuilder = BoilerplateBuilder {
@@ -21,8 +21,8 @@ data BoilerplateBuilder = BoilerplateBuilder {
 new :: (Name, Type) -> Q BoilerplateBuilder
 new (tagName, tagType) = do
 
-  graphDBTagInstBldr <- GraphDBTagInstanceBuilder.new (tagName, tagType)
-  graphTagInstBldr <- GraphTagInstanceBuilder.new (tagName, tagType)
+  graphDBTagInstBldr <- TagInstanceBuilder.new (tagName, tagType)
+  graphTagInstBldr <- TagInstanceBuilder.new (tagName, tagType)
 
   (addDecs, getDecs) <- newDecsAccumulator
 
@@ -45,13 +45,13 @@ new (tagName, tagType) = do
       addValue source
       addValue target
     addValue t = do
-      (uvName, uvtName) <- GraphTagInstanceBuilder.addValue graphTagInstBldr t
+      (uvName, uvtName) <- TagInstanceBuilder.addValue graphTagInstBldr t
       addDecs =<< generateIsUnionValueInstance t tagType uvName
       addDecs =<< generateHashableInstance t
       addDecs =<< generateSerializableInstance t
     addTransactionFunction (name, argTypes, evResultType, isWrite) = do
       (memberEventName, memberEventResultName) <- 
-        GraphDBTagInstanceBuilder.addEventAndEventResult graphDBTagInstBldr (evType, evResultType)
+        TagInstanceBuilder.addEventAndEventResult graphDBTagInstBldr (evType, evResultType)
       addDecs =<< generateEvent evName argTypes
       addDecs =<< generateSerializableInstance evType
       addDecs =<< generateIsUnionEventInstance evType tagType evName name argTypes evResultType isWrite memberEventName
@@ -63,8 +63,8 @@ new (tagName, tagType) = do
         evType = ConT evName
     getDecs' = do
       decs <- getDecs
-      dec1 <- GraphDBTagInstanceBuilder.getDec graphDBTagInstBldr
-      dec2 <- GraphTagInstanceBuilder.render graphTagInstBldr
+      dec1 <- TagInstanceBuilder.getDec graphDBTagInstBldr
+      dec2 <- TagInstanceBuilder.render graphTagInstBldr
       return $ dec1 : dec2 : decs
 
   return $ 
