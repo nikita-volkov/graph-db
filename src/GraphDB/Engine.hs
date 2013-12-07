@@ -1,24 +1,43 @@
 {-# LANGUAGE UndecidableInstances #-}
 -- NOTE: Alternative title: Client.
 module GraphDB.Engine
-  -- (
-  --   Graph,
-  --   new,
-  --   UnionNode.NodeValue(..),
-  --   runWrite,
-  --   runRead,
-  --   Read,
-  --   Write,
-  --   getRoot,
-  --   newNode,
-  --   getTargetsByType,
-  --   getTargetsByIndex,
-  --   addTarget,
-  --   removeTarget,
-  --   getValue,
-  --   setValue,
-  --   getStats,
-  -- )
+  (
+    -- * Configuration and maintenance
+    Engine,
+    start,
+    shutdown,
+    shutdown',
+    runEvent,
+    runUnionEvent,
+    Mode(..),
+    pathsFromName,
+    Storage.pathsFromDirectory,
+    Storage.Paths,
+    URL(..),
+
+    -- * Transactions
+    Write,
+    Read,
+    ReadOrWrite,
+    Node,
+    Edge(..),
+    getRoot,
+    newNode,
+    getTargetsByType,
+    getTargetsByIndex,
+    addTarget,
+    removeTarget,
+    getValue,
+    setValue,
+    getStats,
+
+    -- * Boilerplate
+    Tag(..),
+    Index(..),
+    Value(..),
+    Event(..),
+    EventResult(..),
+  )
   where
 
 import GraphDB.Prelude hiding (Read, Write)
@@ -86,10 +105,13 @@ class
     data UnionIndex t
     data UnionValue t
     data UnionType t
-    unionValueIndexes :: UnionType t -> UnionValue t -> [UnionIndex t]
     data UnionEvent t
     data UnionEventResult t
+    unionIndexes :: UnionValue t -> UnionType t -> [UnionIndex t]
     unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
+    decomposeUnionValue :: UnionValue t -> (UnionType t, Any)
+    composeUnionValue :: UnionType t -> Any -> UnionValue t
+    unionIndexTargetType :: UnionIndex t -> UnionType t
 
 ----------------
 -- Adaptation of Node's API.
@@ -98,6 +120,10 @@ class
 instance (Tag t) => Node.Type (UnionType t) where
   type Index (UnionType t) = UnionIndex t
   type Value (UnionType t) = UnionValue t
+  indexes = unionIndexes
+  decomposeValue = decomposeUnionValue
+  composeValue = composeUnionValue
+  targetType = unionIndexTargetType
 
 type UnionNode t = Node.Node (UnionType t)
 
@@ -106,14 +132,23 @@ type UnionNode t = Node.Node (UnionType t)
 -- NOTE: Alternative naming convention: GraphEvent, GraphIndex, ...
 class (EventResult t (Event_Result t e)) => Event t e where
   type Event_Result t e
-  event_finalTransaction :: e -> FinalTransaction t (Event_Result t e)
-  event_toUnionEvent :: e -> UnionEvent t
+  eventFinalTransaction :: e -> FinalTransaction t (Event_Result t e)
+  packEvent :: e -> UnionEvent t
 
 class EventResult t r where
-  eventResult_unpack :: UnionEventResult t -> Maybe r
+  packEventResult :: r -> UnionEventResult t
+  unpackEventResult :: UnionEventResult t -> Maybe r
 
 class (Tag t) => Value t v where
-  value_toUnionValue :: v -> UnionValue t
+  packValue :: v -> (UnionType t, UnionValue t)
+  unpackValue :: UnionValue t -> Maybe v
+
+unionType :: Value t v => v -> UnionType t
+unionType v = let (ut, _) = packValue v in ut
+
+unionValue :: Value t v => v -> UnionValue t
+unionValue v = let (_, uv) = packValue v in uv
+
 
 -- |
 -- Defines a specific set of indexes on nodes of value /v'/ for nodes of value /v/.
@@ -126,40 +161,65 @@ class (Tag t) => Value t v where
 -- then the associated nodes cannot be linked.
 -- 
 -- NOTE: Instead of 'Reachable'
-class (Index t (Edge_Index t v v')) => Edge t v v' where
+class (Index t (Edge_Index t v v'), Value t v, Value t v') => Edge t v v' where
   data Edge_Index t v v'
-  edge_indexes :: v' -> [Edge_Index t v v']
+  indexes :: v' -> [Edge_Index t v v']
 
-class Index t i where
-  index_toUnionIndex :: i -> UnionIndex t
+class (Tag t) => Index t i where
+  packIndex :: i -> UnionIndex t
 
+-- | 
+-- A component managing datastructure, persistence and connection to remote server.
+-- What it does exactly depends on its startup mode.
+-- 
+-- [@t@] A tag-type determining all the associated types with db.
 data Engine t =
   Engine {
+    -- | Run event.
     runEvent :: Event t e => e -> IO (Event_Result t e),
-    shutdown :: IO ()
+    -- | An internal function used by "GraphDB.Server".
+    runUnionEvent :: UnionEvent t -> IO (UnionEventResult t),
+    -- | Shutdown DB, releasing all acquired resources.
+    -- Also performs a maintenance sequence (e.g., does checkpointing).
+    shutdown :: IO (),
+    -- | Shutdown without performing maintenance. 
+    -- Affects only a local persisted mode, in which it won't do the checkpointing.
+    shutdown' :: IO ()
   }
 
-startEngine :: forall t. (Tag t, Value t (Root t)) => Root t -> Mode -> IO (Engine t)
-startEngine rootValue mode = case mode of
+-- |
+-- Start the engine.
+-- 
+-- In case of local persisted mode, loads the latest state. 
+-- Loading may take a while. 
+-- Naturally, the time it takes is proportional to the size of database.
+-- The startup time also depends on whether the engine was shutdown previously, 
+-- since servicing of persistence files takes place on 'shutdownEngine'. 
+start :: forall t. (Tag t, Value t (Root t)) => Root t -> Mode -> IO (Engine t)
+start rootValue mode = case mode of
   Mode_Local persistenceSettings -> do
     dispatcher <- Dispatcher.new
     case persistenceSettings of
       Nothing -> do
-        root :: UnionNode t <- Node.new $ value_toUnionValue rootValue
+        root :: UnionNode t <- Node.new $ unionValue rootValue
         let
           runEvent :: Event t e => e -> IO (Event_Result t e)
-          runEvent e = 
-            case event_finalTransaction e of
-              FinalTransaction_Write (Write rootToIO) -> 
-                Dispatcher.runWrite dispatcher $ rootToIO root
-              FinalTransaction_Read (Read rootToIO) -> 
-                Dispatcher.runRead dispatcher $ rootToIO root
-        return $ Engine runEvent (return ())
+          runEvent = eventFinalTransaction >>> \case
+            FinalTransaction_Write (Write rootToIO) -> 
+              Dispatcher.runWrite dispatcher $ rootToIO root
+            FinalTransaction_Read (Read rootToIO) -> 
+              Dispatcher.runRead dispatcher $ rootToIO root
+          runUnionEvent = unionEventFinalTransaction >>> \case
+            FinalTransaction_Write (Write rootToIO) -> 
+              Dispatcher.runWrite dispatcher $ rootToIO root
+            FinalTransaction_Read (Read rootToIO) -> 
+              Dispatcher.runRead dispatcher $ rootToIO root
+        return $ Engine runEvent runUnionEvent (return ()) (return ())
       Just (eventsPersistenceBufferSize, storagePaths) -> do
         eventsPersistenceBuffer <- IOQueue.start eventsPersistenceBufferSize
         let
           initRoot :: IO (UnionNode t)
-          initRoot = Node.new $ value_toUnionValue rootValue
+          initRoot = Node.new $ unionValue rootValue
           replayUnionEvent root = unionEventFinalTransaction >>> \case
             FinalTransaction_Write (Write rootToIO) -> 
               void $ Dispatcher.runWrite dispatcher $ rootToIO root
@@ -167,10 +227,17 @@ startEngine rootValue mode = case mode of
         (storage, root) <- Storage.acquireAndLoad initRoot replayUnionEvent storagePaths
         let
           runEvent :: Event t e => e -> IO (Event_Result t e)
-          runEvent e = case event_finalTransaction e of
+          runEvent e = case eventFinalTransaction e of
             FinalTransaction_Write (Write rootToIO) -> do
               IOQueue.enqueue eventsPersistenceBuffer $ do
-                Storage.persistEvent storage $ event_toUnionEvent e 
+                Storage.persistEvent storage $ packEvent e 
+              Dispatcher.runWrite dispatcher $ rootToIO root
+            FinalTransaction_Read (Read rootToIO) -> do
+              Dispatcher.runRead dispatcher $ rootToIO root
+          runUnionEvent e = case unionEventFinalTransaction e of
+            FinalTransaction_Write (Write rootToIO) -> do
+              IOQueue.enqueue eventsPersistenceBuffer $ do
+                Storage.persistEvent storage e 
               Dispatcher.runWrite dispatcher $ rootToIO root
             FinalTransaction_Read (Read rootToIO) -> do
               Dispatcher.runRead dispatcher $ rootToIO root
@@ -178,7 +245,10 @@ startEngine rootValue mode = case mode of
             IOQueue.shutdown eventsPersistenceBuffer
             Storage.checkpoint storage root
             Storage.release storage
-        return $ Engine runEvent shutdown
+          shutdown' = do
+            IOQueue.shutdown eventsPersistenceBuffer
+            Storage.release storage
+        return $ Engine runEvent runUnionEvent shutdown shutdown'
   Mode_Remote url -> do
     client <- Client.connect clientURL
     let
@@ -186,12 +256,12 @@ startEngine rootValue mode = case mode of
       runUnionEvent = Client.request client
       runEvent :: forall e. Event t e => e -> IO (Event_Result t e)
       runEvent e = 
-        runUnionEvent (event_toUnionEvent e) >>=
-        return . eventResult_unpack >>=
+        runUnionEvent (packEvent e) >>=
+        return . unpackEventResult >>=
         return . fromMaybe (error "Unexpected event result")
       shutdown = do
         Client.disconnect client
-    return $ Engine runEvent shutdown
+    return $ Engine runEvent runUnionEvent shutdown shutdown
     where
       clientURL = case url of
         URL_Host name port password -> Client.Host name port password
@@ -293,3 +363,77 @@ instance Functor (FinalTransaction t) where
   fmap f t = case t of
     FinalTransaction_Write write -> FinalTransaction_Write $ fmap f write
     FinalTransaction_Read read -> FinalTransaction_Read $ fmap f read
+
+
+
+-- |
+-- Get the root node.
+getRoot :: ReadOrWrite t s (Node t s (Root t))
+getRoot = fmap Node getRootUnionNode
+
+-- |
+-- Create a new node. 
+-- 
+-- This node won't get stored if you don't insert at least a single edge 
+-- from another stored node to it.
+newNode :: (Value t v) => v -> ReadOrWrite t s (Node t s v)
+newNode = fmap Node . liftIO . Node.new . unionValue
+
+-- |
+-- Get all linked nodes with values of the provided type.
+-- Supposed to be used like this:
+-- 
+-- > getTargetsByType (undefined :: Artist) ...
+-- 
+getTargetsByType :: (Edge t v v') => v' -> Node t s v -> ReadOrWrite t s [Node t s v']
+getTargetsByType v (Node source) =
+  liftIO $ map Node <$> Node.getTargetsByType source (unionType v)
+
+-- |
+-- Get target nodes reachable by the provided index.
+getTargetsByIndex :: (Edge t v v') => Edge_Index t v v' -> Node t s v -> ReadOrWrite t s [Node t s v']
+getTargetsByIndex i (Node source) = 
+  liftIO $ map Node <$> Node.getTargetsByIndex source (packIndex i)
+
+-- |
+-- Add a link to the provided target node /v'/, 
+-- while automatically generating all the indexes.
+-- 
+-- The result signals, whether the operation has actually been performed.
+-- If the node was already there it would not be.
+addTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
+addTarget (Node target) (Node source) = 
+  liftIO $ Node.addTarget target source
+
+-- |
+-- Remove the target node /v'/ and all its indexes from the source node /v/.
+-- 
+-- The result signals, whether the operation has actually been performed.
+-- If the node was already there it would not be.
+removeTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
+removeTarget (Node target) (Node source) = 
+  liftIO $ Node.removeTarget target source
+
+-- | 
+-- Get the value of the node.
+getValue :: (Value t v) => Node t s v -> ReadOrWrite t s v
+getValue (Node n) = 
+  liftIO (Node.getValue n) >>= 
+  return . unpackValue >>=
+  return . fromMaybe (error "GraphDB.Engine.getValue: Unexpected value")
+
+-- | 
+-- Replace the value of the specified node.
+setValue :: (Value t v) => v -> Node t s v -> Write t s ()
+setValue a (Node n) = liftIO $ Node.setValue n (unionValue a)
+
+-- |
+-- Count the total amounts of distinct nodes and edges in the graph.
+-- 
+-- Requires traversal of the whole graph, so beware.
+getStats :: ReadOrWrite t s (Int, Int)
+getStats = do
+  Node tn <- getRoot
+  liftIO $ Node.getStats tn
+
+

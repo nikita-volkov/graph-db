@@ -45,7 +45,7 @@ library
     GraphDB.Engine.Node
     GraphDB.Engine.Dispatcher
     GraphDB.Engine
-    -- GraphDB.API
+    GraphDB.Server
     -- GraphDB.Macros.BoilerplateBuilder
     -- GraphDB.Macros.GraphTagInstanceBuilder
     -- GraphDB.Macros.GraphDBTagInstanceBuilder
