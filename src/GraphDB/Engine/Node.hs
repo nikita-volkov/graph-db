@@ -70,7 +70,7 @@ getValue (Node t (Refs ref _ _ _)) = composeValue <$> pure t <*> readIORef ref
 
 setValue :: Type t => Node t -> Value t -> IO ()
 setValue node@(Node t refs@(Refs valueRef _ _ sourcesByType)) newValue = 
-  if newValue_Type /= t 
+  if newValueType /= t 
     then error "Attempt to set a value of a wrong type"
     else do
       oldValue <- getValue node
@@ -89,7 +89,7 @@ setValue node@(Node t refs@(Refs valueRef _ _ sourcesByType)) newValue =
                 False -> _error "New index collision"
       writeIORef valueRef newValueAny
   where
-    (newValue_Type, newValueAny) = decomposeValue newValue
+    (newValueType, newValueAny) = decomposeValue newValue
     _error = error . ("GraphDB.Engine.Node.setValue: " ++)
 
 getSourcesByType :: Type t => Node t -> t -> IO [Node t]
