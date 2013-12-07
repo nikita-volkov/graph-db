@@ -93,16 +93,15 @@ class
     unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
 
 ----------------
--- Relaying instances for Node.
+-- Adaptation of Node's API.
 ----------------
 
-instance (Tag t) => Node.Value (UnionValue t) where
-  type Value_Index (UnionValue t) = UnionIndex t
-  type Value_Type (UnionValue t) = UnionType t
+instance (Tag t) => Node.Type (UnionType t) where
+  type Index (UnionType t) = UnionIndex t
+  type Value (UnionType t) = UnionValue t
 
-instance Node.Index (UnionIndex t) where
-  type Index_Type (UnionIndex t) = UnionType t
-  
+type UnionNode t = Node.Node (UnionType t)
+
 ----------------
 
 -- NOTE: Alternative naming convention: GraphEvent, GraphIndex, ...
@@ -204,9 +203,6 @@ pathsFromName name = Storage.pathsFromDirectory ("~/.graph-db/" <> FilePath.from
 -- The /s/ is a state-thread making the escape of nodes from transaction
 -- impossible. Much inspired by the realization of 'ST'.
 newtype Node t s v = Node (UnionNode t) deriving (Eq)
-
-type UnionNode t = Node.Node (UnionValue t)
-
 
 -- | Support for common operations of a transaction.
 class Transaction t where
