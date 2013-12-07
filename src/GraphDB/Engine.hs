@@ -37,7 +37,7 @@ import qualified Filesystem.Path.CurrentOS as FilePath
 data Mode =
   -- | 
   -- Run in current process. 
-  -- If no paths are provided, then there'll be no persistence.
+  -- If no paths is provided, then there'll be no persistence.
   -- 
   -- [@Usage@]
   -- 
