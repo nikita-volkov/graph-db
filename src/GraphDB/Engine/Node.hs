@@ -15,7 +15,7 @@ type MT = MT.SNMultiTable
 -- 
 data Node v =
   Node
-    !(NodeValueType v)
+    !(Value_Type v)
     !(Refs v)
 
 -- |
@@ -26,13 +26,13 @@ data Refs v =
     !(IORef Any)
     -- | Targets by type.
     {-# UNPACK #-} 
-    !(MT (NodeValueType v) (Refs v))
+    !(MT (Value_Type v) (Refs v))
     -- | Targets by index.
     {-# UNPACK #-}
-    !(MT (NodeValueIndex v) (Refs v))
+    !(MT (Value_Index v) (Refs v))
     -- | Source refs.
     {-# UNPACK #-}
-    !(MT (NodeValueType v) (Refs v))
+    !(MT (Value_Type v) (Refs v))
 
 -------------
 -- Accessors.
@@ -47,59 +47,68 @@ sourcesByType (Node _ (Refs _ _ _ z)) = z
 
 -------------
 
-class (MT.Key (NodeValueIndex v), MT.Key (NodeValueType v), Serializable IO v) => NodeValue v where
-  data NodeValueIndex v
-  data NodeValueType v
-  nodeValueIndexes :: NodeValueType v -> v -> [NodeValueIndex v]
-  nodeValueType :: v -> NodeValueType v
-  nodeValueAny :: v -> Any
-  nodeValue :: NodeValueType v -> Any -> v
-  nodeValueIndexTargetType :: NodeValueIndex v -> NodeValueType v
+class 
+  (MT.Key (Value_Index v), MT.Key (Value_Type v), Serializable IO v,
+   Index (Value_Index v), Value_Type v ~ Index_Type (Value_Index v)) => 
+  Value v 
+  where
+    type Value_Index v
+    type Value_Type v
+    value_indexes :: Value_Type v -> v -> [Value_Index v]
+    value_decompose :: v -> (Value_Type v, Any)
+    value_compose :: Value_Type v -> Any -> v
+
+class Index i where
+  type Index_Type i
+  index_targetType :: i -> Index_Type i
 
 -------------
 
-new :: NodeValue v => v -> IO (Node v)
+new :: Value v => v -> IO (Node v)
 new uv = Node <$> pure t <*> (Refs <$> newIORef v <*> MT.new <*> MT.new <*> MT.new)
   where
-    t = nodeValueType uv
-    v = nodeValueAny uv
+    (t, v) = value_decompose uv
 
-getValue :: NodeValue v => Node v -> IO v
-getValue (Node t (Refs ref _ _ _)) = nodeValue <$> pure t <*> readIORef ref
+getValue :: Value v => Node v -> IO v
+getValue (Node t (Refs ref _ _ _)) = value_compose <$> pure t <*> readIORef ref
 
-setValue :: NodeValue v => Node v -> v -> IO ()
-setValue node@(Node _ refs@(Refs valueRef _ _ sourcesByType)) newValue = do
-  oldValue <- getValue node
-  MT.traverse sourcesByType $ \sourceType ->
-    let
-      oldIndexes = nodeValueIndexes sourceType oldValue
-      newIndexes = nodeValueIndexes sourceType newValue
-      in \targetRefs@(Refs _ _ targetTargetsByIndex _) -> do
-        forM_ oldIndexes $ \i -> 
-          MT.delete targetTargetsByIndex (i, refs) >>= \case
-            True -> return ()
-            False -> _error "Old index not found"
-        forM_ newIndexes $ \i -> 
-          MT.insert targetTargetsByIndex (i, refs) >>= \case
-            True -> return ()
-            False -> _error "New index collision"
-  writeIORef valueRef (nodeValueAny newValue)
+setValue :: Value v => Node v -> v -> IO ()
+setValue node@(Node t refs@(Refs valueRef _ _ sourcesByType)) newValue = 
+  if newValue_Type /= t 
+    then error "Attempt to set a value of a wrong type"
+    else do
+      oldValue <- getValue node
+      MT.traverse sourcesByType $ \sourceType ->
+        let
+          oldIndexes = value_indexes sourceType oldValue
+          newIndexes = value_indexes sourceType newValue
+          in \targetRefs@(Refs _ _ targetTargetsByIndex _) -> do
+            forM_ oldIndexes $ \i -> 
+              MT.delete targetTargetsByIndex (i, refs) >>= \case
+                True -> return ()
+                False -> _error "Old index not found"
+            forM_ newIndexes $ \i -> 
+              MT.insert targetTargetsByIndex (i, refs) >>= \case
+                True -> return ()
+                False -> _error "New index collision"
+      writeIORef valueRef newValueAny
   where
+    (newValue_Type, newValueAny) = value_decompose newValue
     _error = error . ("GraphDB.Engine.Node.setValue: " ++)
 
-getSourcesByType :: NodeValue v => Node v -> NodeValueType v -> IO [Node v]
+getSourcesByType :: Value v => Node v -> Value_Type v -> IO [Node v]
 getSourcesByType (Node _ (Refs _ _ _ sourceRefsTable)) t =
   map (Node t) <$> MT.lookupByKey sourceRefsTable t
 
-getTargetsByType :: NodeValue v => Node v -> NodeValueType v -> IO [Node v]
+getTargetsByType :: Value v => Node v -> Value_Type v -> IO [Node v]
 getTargetsByType (Node _ (Refs _ table _ _)) t =
   map (Node t) <$> MT.lookupByKey table t
 
-getTargetsByIndex :: NodeValue v => Node v -> NodeValueIndex v -> IO [Node v]
+getTargetsByIndex :: Value v => Node v -> Value_Index v -> IO [Node v]
 getTargetsByIndex (Node _ (Refs _ _ table _)) index =
-  map (Node (nodeValueIndexTargetType index)) <$> MT.lookupByKey table index
+  map (Node (index_targetType index)) <$> MT.lookupByKey table index
 
-addTarget :: NodeValue v => Node v -> Node v -> IO Bool
+addTarget :: Value v => Node v -> Node v -> IO Bool
 addTarget source target = do
   updateTarget >>= \case
     False -> return False
@@ -107,7 +116,7 @@ addTarget source target = do
   where
     _error = error . ("GraphDB.Engine.Node.addTarget: " ++)
     updateSource = do
-      targetIndexes <- nodeValueIndexes <$> pure (valueType source) <*> getValue target
+      targetIndexes <- value_indexes <$> pure (valueType source) <*> getValue target
       forM_ targetIndexes $ \i -> 
         MT.insert (targetsByIndex source) (i, refs target) >>= \case
           True -> return ()
@@ -118,7 +127,7 @@ addTarget source target = do
     updateTarget = do
       MT.insert (sourcesByType target) (valueType source, refs source)
 
-removeTarget :: NodeValue v => Node v -> Node v -> IO Bool
+removeTarget :: Value v => Node v -> Node v -> IO Bool
 removeTarget source target = do
   updateTarget >>= \case
     False -> return False
@@ -130,7 +139,7 @@ removeTarget source target = do
     _error = error . ("GraphDB.Engine.Node.removeTarget: " ++)
     updateTarget = MT.delete (sourcesByType target) (valueType source, refs source)
     updateSource = do
-      indexes <- nodeValueIndexes <$> pure (valueType source) <*> getValue target
+      indexes <- value_indexes <$> pure (valueType source) <*> getValue target
       forM_ indexes $ \i ->
         MT.delete (targetsByIndex source) (i, refs target) >>= \case
           True -> return ()
@@ -145,7 +154,7 @@ removeTarget source target = do
 -- if it itself retains edges to other nodes, 
 -- because this leaves back-references to it in them. 
 -- That's why in this case we must delete all outgoing edges from it manually.
-maintain :: NodeValue v => Node v -> IO ()
+maintain :: Value v => Node v -> IO ()
 maintain node = do
   MT.getNull (sourcesByType node) >>= \case
     True -> return ()
@@ -213,7 +222,7 @@ getStats root = do
 instance Eq (Node v) where
   n == n' = valueRef n == valueRef n'
 
-instance (NodeValue v) => Serializable IO (Node v) where
+instance (Value v) => Serializable IO (Node v) where
 
   serialize root = do
     knownRefs

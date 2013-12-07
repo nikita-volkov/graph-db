@@ -76,8 +76,8 @@ class
     Serializable IO (UnionEvent t),
     Value t (Root t),
     Serializable IO (UnionValue t),
-    Hashable (UnionValueType t),
-    Eq (UnionValueType t),
+    Hashable (UnionType t),
+    Eq (UnionType t),
     Hashable (UnionIndex t),
     Eq (UnionIndex t)
   ) => 
@@ -86,26 +86,23 @@ class
     type Root t
     data UnionIndex t
     data UnionValue t
-    data UnionValueType t
-    unionValueIndexes :: UnionValueType t -> UnionValue t -> [UnionIndex t]
+    data UnionType t
+    unionValueIndexes :: UnionType t -> UnionValue t -> [UnionIndex t]
     data UnionEvent t
     data UnionEventResult t
     unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
 
 ----------------
--- Relaying 'NodeValue' instance for any 'Tag'.
+-- Relaying instances for Node.
 ----------------
 
-instance (Tag t) => Node.NodeValue (UnionValue t) where
-  newtype NodeValueIndex (UnionValue t) = NodeValueIndex (UnionIndex t)
-  newtype NodeValueType (UnionValue t) = NodeValueType (UnionValueType t) 
-  nodeValueIndexes (NodeValueType t) v = map NodeValueIndex $ unionValueIndexes t v
+instance (Tag t) => Node.Value (UnionValue t) where
+  type Value_Index (UnionValue t) = UnionIndex t
+  type Value_Type (UnionValue t) = UnionType t
 
-deriving instance (Eq (UnionIndex t)) => Eq (Node.NodeValueIndex (UnionValue t))
-deriving instance (Hashable (UnionIndex t)) => Hashable (Node.NodeValueIndex (UnionValue t))
-deriving instance (Eq (UnionValueType t)) => Eq (Node.NodeValueType (UnionValue t))
-deriving instance (Hashable (UnionValueType t)) => Hashable (Node.NodeValueType (UnionValue t))
-
+instance Node.Index (UnionIndex t) where
+  type Index_Type (UnionIndex t) = UnionType t
+  
 ----------------
 
 -- NOTE: Alternative naming convention: GraphEvent, GraphIndex, ...
