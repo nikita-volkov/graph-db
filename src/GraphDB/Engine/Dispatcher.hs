@@ -1,4 +1,4 @@
-module GraphDB.Graph.Dispatcher (Dispatcher, new, runWrite, runRead) where
+module GraphDB.Engine.Dispatcher (Dispatcher, new, runWrite, runRead) where
 
 import GraphDB.Prelude
 import qualified Control.Concurrent.FairRWLock as RWLock

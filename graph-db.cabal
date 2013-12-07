@@ -40,27 +40,23 @@ library
   hs-source-dirs:
     src
   exposed-modules:
-    GraphDB
+    -- GraphDB
   other-modules:
-    GraphDB.SNMultiTable
-    GraphDB.Macros.BoilerplateBuilder
-    GraphDB.Macros.GraphTagInstanceBuilder
-    GraphDB.Macros.GraphDBTagInstanceBuilder
-    GraphDB.Macros.NamesRegistry
-    GraphDB.Macros
-    GraphDB.API
-    GraphDB.Graph.Node
-    GraphDB.Graph.TypedNode
-    GraphDB.Graph.DynamicNode
-    GraphDB.Graph.Types
-    GraphDB.Graph.Dispatcher
-    GraphDB.Graph.Transaction
-    GraphDB.Graph
-    GraphDB.IOTable
-    GraphDB.IOStableNameSet
+    GraphDB.Engine.Node
+    GraphDB.Engine.Dispatcher
+    GraphDB.Engine
+    GraphDB.Server
+    -- GraphDB.Macros.BoilerplateBuilder
+    -- GraphDB.Macros.GraphTagInstanceBuilder
+    -- GraphDB.Macros.GraphDBTagInstanceBuilder
+    -- GraphDB.Macros.NamesRegistry
+    -- GraphDB.Macros
     GraphDB.TH
     GraphDB.TH.Q
     GraphDB.TH.Type
+    GraphDB.SNMultiTable
+    GraphDB.IOTable
+    GraphDB.IOStableNameSet
     GraphDB.DIOVector
     GraphDB.IOQueue
     GraphDB.Prelude
