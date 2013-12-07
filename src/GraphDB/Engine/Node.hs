@@ -53,7 +53,7 @@ class
   where
     type Index t
     type Value t
-    indexes :: t -> Value t -> [Index t]
+    indexes :: Value t -> t -> [Index t]
     decomposeValue :: Value t -> (t, Any)
     composeValue :: t -> Any -> Value t
     targetType :: Index t -> t
@@ -76,8 +76,8 @@ setValue node@(Node t refs@(Refs valueRef _ _ sourcesByType)) newValue =
       oldValue <- getValue node
       MT.traverse sourcesByType $ \sourceType ->
         let
-          oldIndexes = indexes sourceType oldValue
-          newIndexes = indexes sourceType newValue
+          oldIndexes = indexes oldValue sourceType
+          newIndexes = indexes newValue sourceType
           in \targetRefs@(Refs _ _ targetTargetsByIndex _) -> do
             forM_ oldIndexes $ \i -> 
               MT.delete targetTargetsByIndex (i, refs) >>= \case
@@ -112,7 +112,7 @@ addTarget source target = do
   where
     _error = error . ("GraphDB.Engine.Node.addTarget: " ++)
     updateSource = do
-      targetIndexes <- indexes <$> pure (valueType source) <*> getValue target
+      targetIndexes <- indexes <$> getValue target <*> pure (valueType source)
       forM_ targetIndexes $ \i -> 
         MT.insert (targetsByIndex source) (i, refs target) >>= \case
           True -> return ()
@@ -135,7 +135,7 @@ removeTarget source target = do
     _error = error . ("GraphDB.Engine.Node.removeTarget: " ++)
     updateTarget = MT.delete (sourcesByType target) (valueType source, refs source)
     updateSource = do
-      indexes <- indexes <$> pure (valueType source) <*> getValue target
+      indexes <- indexes <$> getValue target <*> pure (valueType source)
       forM_ indexes $ \i ->
         MT.delete (targetsByIndex source) (i, refs target) >>= \case
           True -> return ()
