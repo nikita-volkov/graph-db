@@ -42,9 +42,9 @@ library
   exposed-modules:
     -- GraphDB
   other-modules:
-    GraphDB.Graph.Node
-    GraphDB.Graph.Dispatcher
-    GraphDB.Graph
+    GraphDB.Engine.Node
+    GraphDB.Engine.Dispatcher
+    GraphDB.Engine
     -- GraphDB.API
     -- GraphDB.Macros.BoilerplateBuilder
     -- GraphDB.Macros.GraphTagInstanceBuilder

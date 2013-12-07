@@ -1,4 +1,4 @@
-module GraphDB.Graph.Node where
+module GraphDB.Engine.Node where
 
 import GraphDB.Prelude hiding (Any, traverse)
 import GHC.Exts (Any)
@@ -47,9 +47,6 @@ sourcesByType (Node _ (Refs _ _ _ z)) = z
 
 -------------
 
-instance Eq (Node v) where
-  n == n' = valueRef n == valueRef n'
-
 class (MT.Key (NodeValueIndex v), MT.Key (NodeValueType v), Serializable IO v) => NodeValue v where
   data NodeValueIndex v
   data NodeValueType v
@@ -88,7 +85,7 @@ setValue node@(Node _ refs@(Refs valueRef _ _ sourcesByType)) newValue = do
             False -> _error "New index collision"
   writeIORef valueRef (nodeValueAny newValue)
   where
-    _error = error . ("GraphDB.Graph.Node.setValue: " ++)
+    _error = error . ("GraphDB.Engine.Node.setValue: " ++)
 
 getSourcesByType :: NodeValue v => Node v -> NodeValueType v -> IO [Node v]
 getSourcesByType (Node _ (Refs _ _ _ sourceRefsTable)) t =
@@ -108,7 +105,7 @@ addTarget source target = do
     False -> return False
     True -> updateSource >> return True
   where
-    _error = error . ("GraphDB.Graph.Node.addTarget: " ++)
+    _error = error . ("GraphDB.Engine.Node.addTarget: " ++)
     updateSource = do
       targetIndexes <- nodeValueIndexes <$> pure (valueType source) <*> getValue target
       forM_ targetIndexes $ \i -> 
@@ -130,7 +127,7 @@ removeTarget source target = do
       maintain target
       return True
   where
-    _error = error . ("GraphDB.Graph.Node.removeTarget: " ++)
+    _error = error . ("GraphDB.Engine.Node.removeTarget: " ++)
     updateTarget = MT.delete (sourcesByType target) (valueType source, refs source)
     updateSource = do
       indexes <- nodeValueIndexes <$> pure (valueType source) <*> getValue target
@@ -156,7 +153,7 @@ maintain node = do
       True -> return ()
       False -> _error "Target removal failed"
   where
-    _error = error . ("GraphDB.Graph.Node.maintain: " ++)
+    _error = error . ("GraphDB.Engine.Node.maintain: " ++)
 
 foldTargets :: Node v -> z -> (z -> Node v -> IO z) -> IO z
 foldTargets node z f = MT.foldM (targetsByType node) z $ \z t refs -> f z (Node t refs)
@@ -210,6 +207,11 @@ getStats root = do
       modifyIORef nodesCounter succ
       return $ const $ modifyIORef edgesCounter succ 
   (,) <$> readIORef nodesCounter <*> readIORef edgesCounter
+
+-------------
+
+instance Eq (Node v) where
+  n == n' = valueRef n == valueRef n'
 
 instance (NodeValue v) => Serializable IO (Node v) where
 
