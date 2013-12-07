@@ -74,7 +74,6 @@ class
   (
     Serializable IO (UnionEventResult t),
     Serializable IO (UnionEvent t),
-    Value t (Root t),
     Serializable IO (UnionValue t),
     Hashable (UnionType t),
     Eq (UnionType t),
@@ -113,7 +112,7 @@ class (EventResult t (Event_Result t e)) => Event t e where
 class EventResult t r where
   eventResult_unpack :: UnionEventResult t -> Maybe r
 
-class Value t v where
+class (Tag t) => Value t v where
   value_toUnionValue :: v -> UnionValue t
 
 -- NOTE: Instead of 'Reachable'
@@ -130,7 +129,7 @@ data Engine t =
     shutdown :: IO ()
   }
 
-startEngine :: forall t. Tag t => Root t -> Mode -> IO (Engine t)
+startEngine :: forall t. (Tag t, Value t (Root t)) => Root t -> Mode -> IO (Engine t)
 startEngine rootValue mode = case mode of
   Mode_Local persistenceSettings -> do
     dispatcher <- Dispatcher.new
