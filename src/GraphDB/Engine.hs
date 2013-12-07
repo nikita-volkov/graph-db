@@ -115,6 +115,16 @@ class EventResult t r where
 class (Tag t) => Value t v where
   value_toUnionValue :: v -> UnionValue t
 
+-- |
+-- Defines a specific set of indexes on nodes of value /v'/ for nodes of value /v/.
+-- 
+-- E.g., an artist may be referred from a root by its UID and search terms,
+-- however, for an album it may emit no indexes at all, and so may only
+-- be reached as an element of a list of all linked artists.
+-- 
+-- If there is no instance of this class between two values, 
+-- then the associated nodes cannot be linked.
+-- 
 -- NOTE: Instead of 'Reachable'
 class (Index t (Edge_Index t v v')) => Edge t v v' where
   data Edge_Index t v v'
