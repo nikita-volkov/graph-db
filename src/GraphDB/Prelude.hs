@@ -10,11 +10,12 @@ module GraphDB.Prelude
     applyAll,
     packText,
     unpackText,
+    error,
   )
   where
 
 -- base
-import Prelude as Exports hiding (concat, foldr, mapM_, sequence_, foldl1, maximum, minimum, product, sum, all, and, any, concatMap, elem, foldl, foldr1, notElem, or, mapM, sequence, FilePath, id, (.))
+import Prelude as Exports hiding (concat, foldr, mapM_, sequence_, foldl1, maximum, minimum, product, sum, all, and, any, concatMap, elem, foldl, foldr1, notElem, or, mapM, sequence, FilePath, id, (.), error)
 import Control.Monad as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
 import Control.Applicative as Exports
 import Control.Arrow as Exports hiding (left, right)
@@ -97,6 +98,7 @@ import CIO as Exports
 import qualified Data.ByteString.Lazy
 import qualified Data.Text.Lazy
 import qualified Data.Text
+import qualified Prelude
 
 
 type LazyByteString = Data.ByteString.Lazy.ByteString
@@ -116,3 +118,5 @@ applyAll ops a = sequence $ map ($ a) ops
 packText = Data.Text.pack
 unpackText = Data.Text.unpack
 
+error :: String -> a
+error = Prelude.error . ("'graph-db' package bug: " ++)
