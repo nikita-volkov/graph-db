@@ -100,10 +100,10 @@ generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool 
 generateEventInstance eventType tagType eventName functionName argTypes resultType isWrite unionEventName = 
   pure $ (:[]) $ InstanceD [] instanceHead decs
   where
-    instanceHead = Type.apply [eventType, tagType, ConT ''Engine.PolyEvent]
+    instanceHead = Type.apply [eventType, tagType, ConT ''Engine.TagEvent]
     decs = [dec1, dec2, dec3]
       where
-        dec1 = TySynInstD ''Engine.PolyEvent_Result [tagType, eventType] resultType
+        dec1 = TySynInstD ''Engine.TagEvent_Result [tagType, eventType] resultType
         dec2 = FunD 'Engine.eventFinalTransaction [clause]
           where
             clause = Clause [pattern] body []
@@ -123,7 +123,7 @@ generateEventInstance eventType tagType eventName functionName argTypes resultTy
 generateEventResultInstance :: Type -> Type -> Name -> Q [Dec]
 generateEventResultInstance eventResultType tagType unionEventResultName =  
   [d|
-    instance Engine.PolyEventResult $(return tagType) $(return eventResultType) where
+    instance Engine.TagEventResult $(return tagType) $(return eventResultType) where
       packEventResult = $(conE unionEventResultName)
       unpackEventResult = $(fromUnionEventResultLambdaQ)
   |]
@@ -153,7 +153,7 @@ generateSerializableInstance t =
 generateValueInstance :: Type -> Type -> Name -> Name -> Q [Dec]
 generateValueInstance valueType tagType unionValueName unionTypeName = 
   [d|
-    instance Engine.PolyValue $(return tagType) $(return valueType) where
+    instance Engine.TagValue $(return tagType) $(return valueType) where
       packValue v = ($(conE unionTypeName), $(conE unionValueName) v)
       unpackValue = $(Q.caseLambda [pure match1, pure match2])
   |]
@@ -171,6 +171,6 @@ generateValueInstance valueType tagType unionValueName unionTypeName =
 generateIndexInstance :: Type -> Type -> Name -> Q [Dec]
 generateIndexInstance indexType tagType unionIndexName = 
   [d|
-    instance Engine.PolyIndex $(return tagType) $(return indexType) where
+    instance Engine.TagIndex $(return tagType) $(return indexType) where
       packIndex = $(conE unionIndexName)
   |]
