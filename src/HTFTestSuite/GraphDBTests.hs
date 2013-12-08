@@ -102,27 +102,30 @@ test_startupShutdown'1 = do
 
 test_startupShutdown1 = do
   prepareEnvironment
+  (allReleases, artistsOfAllReleases, stats, size) <- do
+    db <- startPersistedDB
+    populate db
+    stats <- G.runEvent db GetStats
+    size <- GHC.DataSize.recursiveSize db
+    allReleases <- G.runEvent db GetAllReleases
+    artistsOfAllReleases <- 
+      fmap join $ forM allReleases $ \r -> do
+        let Release uid _ _ _ = r
+        G.runEvent db (GetArtistsByReleaseUID uid)
+    G.shutdownEngine db
+    return (allReleases, artistsOfAllReleases, stats, size)
 
-  db <- startPersistedDB
-  populate db
-  stats <- G.runEvent db GetStats
-  size <- GHC.DataSize.recursiveSize db
-  allReleases <- G.runEvent db GetAllReleases
-  artistsOfAllReleases <- 
-    fmap join $ forM allReleases $ \r -> do
-      let Release uid _ _ _ = r
-      G.runEvent db (GetArtistsByReleaseUID uid)
-  G.shutdownEngine db
-
-  db' <- startPersistedDB
-  stats' <- G.runEvent db' GetStats
-  size' <- GHC.DataSize.recursiveSize db'
-  allReleases' <- G.runEvent db' GetAllReleases
-  artistsOfAllReleases' <- 
-    fmap join $ forM allReleases $ \r -> do
-      let Release uid _ _ _ = r
-      G.runEvent db' (GetArtistsByReleaseUID uid)
-  G.shutdownEngine db'
+  (allReleases', artistsOfAllReleases', stats', size') <- do
+    db <- startPersistedDB
+    stats <- G.runEvent db GetStats
+    size <- GHC.DataSize.recursiveSize db
+    allReleases <- G.runEvent db GetAllReleases
+    artistsOfAllReleases <- 
+      fmap join $ forM allReleases $ \r -> do
+        let Release uid _ _ _ = r
+        G.runEvent db (GetArtistsByReleaseUID uid)
+    G.shutdownEngine db
+    return (allReleases, artistsOfAllReleases, stats, size)
 
   assertEqualVerbose "length allReleases == 1" 1 (length allReleases)
   assertEqualVerbose "length artistsOfAllReleases == 1" 1 (length artistsOfAllReleases)
@@ -156,7 +159,7 @@ test_setValue = do
 
   G.runEvent db (GetArtistByUID uid') >>= \vm -> do
     assertBoolVerbose "Value is reachable by new indexes" (isJust vm)
-    forM_ vm $ assertEqualVerbose "Value is updated" artist'
+    assertEqualVerbose "Value is updated" artist' (fromJust vm)
   
 
 
