@@ -17,12 +17,12 @@ import qualified GraphDB.Macros.BoilerplateBuilder as BoilerplateBuilder
 
 -- |
 -- Scans the current module for all transaction-functions and 
--- generate appropriate \"event\" data-types, 
+-- generates appropriate \"event\" data-types, 
 -- associating them with the provided database tag.
--- Also scans for all instances of 'GraphDB.Edge' to identify
--- the supported value types.
+-- Also scans for all instances of 'GraphDB.Engine.Edge' to identify
+-- the supported node-value types.
 -- 
--- All transaction-functions and edge declarations must be located 
+-- All transaction-functions and 'GraphDB.Engine.Edge' declarations must be located 
 -- in the same module where this macro gets called.
 -- 
 generateBoilerplate :: Name -> Q [Dec]

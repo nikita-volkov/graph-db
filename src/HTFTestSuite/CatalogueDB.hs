@@ -366,9 +366,6 @@ instance QC.Arbitrary (Update ()) where
         forM_ artists $ \(Artist uid _) -> do
           runEvent $ RemoveArtistByUID uid
 
-      runEvent :: 
-        G.Event Catalogue e => 
-        e -> QC.GenT (ReaderT (G.Engine Catalogue) IO) (G.Event_Result Catalogue e)
       runEvent e = do
         db <- lift $ ask
         liftIO $ G.runEvent db e

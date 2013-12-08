@@ -1,4 +1,6 @@
-module GraphDB.Server where
+module GraphDB.Server
+  (ServerMode(..), Server, shutdownServer, startServer)
+  where
 
 import GraphDB.Prelude hiding (Read, log)
 import qualified AcidIO.Server as Server
@@ -21,13 +23,13 @@ data ServerMode =
   ServerMode_Socket FilePath
 
 data Server t = Server {
-  shutdown :: IO ()
+  shutdownServer :: IO ()
 }
 
-start :: 
+startServer :: 
   (Engine.Tag t, Serializable IO (Engine.UnionEvent t), Serializable IO (Engine.UnionEventResult t)) =>
   Engine.Engine t -> ServerMode -> IO (Server t)
-start engine serverMode = do
+startServer engine serverMode = do
   acidServer <- Server.start (void . return) (5 * 60 * 10^6) acidServerMode processRequest
   let
     shutdown = Server.shutdown acidServer

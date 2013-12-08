@@ -1,12 +1,10 @@
-{-# LANGUAGE UndecidableInstances #-}
--- NOTE: Alternative title: Client.
 module GraphDB.Engine
   (
     -- * Configuration and maintenance
     Engine,
-    start,
-    shutdown,
-    shutdown',
+    startEngine,
+    shutdownEngine,
+    shutdownEngine',
     runEvent,
     runUnionEvent,
     Mode(..),
@@ -57,7 +55,7 @@ import qualified Filesystem.Path.CurrentOS as FilePath
 -- Engine running mode.
 data Mode =
   -- | 
-  -- Run in current process. 
+  -- Run in the current process. 
   -- If no paths is provided, then there'll be no persistence.
   -- 
   -- [@Usage@]
@@ -66,14 +64,15 @@ data Mode =
   -- 
   -- [@eventsPersistenceBufferSize@] 
   -- An admissible amount of events the persistence layer may be lagging after
-  -- the actual state of graph. 
-  -- Until that amount is reached persistence of events is done asynchronously,
-  -- thus reducing the time of execution of event.
+  -- the actual state of the graph. 
+  -- Until that amount is reached the persistence of events is done asynchronously,
+  -- thus reducing the time of execution of events.
   -- If you want the persisted state to always accomodate to the actual in-memory state,
-  -- set this to @1@.
+  -- set this to @1@. 
+  -- Thus you will ensure the persistence of events is always done synchronously.
   -- 
   -- [@persistencePaths@] 
-  -- Paths for persistence directories.
+  -- Paths to persistence directories.
   -- 
   Mode_Local (Maybe (Int, Storage.Paths)) |
   -- |
@@ -153,16 +152,14 @@ unionValue v = let (_, uv) = packValue v in uv
 
 
 -- |
--- Defines a specific set of indexes on nodes of value /v'/ for nodes of value /v/.
+-- Defines a specific set of indexes, which nodes of value /v'/ emit to nodes of value /v/.
 -- 
--- E.g., an artist may be referred from a root by its UID and search terms,
--- however, for an album it may emit no indexes at all, and so may only
--- be reached as an element of a list of all linked artists.
+-- If the indexes list is empty, 
+-- the node may still be reached thru 'getTargetsByType'.
 -- 
 -- If there is no instance of this class between two values, 
 -- then the associated nodes cannot be linked.
 -- 
--- NOTE: Instead of 'Reachable'
 class (Index t (Edge_Index t v v'), Value t v, Value t v') => Edge t v v' where
   data Edge_Index t v v'
   indexes :: v' -> [Edge_Index t v v']
@@ -172,10 +169,10 @@ class (Tag t) => Index t i where
   packIndex :: i -> UnionIndex t
 
 -- | 
--- A component managing datastructure, persistence and connection to remote server.
+-- A component, managing datastructure, persistence and connection to remote server.
 -- What it does exactly depends on its startup mode.
 -- 
--- [@t@] A tag-type determining all the associated types with db.
+-- [@t@] A tag-type determining all the type-level settings of the DB.
 data Engine t =
   Engine {
     -- | Run event.
@@ -184,22 +181,22 @@ data Engine t =
     runUnionEvent :: UnionEvent t -> IO (UnionEventResult t),
     -- | Shutdown DB, releasing all acquired resources.
     -- Also performs a maintenance sequence (e.g., does checkpointing).
-    shutdown :: IO (),
+    shutdownEngine :: IO (),
     -- | Shutdown without performing maintenance. 
     -- Affects only a local persisted mode, in which it won't do the checkpointing.
-    shutdown' :: IO ()
+    shutdownEngine' :: IO ()
   }
 
 -- |
 -- Start the engine.
 -- 
--- In case of local persisted mode, loads the latest state. 
+-- In case of a local persisted mode, loads the latest state. 
 -- Loading may take a while. 
--- Naturally, the time it takes is proportional to the size of database.
+-- Naturally, the time it takes is proportional to the size of the database.
 -- The startup time also depends on whether the engine was shutdown previously, 
--- since servicing of persistence files takes place on 'shutdownEngine'. 
-start :: forall t. (Tag t, Value t (Root t)) => Root t -> Mode -> IO (Engine t)
-start rootValue mode = case mode of
+-- since servicing of persistence files takes place then. 
+startEngine :: forall t. (Tag t, Value t (Root t)) => Root t -> Mode -> IO (Engine t)
+startEngine rootValue mode = case mode of
   Mode_Local persistenceSettings -> do
     dispatcher <- Dispatcher.new
     case persistenceSettings of
@@ -280,7 +277,7 @@ pathsFromName name = Storage.pathsFromDirectory ("~/.graph-db/" <> FilePath.from
 
 
 -- |
--- A transaction-local reference to node. 
+-- A transaction-local reference to the actual node of the graph-datastructure.
 -- 
 -- The /s/ is a state-thread making the escape of nodes from transaction
 -- impossible. Much inspired by the realization of 'ST'.
@@ -403,7 +400,7 @@ getTargetsByIndex i (Node source) =
 -- while automatically generating all the indexes.
 -- 
 -- The result signals, whether the operation has actually been performed.
--- If the node was already there it would not be.
+-- If the node was already there it will return 'False'.
 addTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
 addTarget (Node target) (Node source) = 
   liftIO $ Node.addTarget source target
@@ -412,7 +409,7 @@ addTarget (Node target) (Node source) =
 -- Remove the target node /v'/ and all its indexes from the source node /v/.
 -- 
 -- The result signals, whether the operation has actually been performed.
--- If the node was already there it would not be.
+-- If the node was not found it will return 'False'.
 removeTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
 removeTarget (Node target) (Node source) = 
   liftIO $ Node.removeTarget source target

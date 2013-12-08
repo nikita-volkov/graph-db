@@ -22,17 +22,13 @@ data Node t =
 -- An internally used data structure for memory-efficient storage.
 data Refs t =
   Refs
-    {-# UNPACK #-}
-    !(IORef Any)
-    -- | Targets by type.
-    {-# UNPACK #-} 
-    !(MT t (Refs t))
-    -- | Targets by index.
-    {-# UNPACK #-}
-    !(MT (Index t) (Refs t))
-    -- | Source refs.
-    {-# UNPACK #-}
-    !(MT t (Refs t))
+    {-# UNPACK #-} !(IORef Any)
+    -- Targets by type.
+    {-# UNPACK #-} !(MT t (Refs t))
+    -- Targets by index.
+    {-# UNPACK #-} !(MT (Index t) (Refs t))
+    -- Source refs.
+    {-# UNPACK #-} !(MT t (Refs t))
 
 -------------
 -- Accessors.
