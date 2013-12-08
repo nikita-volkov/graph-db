@@ -26,7 +26,7 @@ data Artist = Artist Int Text deriving (Show, Eq, Generic)
 --------------
 
 instance G.Edge Catalogue Catalogue Artist where
-  data Edge_Index Catalogue Catalogue Artist =
+  data Index Catalogue Catalogue Artist =
     Index_Catalogue_Artist_UID Int |
     Index_Catalogue_Artist_SearchTerm Text
     deriving (Show, Eq, Generic)
@@ -35,7 +35,7 @@ instance G.Edge Catalogue Catalogue Artist where
     [Index_Catalogue_Artist_UID uid]
 
 instance G.Edge Catalogue Catalogue Release where
-  data Edge_Index Catalogue Catalogue Release =
+  data Index Catalogue Catalogue Release =
     Index_Catalogue_Release_UID Int |
     Index_Catalogue_Release_SearchTerm Text
     deriving (Show, Eq, Generic)
@@ -44,21 +44,21 @@ instance G.Edge Catalogue Catalogue Release where
     [Index_Catalogue_Release_UID uid]
 
 instance G.Edge Catalogue Catalogue Recording where
-  data Edge_Index Catalogue Catalogue Recording =
+  data Index Catalogue Catalogue Recording =
     Index_Catalogue_Recording_UID Int
     deriving (Show, Eq, Generic)
   indexes (Recording uid duration typ) =
     [Index_Catalogue_Recording_UID uid]
 
 instance G.Edge Catalogue Catalogue Song where
-  data Edge_Index Catalogue Catalogue Song =
+  data Index Catalogue Catalogue Song =
     Index_Catalogue_Song_SearchTerm Text
     deriving (Show, Eq, Generic)
   indexes (Song title) =
     map Index_Catalogue_Song_SearchTerm (textToSearchTerms title)
 
 instance G.Edge Catalogue Artist Release where
-  data Edge_Index Catalogue Artist Release =
+  data Index Catalogue Artist Release =
     -- We really don't need any constructors for this index, 
     -- since we won't be indexing anything.
     -- However, GHC can't generate deriving instances for constructorless types,
@@ -69,56 +69,56 @@ instance G.Edge Catalogue Artist Release where
     deriving (Show, Eq, Generic)
 
 instance G.Edge Catalogue Artist Recording where
-  data Edge_Index Catalogue Artist Recording =
+  data Index Catalogue Artist Recording =
     Index_Artist_Recording
     deriving (Show, Eq, Generic)
 
 instance G.Edge Catalogue Artist Song where
-  data Edge_Index Catalogue Artist Song =
+  data Index Catalogue Artist Song =
     Index_Artist_Song
     deriving (Show, Eq, Generic)
 
 instance G.Edge Catalogue Release Track where
-  data Edge_Index Catalogue Release Track =
+  data Index Catalogue Release Track =
     Index_Release_Track_Number Int
     deriving (Show, Eq, Generic)
   indexes (Track number) = [Index_Release_Track_Number number]
 
 instance G.Edge Catalogue Release TitleArtist where
-  data Edge_Index Catalogue Release TitleArtist =
+  data Index Catalogue Release TitleArtist =
     Index_Release_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Release_TitleArtist_Primary primary]
 
 instance G.Edge Catalogue Track Recording where
-  data Edge_Index Catalogue Track Recording =
+  data Index Catalogue Track Recording =
     Index_Track_Recording
     deriving (Show, Eq, Generic)
 
 instance G.Edge Catalogue Recording Song where
-  data Edge_Index Catalogue Recording Song =
+  data Index Catalogue Recording Song =
     Index_Recording_Song
     deriving (Show, Eq, Generic)
 
 instance G.Edge Catalogue Recording TitleArtist where
-  data Edge_Index Catalogue Recording TitleArtist =
+  data Index Catalogue Recording TitleArtist =
     Index_Recording_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Recording_TitleArtist_Primary primary]
 
 instance G.Edge Catalogue Song Recording where
-  data Edge_Index Catalogue Song Recording =
+  data Index Catalogue Song Recording =
     Index_Song_Recording
     deriving (Show, Eq, Generic)
 
 instance G.Edge Catalogue Song TitleArtist where
-  data Edge_Index Catalogue Song TitleArtist =
+  data Index Catalogue Song TitleArtist =
     Index_Song_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Song_TitleArtist_Primary primary]
 
 instance G.Edge Catalogue TitleArtist Artist where
-  data Edge_Index Catalogue TitleArtist Artist =
+  data Index Catalogue TitleArtist Artist =
     Index_TitleArtist_Artist
     deriving (Show, Eq, Generic)
 
@@ -197,7 +197,7 @@ search text = do
     terms = textToSearchTerms text
     searchByMkIndex :: 
       (G.Edge Catalogue Catalogue b, Eq b) => 
-      (Text -> G.Edge_Index Catalogue Catalogue b) -> G.Read Catalogue s [b]
+      (Text -> G.Index Catalogue Catalogue b) -> G.Read Catalogue s [b]
     searchByMkIndex mkIndex = do
       root <- G.getRoot
       groupedMatches <- forM terms $ \term ->

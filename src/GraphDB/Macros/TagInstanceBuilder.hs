@@ -22,7 +22,7 @@ new (tagName, tagType) = do
     Q.liftSTM $ (,,,,) <$>
       NamesRegistry.new (nameBase tagName <> "_UnionIndex_") <*>
       NamesRegistry.new (nameBase tagName <> "_UnionValue_") <*>
-      NamesRegistry.new (nameBase tagName <> "_UnionType_") <*>
+      NamesRegistry.new (nameBase tagName <> "_UnionValueType_") <*>
       NamesRegistry.new (nameBase tagName <> "_UnionEvent_") <*>
       NamesRegistry.new (nameBase tagName <> "_UnionEventResult_")
 
@@ -36,24 +36,24 @@ new (tagName, tagType) = do
   let
     addIndex t = do
       unionName <- Q.liftSTM $ NamesRegistry.resolve indexNR t
-      targetUnionTypeName <- Q.liftSTM $ NamesRegistry.resolve typeNR targetType
+      targetUnionValueTypeName <- Q.liftSTM $ NamesRegistry.resolve typeNR targetType
       targetUnionValueName <- Q.liftSTM $ NamesRegistry.resolve valueNR targetType
-      sourceUnionTypeName <- Q.liftSTM $ NamesRegistry.resolve typeNR sourceType
+      sourceUnionValueTypeName <- Q.liftSTM $ NamesRegistry.resolve typeNR sourceType
       let
         unionIndexTargetTypeClause = 
           Clause [ConP unionName [WildP]] (NormalB exp) []
           where
-            exp = ConE targetUnionTypeName
+            exp = ConE targetUnionValueTypeName
         unionIndexesClause =
           Clause 
-            [ConP targetUnionValueName [VarP varName], ConP sourceUnionTypeName []] 
+            [ConP targetUnionValueName [VarP varName], ConP sourceUnionValueTypeName []] 
             (NormalB exp) 
             []
           where
             varName = mkName "_0"
             exp = Q.purify [e|
               map Engine.packIndex (Engine.indexes $(varE varName) 
-                :: [Engine.Edge_Index $(return tagType) $(return sourceType) $(return targetType)])
+                :: [Engine.Index $(return tagType) $(return sourceType) $(return targetType)])
               |]
       runIO $ modifyIORef unionIndexTargetTypeClauses $ (:) unionIndexTargetTypeClause
       runIO $ modifyIORef unionIndexesClauses $ (:) unionIndexesClause
@@ -133,7 +133,7 @@ new (tagName, tagType) = do
             unionTypeDecQ =
               DataInstD <$> pure [] <*> pure name <*> pure [tagType] <*> getConstructors <*> pure derivations
               where
-                name = ''Engine.UnionType
+                name = ''Engine.UnionValueType
                 getConstructors = do
                   names <- Q.liftSTM $ NamesRegistry.getNames typeNR
                   forM names $ \n -> return $ NormalC n []

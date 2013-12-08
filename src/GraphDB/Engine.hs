@@ -32,10 +32,10 @@ module GraphDB.Engine
 
     -- * Boilerplate
     Tag(..),
-    Index(..),
-    Value(..),
-    Event(..),
-    EventResult(..),
+    PolyIndex(..),
+    PolyValue(..),
+    PolyEvent(..),
+    PolyEventResult(..),
     FinalTransaction(..),
   )
   where
@@ -95,8 +95,8 @@ class
     Serializable IO (UnionEventResult t),
     Serializable IO (UnionEvent t),
     Serializable IO (UnionValue t),
-    Hashable (UnionType t),
-    Eq (UnionType t),
+    Hashable (UnionValueType t),
+    Eq (UnionValueType t),
     Hashable (UnionIndex t),
     Eq (UnionIndex t)
   ) => 
@@ -105,49 +105,49 @@ class
     type Root t
     data UnionIndex t
     data UnionValue t
-    data UnionType t
+    data UnionValueType t
     data UnionEvent t
     data UnionEventResult t
-    unionIndexes :: UnionValue t -> UnionType t -> [UnionIndex t]
-    unionIndexTargetType :: UnionIndex t -> UnionType t
-    decomposeUnionValue :: UnionValue t -> (UnionType t, Any)
-    composeUnionValue :: UnionType t -> Any -> UnionValue t
+    unionIndexes :: UnionValue t -> UnionValueType t -> [UnionIndex t]
+    unionIndexTargetType :: UnionIndex t -> UnionValueType t
+    decomposeUnionValue :: UnionValue t -> (UnionValueType t, Any)
+    composeUnionValue :: UnionValueType t -> Any -> UnionValue t
     unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
 
 ----------------
 -- Adaptation of Node's API.
 ----------------
 
-instance (Tag t) => Node.Type (UnionType t) where
-  type Index (UnionType t) = UnionIndex t
-  type Value (UnionType t) = UnionValue t
+instance (Tag t) => Node.Type (UnionValueType t) where
+  type Index (UnionValueType t) = UnionIndex t
+  type Value (UnionValueType t) = UnionValue t
   indexes = unionIndexes
   decomposeValue = decomposeUnionValue
   composeValue = composeUnionValue
   targetType = unionIndexTargetType
 
-type UnionNode t = Node.Node (UnionType t)
+type UnionNode t = Node.Node (UnionValueType t)
 
 ----------------
 
 -- NOTE: Alternative naming convention: GraphEvent, GraphIndex, ...
-class (EventResult t (Event_Result t e)) => Event t e where
-  type Event_Result t e
-  eventFinalTransaction :: e -> FinalTransaction t (Event_Result t e)
+class (PolyEventResult t (PolyEvent_Result t e)) => PolyEvent t e where
+  type PolyEvent_Result t e
+  eventFinalTransaction :: e -> FinalTransaction t (PolyEvent_Result t e)
   packEvent :: e -> UnionEvent t
 
-class EventResult t r where
+class PolyEventResult t r where
   packEventResult :: r -> UnionEventResult t
   unpackEventResult :: UnionEventResult t -> Maybe r
 
-class (Tag t) => Value t v where
-  packValue :: v -> (UnionType t, UnionValue t)
+class (Tag t) => PolyValue t v where
+  packValue :: v -> (UnionValueType t, UnionValue t)
   unpackValue :: UnionValue t -> Maybe v
 
-unionType :: Value t v => v -> UnionType t
+unionType :: PolyValue t v => v -> UnionValueType t
 unionType v = let (ut, _) = packValue v in ut
 
-unionValue :: Value t v => v -> UnionValue t
+unionValue :: PolyValue t v => v -> UnionValue t
 unionValue v = let (_, uv) = packValue v in uv
 
 
@@ -160,12 +160,12 @@ unionValue v = let (_, uv) = packValue v in uv
 -- If there is no instance of this class between two values, 
 -- then the associated nodes cannot be linked.
 -- 
-class (Index t (Edge_Index t v v'), Value t v, Value t v') => Edge t v v' where
-  data Edge_Index t v v'
-  indexes :: v' -> [Edge_Index t v v']
+class (PolyIndex t (Index t v v'), PolyValue t v, PolyValue t v') => Edge t v v' where
+  data Index t v v'
+  indexes :: v' -> [Index t v v']
   indexes = const []
 
-class (Tag t) => Index t i where
+class (Tag t) => PolyIndex t i where
   packIndex :: i -> UnionIndex t
 
 -- | 
@@ -176,7 +176,7 @@ class (Tag t) => Index t i where
 data Engine t =
   Engine {
     -- | Run event.
-    runEvent :: Event t e => e -> IO (Event_Result t e),
+    runEvent :: PolyEvent t e => e -> IO (PolyEvent_Result t e),
     -- | An internal function used by "GraphDB.Server".
     runUnionEvent :: UnionEvent t -> IO (UnionEventResult t),
     -- | Shutdown DB, releasing all acquired resources.
@@ -195,7 +195,7 @@ data Engine t =
 -- Naturally, the time it takes is proportional to the size of the database.
 -- The startup time also depends on whether the engine was shutdown previously, 
 -- since servicing of persistence files takes place then. 
-startEngine :: forall t. (Tag t, Value t (Root t)) => Root t -> Mode -> IO (Engine t)
+startEngine :: forall t. (Tag t, PolyValue t (Root t)) => Root t -> Mode -> IO (Engine t)
 startEngine rootValue mode = case mode of
   Mode_Local persistenceSettings -> do
     dispatcher <- Dispatcher.new
@@ -203,7 +203,7 @@ startEngine rootValue mode = case mode of
       Nothing -> do
         root :: UnionNode t <- Node.new $ unionValue rootValue
         let
-          runEvent :: Event t e => e -> IO (Event_Result t e)
+          runEvent :: PolyEvent t e => e -> IO (PolyEvent_Result t e)
           runEvent = eventFinalTransaction >>> \case
             FinalTransaction_Write (Write rootToIO) -> 
               Dispatcher.runWrite dispatcher $ rootToIO root
@@ -226,7 +226,7 @@ startEngine rootValue mode = case mode of
             FinalTransaction_Read _ -> error "Attempt to replay a read-event"
         (storage, root) <- Storage.acquireAndLoad initRoot replayUnionEvent storagePaths
         let
-          runEvent :: Event t e => e -> IO (Event_Result t e)
+          runEvent :: PolyEvent t e => e -> IO (PolyEvent_Result t e)
           runEvent e = case eventFinalTransaction e of
             FinalTransaction_Write (Write rootToIO) -> do
               IOQueue.enqueue eventsPersistenceBuffer $ do
@@ -254,7 +254,7 @@ startEngine rootValue mode = case mode of
     let
       runUnionEvent :: UnionEvent t -> IO (UnionEventResult t)
       runUnionEvent = Client.request client
-      runEvent :: forall e. Event t e => e -> IO (Event_Result t e)
+      runEvent :: forall e. PolyEvent t e => e -> IO (PolyEvent_Result t e)
       runEvent e = 
         runUnionEvent (packEvent e) >>=
         return . unpackEventResult >>=
@@ -376,7 +376,7 @@ getRoot = fmap Node getRootUnionNode
 -- 
 -- This node won't get stored if you don't insert at least a single edge 
 -- from another stored node to it.
-newNode :: (Value t v) => v -> ReadOrWrite t s (Node t s v)
+newNode :: (PolyValue t v) => v -> ReadOrWrite t s (Node t s v)
 newNode = fmap Node . liftIO . Node.new . unionValue
 
 -- |
@@ -391,7 +391,7 @@ getTargetsByType v (Node source) =
 
 -- |
 -- Get target nodes reachable by the provided index.
-getTargetsByIndex :: (Edge t v v') => Edge_Index t v v' -> Node t s v -> ReadOrWrite t s [Node t s v']
+getTargetsByIndex :: (Edge t v v') => Index t v v' -> Node t s v -> ReadOrWrite t s [Node t s v']
 getTargetsByIndex i (Node source) = 
   liftIO $ map Node <$> Node.getTargetsByIndex source (packIndex i)
 
@@ -416,7 +416,7 @@ removeTarget (Node target) (Node source) =
 
 -- | 
 -- Get the value of the node.
-getValue :: (Value t v) => Node t s v -> ReadOrWrite t s v
+getValue :: (PolyValue t v) => Node t s v -> ReadOrWrite t s v
 getValue (Node n) = 
   liftIO (Node.getValue n) >>= 
   return . unpackValue >>=
@@ -424,7 +424,7 @@ getValue (Node n) =
 
 -- | 
 -- Replace the value of the specified node.
-setValue :: (Value t v) => v -> Node t s v -> Write t s ()
+setValue :: (PolyValue t v) => v -> Node t s v -> Write t s ()
 setValue a (Node n) = liftIO $ Node.setValue n (unionValue a)
 
 -- |

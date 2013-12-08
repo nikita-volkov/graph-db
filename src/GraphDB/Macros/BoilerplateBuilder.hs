@@ -30,7 +30,7 @@ new (tagName, tagType) = do
   [t| Engine.UnionValue $(return tagType) |] 
     >>= applyAll [generateHashableInstance, generateSerializableInstance]
     >>= addDecs . join
-  [t| Engine.UnionType $(return tagType) |] 
+  [t| Engine.UnionValueType $(return tagType) |] 
     >>= applyAll [generateHashableInstance, generateSerializableInstance]
     >>= addDecs . join
   [t| Engine.UnionEvent $(return tagType) |]
@@ -44,7 +44,7 @@ new (tagName, tagType) = do
 
   let
     addEdge (source, target) = do
-      indexType <- [t| Engine.Edge_Index $(pure tagType) $(pure source) $(pure target) |]
+      indexType <- [t| Engine.Index $(pure tagType) $(pure source) $(pure target) |]
       unionIndexName <- TIB.addIndex tib indexType
       addDecs =<< generateHashableInstance indexType
       addDecs =<< generateSerializableInstance indexType
@@ -100,10 +100,10 @@ generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool 
 generateEventInstance eventType tagType eventName functionName argTypes resultType isWrite unionEventName = 
   pure $ (:[]) $ InstanceD [] instanceHead decs
   where
-    instanceHead = Type.apply [eventType, tagType, ConT ''Engine.Event]
+    instanceHead = Type.apply [eventType, tagType, ConT ''Engine.PolyEvent]
     decs = [dec1, dec2, dec3]
       where
-        dec1 = TySynInstD ''Engine.Event_Result [tagType, eventType] resultType
+        dec1 = TySynInstD ''Engine.PolyEvent_Result [tagType, eventType] resultType
         dec2 = FunD 'Engine.eventFinalTransaction [clause]
           where
             clause = Clause [pattern] body []
@@ -123,7 +123,7 @@ generateEventInstance eventType tagType eventName functionName argTypes resultTy
 generateEventResultInstance :: Type -> Type -> Name -> Q [Dec]
 generateEventResultInstance eventResultType tagType unionEventResultName =  
   [d|
-    instance Engine.EventResult $(return tagType) $(return eventResultType) where
+    instance Engine.PolyEventResult $(return tagType) $(return eventResultType) where
       packEventResult = $(conE unionEventResultName)
       unpackEventResult = $(fromUnionEventResultLambdaQ)
   |]
@@ -153,7 +153,7 @@ generateSerializableInstance t =
 generateValueInstance :: Type -> Type -> Name -> Name -> Q [Dec]
 generateValueInstance valueType tagType unionValueName unionTypeName = 
   [d|
-    instance Engine.Value $(return tagType) $(return valueType) where
+    instance Engine.PolyValue $(return tagType) $(return valueType) where
       packValue v = ($(conE unionTypeName), $(conE unionValueName) v)
       unpackValue = $(Q.caseLambda [pure match1, pure match2])
   |]
@@ -171,6 +171,6 @@ generateValueInstance valueType tagType unionValueName unionTypeName =
 generateIndexInstance :: Type -> Type -> Name -> Q [Dec]
 generateIndexInstance indexType tagType unionIndexName = 
   [d|
-    instance Engine.Index $(return tagType) $(return indexType) where
+    instance Engine.PolyIndex $(return tagType) $(return indexType) where
       packIndex = $(conE unionIndexName)
   |]
