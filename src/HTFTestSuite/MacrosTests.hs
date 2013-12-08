@@ -5,14 +5,14 @@ import Test.Framework
 import Language.Haskell.TH
 import GraphDB.Prelude hiding (assert, elements)
 import GraphDB.Macros
-import qualified GraphDB.API as API
+import qualified GraphDB.Engine as Engine
 
 
 
-writeEvent1 :: Artist -> [Genre] -> API.Write Catalogue s ()
+writeEvent1 :: Artist -> [Genre] -> Engine.Write Catalogue s ()
 writeEvent1 artist genreList = undefined
 
-readEvent1 :: Text -> API.Read Catalogue s [Genre]
+readEvent1 :: Text -> Engine.Read Catalogue s [Genre]
 readEvent1 name = undefined
 
 

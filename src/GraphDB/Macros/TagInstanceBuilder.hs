@@ -154,7 +154,7 @@ new (tagName, tagType) = do
                       Clause <$> patternsQ <*> bodyQ <*> pure []
                       where
                         targetValueN = mkName "z"
-                        patternsQ = pure [ConP sn [], ConP tn [VarP targetValueN]]
+                        patternsQ = pure [ConP tn [VarP targetValueN], ConP sn []]
                         bodyQ = NormalB <$>
                           [e|
                             map Engine.packIndex (Engine.indexes $(varE targetValueN) :: [Engine.Edge_Index $(return tagType) $(return st) $(return tt)])
@@ -164,7 +164,7 @@ new (tagName, tagType) = do
               when (null clauses) $ fail "No 'unionIndexTargetType' clauses to render"
               return $ FunD 'Engine.unionIndexTargetType clauses
             decomposeUnionValueFunDecQ = do
-              clauses <- runIO $ readIORef unionIndexTargetTypeClauses
+              clauses <- runIO $ readIORef decomposeUnionValueClauses
               when (null clauses) $ fail "No 'decomposeUnionValue' clauses to render"
               return $ FunD 'Engine.decomposeUnionValue clauses
             composeUnionValueFunDecQ = do

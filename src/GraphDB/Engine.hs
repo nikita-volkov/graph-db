@@ -166,6 +166,7 @@ unionValue v = let (_, uv) = packValue v in uv
 class (Index t (Edge_Index t v v'), Value t v, Value t v') => Edge t v v' where
   data Edge_Index t v v'
   indexes :: v' -> [Edge_Index t v v']
+  indexes = const []
 
 class (Tag t) => Index t i where
   packIndex :: i -> UnionIndex t

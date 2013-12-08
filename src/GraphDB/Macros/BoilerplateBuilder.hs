@@ -9,6 +9,7 @@ import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH.Type as Type
 import qualified GraphDB.Macros.TagInstanceBuilder as TIB
 import qualified Data.Char as Char
+import qualified Data.Set as Set
 
 data BoilerplateBuilder = BoilerplateBuilder {
   addEdge :: (Type, Type) -> Q (),
@@ -23,6 +24,9 @@ new (tagName, tagType) = do
 
   (addDecs, getDecs) <- newDecsAccumulator
 
+  [t| Engine.UnionIndex $(return tagType) |] 
+    >>= applyAll [generateHashableInstance, generateSerializableInstance]
+    >>= addDecs . join
   [t| Engine.UnionValue $(return tagType) |] 
     >>= applyAll [generateHashableInstance, generateSerializableInstance]
     >>= addDecs . join
@@ -36,18 +40,26 @@ new (tagName, tagType) = do
     >>= applyAll [generateSerializableInstance]
     >>= addDecs . join
 
+  seenValueTypesRef <- runIO $ newIORef []
+
   let
     addEdge (source, target) = do
       indexType <- [t| Engine.Edge_Index $(pure tagType) $(pure source) $(pure target) |]
-      addDecs =<< generateHashableInstance indexType
       unionIndexName <- TIB.addIndex tib indexType
+      addDecs =<< generateHashableInstance indexType
+      addDecs =<< generateSerializableInstance indexType
+      addDecs =<< generateIndexInstance indexType tagType unionIndexName
       addValue source
       addValue target
     addValue t = do
-      (uvName, uvtName) <- TIB.addValue tib t
-      addDecs =<< generateValueInstance t tagType uvName
-      addDecs =<< generateHashableInstance t
-      addDecs =<< generateSerializableInstance t
+      seenValueTypes <- runIO $ readIORef seenValueTypesRef
+      when (not $ elem t seenValueTypes) $ do
+        (uvName, utName) <- TIB.addValue tib t
+        addDecs =<< generateValueInstance t tagType uvName utName
+        addDecs =<< generateHashableInstance t
+        addDecs =<< generateSerializableInstance t
+        runIO $ modifyIORef seenValueTypesRef (t:)
+
     addTransactionFunction (name, argTypes, evResultType, isWrite) = do
       (unionEventName, unionEventResultName) <- 
         TIB.addEventAndEventResult tib (evType, evResultType)
@@ -91,7 +103,7 @@ generateEventInstance eventType tagType eventName functionName argTypes resultTy
     instanceHead = Type.apply [eventType, tagType, ConT ''Engine.Event]
     decs = [dec1, dec2, dec3]
       where
-        dec1 = TySynInstD ''Engine.EventResult [tagType, eventType] resultType
+        dec1 = TySynInstD ''Engine.Event_Result [tagType, eventType] resultType
         dec2 = FunD 'Engine.eventFinalTransaction [clause]
           where
             clause = Clause [pattern] body []
@@ -138,11 +150,11 @@ generateSerializableInstance t =
   Q.whenNoInstance ''Serializable [ConT ''IO, t] $ 
     [d| instance Serializable IO $(return t) |]
 
-generateValueInstance :: Type -> Type -> Name -> Q [Dec]
-generateValueInstance valueType tagType unionValueName = 
+generateValueInstance :: Type -> Type -> Name -> Name -> Q [Dec]
+generateValueInstance valueType tagType unionValueName unionTypeName = 
   [d|
     instance Engine.Value $(return tagType) $(return valueType) where
-      packValue = $(conE unionValueName)
+      packValue v = ($(conE unionTypeName), $(conE unionValueName) v)
       unpackValue = $(Q.caseLambda [pure match1, pure match2])
   |]
   where
@@ -156,3 +168,9 @@ generateValueInstance valueType tagType unionValueName =
         pattern = WildP
         body = NormalB $ Q.purify [e| Nothing |]
 
+generateIndexInstance :: Type -> Type -> Name -> Q [Dec]
+generateIndexInstance indexType tagType unionIndexName = 
+  [d|
+    instance Engine.Index $(return tagType) $(return indexType) where
+      packIndex = $(conE unionIndexName)
+  |]
