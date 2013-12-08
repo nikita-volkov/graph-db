@@ -19,6 +19,7 @@ module GraphDB.Engine
     Write,
     Read,
     ReadOrWrite,
+    Transaction,
     Node,
     Edge(..),
     getRoot,

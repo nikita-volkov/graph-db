@@ -49,7 +49,7 @@ library
     GraphDB.Macros.NamesRegistry
     GraphDB.Macros.TagInstanceBuilder
     GraphDB.Macros.BoilerplateBuilder
-    -- GraphDB.Macros
+    GraphDB.Macros
     GraphDB.TH
     GraphDB.TH.Q
     GraphDB.TH.Type
