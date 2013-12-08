@@ -304,7 +304,7 @@ instance (Type t) => Serializable IO (Node t) where
             count <- deserialize
             replicateM_ count $ do
               target <- deserializeNode
-              liftIO $ addTarget target source
+              liftIO $ addTarget source target
             loopAddTargets
 
     node <- deserializeNode

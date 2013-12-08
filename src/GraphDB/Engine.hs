@@ -406,7 +406,7 @@ getTargetsByIndex i (Node source) =
 -- If the node was already there it would not be.
 addTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
 addTarget (Node target) (Node source) = 
-  liftIO $ Node.addTarget target source
+  liftIO $ Node.addTarget source target
 
 -- |
 -- Remove the target node /v'/ and all its indexes from the source node /v/.
@@ -415,7 +415,7 @@ addTarget (Node target) (Node source) =
 -- If the node was already there it would not be.
 removeTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
 removeTarget (Node target) (Node source) = 
-  liftIO $ Node.removeTarget target source
+  liftIO $ Node.removeTarget source target
 
 -- | 
 -- Get the value of the node.
