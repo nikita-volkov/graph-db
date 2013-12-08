@@ -7,7 +7,7 @@ import GraphDB.Prelude
 import qualified Data.HashTable.IO as HashTables
 
 
-data IOTable k v = IOTable (HashTables.LinearHashTable k v) (IORef Int)
+data IOTable k v = IOTable !(HashTables.LinearHashTable k v) !(IORef Int)
 
 new :: IO (IOTable k v)
 new = IOTable <$> HashTables.new <*> newIORef 0

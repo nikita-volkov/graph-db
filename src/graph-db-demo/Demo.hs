@@ -1,5 +1,7 @@
 
-import GraphDB.Prelude
+import BasicPrelude
+import GHC.Generics
+import CerealPlus.Serializable
 import qualified GraphDB as G
 import qualified Data.Text as Text
 import qualified Data.Time
@@ -25,8 +27,8 @@ data Artist = Artist Int Text deriving (Show, Eq, Generic)
 -- Indexes and relations setup.
 --------------
 
-instance G.Reachable Catalogue Catalogue Artist where
-  data Index Catalogue Catalogue Artist =
+instance G.Edge Catalogue Artist where
+  data Index Catalogue Artist =
     Index_Catalogue_Artist_UID Int |
     Index_Catalogue_Artist_SearchTerm Text
     deriving (Show, Eq, Generic)
@@ -34,8 +36,8 @@ instance G.Reachable Catalogue Catalogue Artist where
     map Index_Catalogue_Artist_SearchTerm (textToSearchTerms name) ++
     [Index_Catalogue_Artist_UID uid]
 
-instance G.Reachable Catalogue Catalogue Release where
-  data Index Catalogue Catalogue Release =
+instance G.Edge Catalogue Release where
+  data Index Catalogue Release =
     Index_Catalogue_Release_UID Int |
     Index_Catalogue_Release_SearchTerm Text
     deriving (Show, Eq, Generic)
@@ -43,22 +45,22 @@ instance G.Reachable Catalogue Catalogue Release where
     map Index_Catalogue_Release_SearchTerm (textToSearchTerms title) ++
     [Index_Catalogue_Release_UID uid]
 
-instance G.Reachable Catalogue Catalogue Recording where
-  data Index Catalogue Catalogue Recording =
+instance G.Edge Catalogue Recording where
+  data Index Catalogue Recording =
     Index_Catalogue_Recording_UID Int
     deriving (Show, Eq, Generic)
   indexes (Recording uid duration typ) =
     [Index_Catalogue_Recording_UID uid]
 
-instance G.Reachable Catalogue Catalogue Song where
-  data Index Catalogue Catalogue Song =
+instance G.Edge Catalogue Song where
+  data Index Catalogue Song =
     Index_Catalogue_Song_SearchTerm Text
     deriving (Show, Eq, Generic)
   indexes (Song title) =
     map Index_Catalogue_Song_SearchTerm (textToSearchTerms title)
 
-instance G.Reachable Catalogue Artist Release where
-  data Index Catalogue Artist Release =
+instance G.Edge Artist Release where
+  data Index Artist Release =
     -- We really don't need any constructors for this index, 
     -- since we won't be indexing anything.
     -- However, GHC can't generate deriving instances for constructorless types,
@@ -68,57 +70,57 @@ instance G.Reachable Catalogue Artist Release where
     Index_Artist_Release
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Artist Recording where
-  data Index Catalogue Artist Recording =
+instance G.Edge Artist Recording where
+  data Index Artist Recording =
     Index_Artist_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Artist Song where
-  data Index Catalogue Artist Song =
+instance G.Edge Artist Song where
+  data Index Artist Song =
     Index_Artist_Song
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Release Track where
-  data Index Catalogue Release Track =
+instance G.Edge Release Track where
+  data Index Release Track =
     Index_Release_Track_Number Int
     deriving (Show, Eq, Generic)
   indexes (Track number) = [Index_Release_Track_Number number]
 
-instance G.Reachable Catalogue Release TitleArtist where
-  data Index Catalogue Release TitleArtist =
+instance G.Edge Release TitleArtist where
+  data Index Release TitleArtist =
     Index_Release_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Release_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue Track Recording where
-  data Index Catalogue Track Recording =
+instance G.Edge Track Recording where
+  data Index Track Recording =
     Index_Track_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Recording Song where
-  data Index Catalogue Recording Song =
+instance G.Edge Recording Song where
+  data Index Recording Song =
     Index_Recording_Song
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Recording TitleArtist where
-  data Index Catalogue Recording TitleArtist =
+instance G.Edge Recording TitleArtist where
+  data Index Recording TitleArtist =
     Index_Recording_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Recording_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue Song Recording where
-  data Index Catalogue Song Recording =
+instance G.Edge Song Recording where
+  data Index Song Recording =
     Index_Song_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Song TitleArtist where
-  data Index Catalogue Song TitleArtist =
+instance G.Edge Song TitleArtist where
+  data Index Song TitleArtist =
     Index_Song_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Song_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue TitleArtist Artist where
-  data Index Catalogue TitleArtist Artist =
+instance G.Edge TitleArtist Artist where
+  data Index TitleArtist Artist =
     Index_TitleArtist_Artist
     deriving (Show, Eq, Generic)
 
@@ -175,6 +177,7 @@ populate = do
       G.addTarget titleArtist node
       G.addTarget artist titleArtist
       G.addTarget node artist
+      return ()
 
 -- | Use a counter stored in the root 'Catalogue' node to generate a new unique UID.
 generateNewUID :: G.Write Catalogue s Int
@@ -188,16 +191,13 @@ generateNewUID = do
 -- | Search thru titles of songs, releases and artists.
 search :: Text -> G.Read Catalogue s [Either Artist (Either Release Song)]
 search text = do
-  artists <- searchByMkIndex Index_Catalogue_Artist_SearchTerm
-  releases <- searchByMkIndex Index_Catalogue_Release_SearchTerm
-  songs <- searchByMkIndex Index_Catalogue_Song_SearchTerm
+  artists <- searchByMkIndex terms Index_Catalogue_Artist_SearchTerm
+  releases <- searchByMkIndex terms Index_Catalogue_Release_SearchTerm
+  songs <- searchByMkIndex terms Index_Catalogue_Song_SearchTerm
   return $ map Left artists ++ map (Right . Left) releases ++ map (Right . Right) songs
   where
     terms = textToSearchTerms text
-    searchByMkIndex :: 
-      (G.Reachable Catalogue Catalogue b, Eq b) => 
-      (Text -> G.Index Catalogue Catalogue b) -> G.Read Catalogue s [b]
-    searchByMkIndex mkIndex = do
+    searchByMkIndex terms mkIndex = do
       root <- G.getRoot
       groupedMatches <- forM terms $ \term ->
         G.getTargetsByIndex (mkIndex term) root >>=
@@ -215,8 +215,8 @@ getRecordingsByArtistUID uid =
   return . concat >>=
   mapM G.getValue
 
-countAllNodes :: G.Read Catalogue s Int
-countAllNodes = G.countAllNodes
+getStats :: G.Read Catalogue s (Int, Int)
+getStats = G.getStats
 
 -----------
 -- Boilerplate.
@@ -271,8 +271,8 @@ main = do
 
   putStrLn "Memory footprint (bytes):"
   print =<< GHC.DataSize.recursiveSize db
-  putStrLn "Total amount of nodes in the graph:"
-  print =<< G.runEvent db CountAllNodes
+  putStrLn "Total amounts of nodes and edges in the graph:"
+  print =<< G.runEvent db GetStats
 
   G.shutdownEngine db
 

@@ -38,28 +38,24 @@ source-repository head
 
 library
   hs-source-dirs:
-    src
+    src/library
   exposed-modules:
     GraphDB
   other-modules:
-    GraphDB.Macros.BoilerplateBuilder
-    GraphDB.Macros.GraphTagInstanceBuilder
-    GraphDB.Macros.GraphDBTagInstanceBuilder
+    GraphDB.Engine.Node
+    GraphDB.Engine.Dispatcher
+    GraphDB.Engine
+    GraphDB.Server
     GraphDB.Macros.NamesRegistry
+    GraphDB.Macros.TagInstanceBuilder
+    GraphDB.Macros.BoilerplateBuilder
     GraphDB.Macros
-    GraphDB.API
-    GraphDB.Graph.Node
-    GraphDB.Graph.TypedNode
-    GraphDB.Graph.DynamicNode
-    GraphDB.Graph.Types
-    GraphDB.Graph.Dispatcher
-    GraphDB.Graph.Transaction
-    GraphDB.Graph
-    GraphDB.IOTable
-    GraphDB.IOStableNameSet
     GraphDB.TH
     GraphDB.TH.Q
     GraphDB.TH.Type
+    GraphDB.SNMultiTable
+    GraphDB.IOTable
+    GraphDB.IOStableNameSet
     GraphDB.DIOVector
     GraphDB.IOQueue
     GraphDB.Prelude
@@ -123,39 +119,21 @@ library
 
 executable graph-db-demo
   hs-source-dirs:
-    src
+    src/graph-db-demo
   main-is:
     Demo.hs
   ghc-options:
     -threaded 
     "-with-rtsopts=-N"
   build-depends:
-    parsec,
-    th-expand-syns,
-    attoparsec,
-    monad-stm,
-    cio,
-    unordered-containers,
-    containers,
-    template-haskell,
-    errors,
-    acid-io == 0.1.*,
-    SafeSemaphore == 0.9.*,
-    pipes-cereal-plus == 0.2.*,
-    system-filepath == 0.4.*,
-    vector,
-    hashtables == 1.1.*,
-    hashable == 1.2.*,
-    text,
-    bytestring,
-    stm,
-    transformers,
-    mtl,
-    base >= 4.5 && < 5,
-
+    cereal-plus,
     ghc-datasize,
     old-locale,
-    time
+    time,
+    text,
+    basic-prelude,
+    graph-db,
+    base >= 4.5 && < 5
   default-extensions:
     Arrows
     DeriveGeneric
@@ -195,9 +173,13 @@ test-suite graph-db-htf-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    src
+    src/htf-test-suite
+    src/library
   main-is:          
     HTFTestSuite.hs
+  ghc-options:
+    -threaded
+    "-with-rtsopts=-N"
   build-depends:
     parsec,
     th-expand-syns,
@@ -222,7 +204,14 @@ test-suite graph-db-htf-test-suite
     mtl,
     base >= 4.5 && < 5,
 
+    ghc-datasize,
+    directory,
+    system-fileio,
+    old-locale,
+    time,
     cereal-plus,
+    quickcheck-instances,
+    QuickCheck-GenT == 0.1.*,
     QuickCheck,
     HUnit,
     HTF == 0.11.*
