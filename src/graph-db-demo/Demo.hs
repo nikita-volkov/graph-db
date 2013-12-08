@@ -1,5 +1,7 @@
 
-import GraphDB.Prelude
+import BasicPrelude
+import GHC.Generics
+import CerealPlus.Serializable
 import qualified GraphDB as G
 import qualified Data.Text as Text
 import qualified Data.Time
@@ -195,17 +197,14 @@ search text = do
   return $ map Left artists ++ map (Right . Left) releases ++ map (Right . Right) songs
   where
     terms = textToSearchTerms text
--- searchByMkIndex :: 
---   (G.TagEdge Catalogue Catalogue b, Eq b) => 
---   (Text -> G.Index Catalogue b) -> G.Read Catalogue s [b]
-searchByMkIndex terms mkIndex = do
-  root <- G.getRoot
-  groupedMatches <- forM terms $ \term ->
-    G.getTargetsByIndex (mkIndex term) root >>=
-    mapM G.getValue
-  if null groupedMatches
-    then return []
-    else return $ foldr1 union groupedMatches
+    searchByMkIndex terms mkIndex = do
+      root <- G.getRoot
+      groupedMatches <- forM terms $ \term ->
+        G.getTargetsByIndex (mkIndex term) root >>=
+        mapM G.getValue
+      if null groupedMatches
+        then return []
+        else return $ foldr1 union groupedMatches
 
 getRecordingsByArtistUID :: Int -> G.Read Catalogue s [Recording]
 getRecordingsByArtistUID uid =

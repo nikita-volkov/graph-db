@@ -32,7 +32,7 @@ module GraphDB
     setValue,
     getStats,
 
-    -- ** Macros 
+    -- ** Boilerplate 
     generateBoilerplate,
 
     -- * Server 
