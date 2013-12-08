@@ -32,6 +32,7 @@ module GraphDB.Engine
 
     -- * Boilerplate
     Tag(..),
+    TagEdge(..),
     TagIndex(..),
     TagValue(..),
     TagEvent(..),
@@ -87,86 +88,13 @@ data URL =
   -- | Host name, port and password.
   URL_Host Text Int (Maybe ByteString)
 
--- NOTE: Alternative naming conventions: 
---  - TagIndex, TagValue, tagValueIndex ...
---  - Tag_Index, tag_valueIndex ...
-class 
-  (
-    Serializable IO (UnionEventResult t),
-    Serializable IO (UnionEvent t),
-    Serializable IO (UnionValue t),
-    Hashable (UnionValueType t),
-    Eq (UnionValueType t),
-    Hashable (UnionIndex t),
-    Eq (UnionIndex t)
-  ) => 
-  Tag t 
-  where
-    type Root t
-    data UnionIndex t
-    data UnionValue t
-    data UnionValueType t
-    data UnionEvent t
-    data UnionEventResult t
-    unionIndexes :: UnionValue t -> UnionValueType t -> [UnionIndex t]
-    unionIndexTargetType :: UnionIndex t -> UnionValueType t
-    decomposeUnionValue :: UnionValue t -> (UnionValueType t, Any)
-    composeUnionValue :: UnionValueType t -> Any -> UnionValue t
-    unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
 
-----------------
--- Adaptation of Node's API.
-----------------
+-- | 
+-- Determine paths from a unique name among all storages running on this machine. 
+-- It will be used to set default values for storage paths under \"~\/.graph-db\/\[name\]\/\".
+pathsFromName :: Text -> IO Storage.Paths
+pathsFromName name = Storage.pathsFromDirectory ("~/.graph-db/" <> FilePath.fromText name)
 
-instance (Tag t) => Node.Type (UnionValueType t) where
-  type Index (UnionValueType t) = UnionIndex t
-  type Value (UnionValueType t) = UnionValue t
-  indexes = unionIndexes
-  decomposeValue = decomposeUnionValue
-  composeValue = composeUnionValue
-  targetType = unionIndexTargetType
-
-type UnionNode t = Node.Node (UnionValueType t)
-
-----------------
-
--- NOTE: Alternative naming convention: GraphEvent, GraphIndex, ...
-class (TagEventResult t (TagEvent_Result t e)) => TagEvent t e where
-  type TagEvent_Result t e
-  eventFinalTransaction :: e -> FinalTransaction t (TagEvent_Result t e)
-  packEvent :: e -> UnionEvent t
-
-class TagEventResult t r where
-  packEventResult :: r -> UnionEventResult t
-  unpackEventResult :: UnionEventResult t -> Maybe r
-
-class (Tag t) => TagValue t v where
-  packValue :: v -> (UnionValueType t, UnionValue t)
-  unpackValue :: UnionValue t -> Maybe v
-
-unionType :: TagValue t v => v -> UnionValueType t
-unionType v = let (ut, _) = packValue v in ut
-
-unionValue :: TagValue t v => v -> UnionValue t
-unionValue v = let (_, uv) = packValue v in uv
-
-
--- |
--- Defines a specific set of indexes, which nodes of value /v'/ emit to nodes of value /v/.
--- 
--- If the indexes list is empty, 
--- the node may still be reached thru 'getTargetsByType'.
--- 
--- If there is no instance of this class between two values, 
--- then the associated nodes cannot be linked.
--- 
-class (TagIndex t (Index t v v'), TagValue t v, TagValue t v') => Edge t v v' where
-  data Index t v v'
-  indexes :: v' -> [Index t v v']
-  indexes = const []
-
-class (Tag t) => TagIndex t i where
-  packIndex :: i -> UnionIndex t
 
 -- | 
 -- A component, managing datastructure, persistence and connection to remote server.
@@ -267,14 +195,87 @@ startEngine rootValue mode = case mode of
         URL_Host name port password -> Client.Host name port password
         URL_Socket path -> Client.Socket path
 
--- | 
--- Determine paths from a unique name among all storages running on this machine. 
--- It will be used to set default values for storage paths under \"~\/.graph-db\/\[name\]\/\".
-pathsFromName :: Text -> IO Storage.Paths
-pathsFromName name = Storage.pathsFromDirectory ("~/.graph-db/" <> FilePath.fromText name)
+-- |
+-- Defines a specific set of indexes, which nodes of value /v'/ emit to nodes of value /v/.
+-- 
+-- If the indexes list is empty, 
+-- the node may still be reached thru 'getTargetsByType'.
+-- 
+-- If there is no instance of this class between two values, 
+-- then the associated nodes cannot be linked.
+-- 
+class Edge v v' where
+  data Index v v'
+  indexes :: v' -> [Index v v']
+  indexes = const []
 
+----------------
+-- Boilerplate types.
+----------------
 
+class 
+  (
+    Serializable IO (UnionEventResult t),
+    Serializable IO (UnionEvent t),
+    Serializable IO (UnionValue t),
+    Hashable (UnionValueType t),
+    Eq (UnionValueType t),
+    Hashable (UnionIndex t),
+    Eq (UnionIndex t)
+  ) => 
+  Tag t 
+  where
+    type Root t
+    data UnionIndex t
+    data UnionValue t
+    data UnionValueType t
+    data UnionEvent t
+    data UnionEventResult t
+    unionIndexes :: UnionValue t -> UnionValueType t -> [UnionIndex t]
+    unionIndexTargetType :: UnionIndex t -> UnionValueType t
+    decomposeUnionValue :: UnionValue t -> (UnionValueType t, Any)
+    composeUnionValue :: UnionValueType t -> Any -> UnionValue t
+    unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
 
+class (TagEventResult t (TagEvent_Result t e)) => TagEvent t e where
+  type TagEvent_Result t e
+  eventFinalTransaction :: e -> FinalTransaction t (TagEvent_Result t e)
+  packEvent :: e -> UnionEvent t
+
+class TagEventResult t r where
+  packEventResult :: r -> UnionEventResult t
+  unpackEventResult :: UnionEventResult t -> Maybe r
+
+class (Tag t) => TagValue t v where
+  packValue :: v -> (UnionValueType t, UnionValue t)
+  unpackValue :: UnionValue t -> Maybe v
+
+class (Tag t) => TagIndex t i where
+  packIndex :: i -> UnionIndex t
+
+type TagEdge t v v' = (TagValue t v, TagValue t v', TagIndex t (Index v v'), Edge v v')
+
+unionType :: TagValue t v => v -> UnionValueType t
+unionType v = let (ut, _) = packValue v in ut
+
+unionValue :: TagValue t v => v -> UnionValue t
+unionValue v = let (_, uv) = packValue v in uv
+
+----------------
+-- Adaptation of Node's API.
+----------------
+
+instance (Tag t) => Node.Type (UnionValueType t) where
+  type Index (UnionValueType t) = UnionIndex t
+  type Value (UnionValueType t) = UnionValue t
+  indexes = unionIndexes
+  decomposeValue = decomposeUnionValue
+  composeValue = composeUnionValue
+  targetType = unionIndexTargetType
+
+type UnionNode t = Node.Node (UnionValueType t)
+
+---------------
 
 -- |
 -- A transaction-local reference to the actual node of the graph-datastructure.
@@ -365,7 +366,6 @@ instance Functor (FinalTransaction t) where
     FinalTransaction_Read read -> FinalTransaction_Read $ fmap f read
 
 
-
 -- |
 -- Get the root node.
 getRoot :: ReadOrWrite t s (Node t s (Root t))
@@ -385,13 +385,13 @@ newNode = fmap Node . liftIO . Node.new . unionValue
 -- 
 -- > getTargetsByType (undefined :: Artist) ...
 -- 
-getTargetsByType :: (Edge t v v') => v' -> Node t s v -> ReadOrWrite t s [Node t s v']
+getTargetsByType :: (TagEdge t v v') => v' -> Node t s v -> ReadOrWrite t s [Node t s v']
 getTargetsByType v (Node source) =
   liftIO $ map Node <$> Node.getTargetsByType source (unionType v)
 
 -- |
 -- Get target nodes reachable by the provided index.
-getTargetsByIndex :: (Edge t v v') => Index t v v' -> Node t s v -> ReadOrWrite t s [Node t s v']
+getTargetsByIndex :: (TagEdge t v v') => Index v v' -> Node t s v -> ReadOrWrite t s [Node t s v']
 getTargetsByIndex i (Node source) = 
   liftIO $ map Node <$> Node.getTargetsByIndex source (packIndex i)
 
@@ -401,7 +401,7 @@ getTargetsByIndex i (Node source) =
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node was already there it will return 'False'.
-addTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
+addTarget :: (TagEdge t v v') => Node t s v' -> Node t s v -> Write t s Bool
 addTarget (Node target) (Node source) = 
   liftIO $ Node.addTarget source target
 
@@ -410,7 +410,7 @@ addTarget (Node target) (Node source) =
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node was not found it will return 'False'.
-removeTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
+removeTarget :: (TagEdge t v v') => Node t s v' -> Node t s v -> Write t s Bool
 removeTarget (Node target) (Node source) = 
   liftIO $ Node.removeTarget source target
 

@@ -44,7 +44,7 @@ new (tagName, tagType) = do
 
   let
     addEdge (source, target) = do
-      indexType <- [t| Engine.Index $(pure tagType) $(pure source) $(pure target) |]
+      indexType <- [t| Engine.Index $(pure source) $(pure target) |]
       unionIndexName <- TIB.addIndex tib indexType
       addDecs =<< generateHashableInstance indexType
       addDecs =<< generateSerializableInstance indexType

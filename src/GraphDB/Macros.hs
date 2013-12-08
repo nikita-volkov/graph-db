@@ -36,7 +36,7 @@ generateBoilerplate tagName = do
     BoilerplateBuilder.new (tagName, tagType)
 
   do
-    reachablePairs <- reifyLocalEdgePairs tagType
+    reachablePairs <- reifyLocalEdgePairs
     when (null reachablePairs) $ fail "No 'Edge' instances found in module"
     forM_ reachablePairs $ addEdgePair
 
@@ -115,8 +115,8 @@ processTransactionFunctionResult = \case
 -- TODO: probably, analyze the import statements to get the qualified
 -- alias for the class name.
 -- On the other hand, the user may be reexporting it from unknown module.
-reifyLocalEdgePairs :: Type -> Q [(Type, Type)]
-reifyLocalEdgePairs tagType = do
+reifyLocalEdgePairs :: Q [(Type, Type)]
+reifyLocalEdgePairs = do
   loc <- location
   text <- runIO $ readFile $ loc_filename loc
   P.runParserT getInstances () "'Edge' instances" text
@@ -133,9 +133,6 @@ reifyLocalEdgePairs tagType = do
       optional $ skipConstraints *> skipSpace
       className <- classNameP
       when (className /= "Edge") $ fail "Not a 'Edge' instance"
-      skipSpace
-      tag <- paramTypeP
-      when (tag /= tagType) $ mzero
       skipSpace
       source <- paramTypeP
       skipSpace
