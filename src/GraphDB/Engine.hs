@@ -37,6 +37,7 @@ module GraphDB.Engine
     Value(..),
     Event(..),
     EventResult(..),
+    FinalTransaction(..),
   )
   where
 

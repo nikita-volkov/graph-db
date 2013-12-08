@@ -48,7 +48,7 @@ library
     GraphDB.Server
     GraphDB.Macros.NamesRegistry
     GraphDB.Macros.TagInstanceBuilder
-    -- GraphDB.Macros.BoilerplateBuilder
+    GraphDB.Macros.BoilerplateBuilder
     -- GraphDB.Macros
     GraphDB.TH
     GraphDB.TH.Q
