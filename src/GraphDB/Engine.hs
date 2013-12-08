@@ -19,6 +19,7 @@ module GraphDB.Engine
     Write,
     Read,
     ReadOrWrite,
+    Transaction,
     Node,
     Edge(..),
     getRoot,
@@ -37,6 +38,7 @@ module GraphDB.Engine
     Value(..),
     Event(..),
     EventResult(..),
+    FinalTransaction(..),
   )
   where
 
@@ -108,10 +110,10 @@ class
     data UnionEvent t
     data UnionEventResult t
     unionIndexes :: UnionValue t -> UnionType t -> [UnionIndex t]
-    unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
+    unionIndexTargetType :: UnionIndex t -> UnionType t
     decomposeUnionValue :: UnionValue t -> (UnionType t, Any)
     composeUnionValue :: UnionType t -> Any -> UnionValue t
-    unionIndexTargetType :: UnionIndex t -> UnionType t
+    unionEventFinalTransaction :: UnionEvent t -> FinalTransaction t (UnionEventResult t)
 
 ----------------
 -- Adaptation of Node's API.
@@ -164,6 +166,7 @@ unionValue v = let (_, uv) = packValue v in uv
 class (Index t (Edge_Index t v v'), Value t v, Value t v') => Edge t v v' where
   data Edge_Index t v v'
   indexes :: v' -> [Edge_Index t v v']
+  indexes = const []
 
 class (Tag t) => Index t i where
   packIndex :: i -> UnionIndex t
@@ -403,7 +406,7 @@ getTargetsByIndex i (Node source) =
 -- If the node was already there it would not be.
 addTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
 addTarget (Node target) (Node source) = 
-  liftIO $ Node.addTarget target source
+  liftIO $ Node.addTarget source target
 
 -- |
 -- Remove the target node /v'/ and all its indexes from the source node /v/.
@@ -412,7 +415,7 @@ addTarget (Node target) (Node source) =
 -- If the node was already there it would not be.
 removeTarget :: (Edge t v v') => Node t s v' -> Node t s v -> Write t s Bool
 removeTarget (Node target) (Node source) = 
-  liftIO $ Node.removeTarget target source
+  liftIO $ Node.removeTarget source target
 
 -- | 
 -- Get the value of the node.

@@ -1,7 +1,6 @@
 module GraphDB.Macros.NamesRegistry where
 
 import GraphDB.Prelude
-import qualified GraphDB.API as API
 import Language.Haskell.TH
 import qualified Data.Map as Map
 

@@ -5,14 +5,14 @@ import Test.Framework
 import GraphDB.Prelude hiding (assert, elements, Read)
 import GraphDB.Macros
 import Language.Haskell.TH
-import qualified GraphDB.API as API
+import qualified GraphDB.Engine as Engine
 
 
 
-type Read r = forall s. API.Read Char s r
-type Read' s r = API.Read Char s r
-type Write r = forall s. API.Write Char s r
-type Write' s r = API.Write Char s r
+type Read r = forall s. Engine.Read Char s r
+type Read' s r = Engine.Read Char s r
+type Write r = forall s. Engine.Write Char s r
+type Write' s r = Engine.Write Char s r
 
 transactionFunction1 :: Read' s Int
 transactionFunction1 = undefined

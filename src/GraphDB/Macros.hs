@@ -7,8 +7,7 @@ import qualified Data.Set as Set
 import qualified Data.Text.IO as Text
 import qualified Data.Text as Text
 import qualified Text.Parsec as P
-import qualified GraphDB.API as API
-import qualified GraphDB.Graph.Transaction as Transaction
+import qualified GraphDB.Engine as Engine
 import qualified GraphDB.Macros.NamesRegistry as NamesRegistry; import GraphDB.Macros.NamesRegistry (NamesRegistry)
 import qualified GraphDB.TH as TH
 import qualified GraphDB.TH.Q as Q
@@ -20,7 +19,7 @@ import qualified GraphDB.Macros.BoilerplateBuilder as BoilerplateBuilder
 -- Scans the current module for all transaction-functions and 
 -- generate appropriate \"event\" data-types, 
 -- associating them with the provided database tag.
--- Also scans for all instances of 'GraphDB.Reachable' to identify
+-- Also scans for all instances of 'GraphDB.Edge' to identify
 -- the supported value types.
 -- 
 -- All transaction-functions and edge declarations must be located 
@@ -33,13 +32,13 @@ generateBoilerplate tagName = do
     Q.reifyType tagName >>= 
     maybe (fail $ "Not a type name: " ++ show tagName) return
 
-  BoilerplateBuilder.BoilerplateBuilder addReachablePair addTransactionFunction getDecs <- 
+  BoilerplateBuilder.BoilerplateBuilder addEdgePair addTransactionFunction getDecs <- 
     BoilerplateBuilder.new (tagName, tagType)
 
   do
-    reachablePairs <- reifyLocalReachablePairs tagType
-    when (null reachablePairs) $ fail "No 'Reachable' instances found in module"
-    forM_ reachablePairs $ addReachablePair
+    reachablePairs <- reifyLocalEdgePairs tagType
+    when (null reachablePairs) $ fail "No 'Edge' instances found in module"
+    forM_ reachablePairs $ addEdgePair
 
   do
     reifiedFunctions <- reifyLocalTransactionFunctions tagType
@@ -87,9 +86,9 @@ processTransactionFunctionResult = \case
         _ : _ : _ : z : [] | z == nodeRefType -> True
         _ -> False
         where
-          nodeRefType = Q.purify [t| API.Node |]
-      writeType = Q.purify [t| API.Write |]
-      readType = Q.purify [t| API.Read |]
+          nodeRefType = Q.purify [t| Engine.Node |]
+      writeType = Q.purify [t| Engine.Write |]
+      readType = Q.purify [t| Engine.Read |]
   -- A very special case for `ReadOrWrite` type-synonym:
   ForallT 
     [_, KindedTV tVarName _] 
@@ -101,14 +100,14 @@ processTransactionFunctionResult = \case
           tagType')
         _)
       resultType)
-    | memberValueType == ConT ''API.UnionValue,
+    | memberValueType == ConT ''Engine.UnionValue,
       tVarName == tVarName',
       tagType == tagType',
       any ((== Just tVarName) . transactionConstraintVarName) constraints ->
     return $ Just (False, tagType, resultType)
     where
       transactionConstraintVarName = \case
-        ClassP className [VarT varName] | className == ''Transaction.Transaction -> Just varName
+        ClassP className [VarT varName] | className == ''Engine.Transaction -> Just varName
         _ -> Nothing
   t@ForallT{} -> processTransactionFunctionResult $ Type.unforall t
   t -> Q.expandRootSynType t >>= fmap join . traverse processTransactionFunctionResult
@@ -116,11 +115,11 @@ processTransactionFunctionResult = \case
 -- TODO: probably, analyze the import statements to get the qualified
 -- alias for the class name.
 -- On the other hand, the user may be reexporting it from unknown module.
-reifyLocalReachablePairs :: Type -> Q [(Type, Type)]
-reifyLocalReachablePairs tagType = do
+reifyLocalEdgePairs :: Type -> Q [(Type, Type)]
+reifyLocalEdgePairs tagType = do
   loc <- location
   text <- runIO $ readFile $ loc_filename loc
-  P.runParserT getInstances () "Reachable instances" text
+  P.runParserT getInstances () "'Edge' instances" text
     >>= either (error . ("Parser failed: " <>) . show) return
   where
     getInstances = 
@@ -133,7 +132,7 @@ reifyLocalReachablePairs tagType = do
       skipSpace
       optional $ skipConstraints *> skipSpace
       className <- classNameP
-      when (className /= "Reachable") $ fail "Not a 'Reachable' instance"
+      when (className /= "Edge") $ fail "Not a 'Edge' instance"
       skipSpace
       tag <- paramTypeP
       when (tag /= tagType) $ mzero

@@ -35,8 +35,8 @@ data Artist = Artist Int Text deriving (Show, Eq, Generic)
 -- Indexes and relations setup.
 --------------
 
-instance G.Reachable Catalogue Catalogue Artist where
-  data Index Catalogue Catalogue Artist =
+instance G.Edge Catalogue Catalogue Artist where
+  data Edge_Index Catalogue Catalogue Artist =
     Index_Catalogue_Artist_UID Int |
     Index_Catalogue_Artist_SearchTerm Text
     deriving (Show, Eq, Generic)
@@ -44,8 +44,8 @@ instance G.Reachable Catalogue Catalogue Artist where
     map Index_Catalogue_Artist_SearchTerm (textToSearchTerms name) ++
     [Index_Catalogue_Artist_UID uid]
 
-instance G.Reachable Catalogue Catalogue Release where
-  data Index Catalogue Catalogue Release =
+instance G.Edge Catalogue Catalogue Release where
+  data Edge_Index Catalogue Catalogue Release =
     Index_Catalogue_Release_UID Int |
     Index_Catalogue_Release_SearchTerm Text
     deriving (Show, Eq, Generic)
@@ -53,22 +53,22 @@ instance G.Reachable Catalogue Catalogue Release where
     map Index_Catalogue_Release_SearchTerm (textToSearchTerms title) ++
     [Index_Catalogue_Release_UID uid]
 
-instance G.Reachable Catalogue Catalogue Recording where
-  data Index Catalogue Catalogue Recording =
+instance G.Edge Catalogue Catalogue Recording where
+  data Edge_Index Catalogue Catalogue Recording =
     Index_Catalogue_Recording_UID Int
     deriving (Show, Eq, Generic)
   indexes (Recording uid duration typ) =
     [Index_Catalogue_Recording_UID uid]
 
-instance G.Reachable Catalogue Catalogue Song where
-  data Index Catalogue Catalogue Song =
+instance G.Edge Catalogue Catalogue Song where
+  data Edge_Index Catalogue Catalogue Song =
     Index_Catalogue_Song_SearchTerm Text
     deriving (Show, Eq, Generic)
   indexes (Song title) =
     map Index_Catalogue_Song_SearchTerm (textToSearchTerms title)
 
-instance G.Reachable Catalogue Artist Release where
-  data Index Catalogue Artist Release =
+instance G.Edge Catalogue Artist Release where
+  data Edge_Index Catalogue Artist Release =
     -- We really don't need any constructors for this index, 
     -- since we won't be indexing anything.
     -- However, GHC can't generate deriving instances for constructorless types,
@@ -78,57 +78,57 @@ instance G.Reachable Catalogue Artist Release where
     Index_Artist_Release
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Artist Recording where
-  data Index Catalogue Artist Recording =
+instance G.Edge Catalogue Artist Recording where
+  data Edge_Index Catalogue Artist Recording =
     Index_Artist_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Artist Song where
-  data Index Catalogue Artist Song =
+instance G.Edge Catalogue Artist Song where
+  data Edge_Index Catalogue Artist Song =
     Index_Artist_Song
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Release Track where
-  data Index Catalogue Release Track =
+instance G.Edge Catalogue Release Track where
+  data Edge_Index Catalogue Release Track =
     Index_Release_Track_Number Int
     deriving (Show, Eq, Generic)
   indexes (Track number) = [Index_Release_Track_Number number]
 
-instance G.Reachable Catalogue Release TitleArtist where
-  data Index Catalogue Release TitleArtist =
+instance G.Edge Catalogue Release TitleArtist where
+  data Edge_Index Catalogue Release TitleArtist =
     Index_Release_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Release_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue Track Recording where
-  data Index Catalogue Track Recording =
+instance G.Edge Catalogue Track Recording where
+  data Edge_Index Catalogue Track Recording =
     Index_Track_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Recording Song where
-  data Index Catalogue Recording Song =
+instance G.Edge Catalogue Recording Song where
+  data Edge_Index Catalogue Recording Song =
     Index_Recording_Song
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Recording TitleArtist where
-  data Index Catalogue Recording TitleArtist =
+instance G.Edge Catalogue Recording TitleArtist where
+  data Edge_Index Catalogue Recording TitleArtist =
     Index_Recording_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Recording_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue Song Recording where
-  data Index Catalogue Song Recording =
+instance G.Edge Catalogue Song Recording where
+  data Edge_Index Catalogue Song Recording =
     Index_Song_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Song TitleArtist where
-  data Index Catalogue Song TitleArtist =
+instance G.Edge Catalogue Song TitleArtist where
+  data Edge_Index Catalogue Song TitleArtist =
     Index_Song_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Song_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue TitleArtist Artist where
-  data Index Catalogue TitleArtist Artist =
+instance G.Edge Catalogue TitleArtist Artist where
+  data Edge_Index Catalogue TitleArtist Artist =
     Index_TitleArtist_Artist
     deriving (Show, Eq, Generic)
 
@@ -180,6 +180,7 @@ linkArtistToRelease (Artist artistUID _) (Release releaseUID _ _ _) = do
   source <- head <$> G.getTargetsByIndex (Index_Catalogue_Artist_UID artistUID) root
   target <- head <$> G.getTargetsByIndex (Index_Catalogue_Release_UID releaseUID) root
   G.addTarget target source
+  return ()
 
 linkArtistToRecording :: Artist -> Recording -> G.Write Catalogue s ()
 linkArtistToRecording (Artist artistUID _) (Recording recordingUID _ _) = do
@@ -187,6 +188,7 @@ linkArtistToRecording (Artist artistUID _) (Recording recordingUID _ _) = do
   source <- head <$> G.getTargetsByIndex (Index_Catalogue_Artist_UID artistUID) root
   target <- head <$> G.getTargetsByIndex (Index_Catalogue_Recording_UID recordingUID) root
   G.addTarget target source
+  return ()
 
 linkReleaseToArtist :: Release -> TitleArtist -> Artist -> G.Write Catalogue s ()
 linkReleaseToArtist (Release releaseUID _ _ _) titleArtist (Artist artistUID _) = do
@@ -196,6 +198,7 @@ linkReleaseToArtist (Release releaseUID _ _ _) titleArtist (Artist artistUID _) 
   titleArtistNode <- G.newNode titleArtist
   G.addTarget titleArtistNode releaseNode
   G.addTarget artistNode titleArtistNode
+  return ()
 
 linkReleaseToRecording :: Release -> Track -> Recording -> G.Write Catalogue s ()
 linkReleaseToRecording (Release releaseUID _ _ _) track (Recording recordingUID _ _) = do
@@ -205,6 +208,7 @@ linkReleaseToRecording (Release releaseUID _ _ _) track (Recording recordingUID 
   trackNode <- G.newNode track
   G.addTarget trackNode releaseNode
   G.addTarget recordingNode trackNode
+  return ()
 
 linkRecordingToArtist :: Recording -> TitleArtist -> Artist -> G.Write Catalogue s ()
 linkRecordingToArtist (Recording recordingUID _ _) titleArtist (Artist artistUID _) = do
@@ -214,6 +218,7 @@ linkRecordingToArtist (Recording recordingUID _ _) titleArtist (Artist artistUID
   titleArtistNode <- G.newNode titleArtist
   G.addTarget titleArtistNode recordingNode
   G.addTarget artistNode titleArtistNode
+  return ()
 
 linkRecordingToSong :: Recording -> Song -> G.Write Catalogue s ()
 linkRecordingToSong = undefined
@@ -229,18 +234,21 @@ linkCatalogueToArtist artist = do
   root <- G.getRoot
   artistNode <- G.newNode artist
   G.addTarget artistNode root
+  return ()
 
 linkCatalogueToRelease :: Release -> G.Write Catalogue s ()
 linkCatalogueToRelease release = do
   root <- G.getRoot
   releaseNode <- G.newNode release
   G.addTarget releaseNode root
+  return ()
 
 linkCatalogueToRecording :: Recording -> G.Write Catalogue s ()
 linkCatalogueToRecording recording = do
   root <- G.getRoot
   recordingNode <- G.newNode recording
   G.addTarget recordingNode root
+  return ()
 
 getAllReleases :: G.Read Catalogue s [Release]
 getAllReleases = G.getRoot >>= G.getTargetsByType (undefined :: Release) >>= mapM G.getValue
@@ -359,8 +367,8 @@ instance QC.Arbitrary (Update ()) where
           runEvent $ RemoveArtistByUID uid
 
       runEvent :: 
-        G.IsUnionEvent Catalogue e => 
-        e -> QC.GenT (ReaderT (G.Engine Catalogue) IO) (G.EventResult Catalogue e)
+        G.Event Catalogue e => 
+        e -> QC.GenT (ReaderT (G.Engine Catalogue) IO) (G.Event_Result Catalogue e)
       runEvent e = do
         db <- lift $ ask
         liftIO $ G.runEvent db e

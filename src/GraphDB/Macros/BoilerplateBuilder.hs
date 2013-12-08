@@ -2,18 +2,17 @@ module GraphDB.Macros.BoilerplateBuilder where
 
 import GraphDB.Prelude
 import Language.Haskell.TH
-import qualified GraphDB.API as API
+import qualified GraphDB.Engine as Engine
 import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH as TH
 import qualified GraphDB.TH.Q as Q
 import qualified GraphDB.TH.Type as Type
-import qualified GraphDB.Macros.NamesRegistry as NamesRegistry
-import qualified GraphDB.Macros.GraphDBTagInstanceBuilder as GraphDBTagInstanceBuilder
-import qualified GraphDB.Macros.GraphTagInstanceBuilder as GraphTagInstanceBuilder
+import qualified GraphDB.Macros.TagInstanceBuilder as TIB
 import qualified Data.Char as Char
+import qualified Data.Set as Set
 
 data BoilerplateBuilder = BoilerplateBuilder {
-  addReachablePair :: (Type, Type) -> Q (),
+  addEdge :: (Type, Type) -> Q (),
   addTransactionFunction :: (Name, [Type], Type, Bool) -> Q (),
   getDecs :: Q [Dec]
 }
@@ -21,55 +20,63 @@ data BoilerplateBuilder = BoilerplateBuilder {
 new :: (Name, Type) -> Q BoilerplateBuilder
 new (tagName, tagType) = do
 
-  graphDBTagInstBldr <- GraphDBTagInstanceBuilder.new (tagName, tagType)
-  graphTagInstBldr <- GraphTagInstanceBuilder.new (tagName, tagType)
+  tib <- TIB.new (tagName, tagType)
 
   (addDecs, getDecs) <- newDecsAccumulator
 
-  [t| API.UnionValue $(return tagType) |] 
+  [t| Engine.UnionIndex $(return tagType) |] 
     >>= applyAll [generateHashableInstance, generateSerializableInstance]
     >>= addDecs . join
-  [t| API.UnionValueType $(return tagType) |] 
+  [t| Engine.UnionValue $(return tagType) |] 
     >>= applyAll [generateHashableInstance, generateSerializableInstance]
     >>= addDecs . join
-  [t| API.UnionEvent $(return tagType) |]
+  [t| Engine.UnionType $(return tagType) |] 
+    >>= applyAll [generateHashableInstance, generateSerializableInstance]
+    >>= addDecs . join
+  [t| Engine.UnionEvent $(return tagType) |]
     >>= applyAll [generateSerializableInstance]
     >>= addDecs . join
-  [t| API.UnionEventResult $(return tagType) |]
+  [t| Engine.UnionEventResult $(return tagType) |]
     >>= applyAll [generateSerializableInstance]
     >>= addDecs . join
 
+  seenValueTypesRef <- runIO $ newIORef []
+
   let
-    addReachablePair (source, target) = do
-      addDecs =<< generateHashableInstance =<< [t| API.Index $(pure tagType) $(pure source) $(pure target) |]
+    addEdge (source, target) = do
+      indexType <- [t| Engine.Edge_Index $(pure tagType) $(pure source) $(pure target) |]
+      unionIndexName <- TIB.addIndex tib indexType
+      addDecs =<< generateHashableInstance indexType
+      addDecs =<< generateSerializableInstance indexType
+      addDecs =<< generateIndexInstance indexType tagType unionIndexName
       addValue source
       addValue target
     addValue t = do
-      (uvName, uvtName) <- GraphTagInstanceBuilder.addValue graphTagInstBldr t
-      addDecs =<< generateIsUnionValueInstance t tagType uvName
-      addDecs =<< generateHashableInstance t
-      addDecs =<< generateSerializableInstance t
+      seenValueTypes <- runIO $ readIORef seenValueTypesRef
+      when (not $ elem t seenValueTypes) $ do
+        (uvName, utName) <- TIB.addValue tib t
+        addDecs =<< generateValueInstance t tagType uvName utName
+        addDecs =<< generateHashableInstance t
+        addDecs =<< generateSerializableInstance t
+        runIO $ modifyIORef seenValueTypesRef (t:)
+
     addTransactionFunction (name, argTypes, evResultType, isWrite) = do
-      (memberEventName, memberEventResultName) <- 
-        GraphDBTagInstanceBuilder.addEventAndEventResult graphDBTagInstBldr (evType, evResultType)
+      (unionEventName, unionEventResultName) <- 
+        TIB.addEventAndEventResult tib (evType, evResultType)
       addDecs =<< generateEvent evName argTypes
       addDecs =<< generateSerializableInstance evType
-      addDecs =<< generateIsUnionEventInstance evType tagType evName name argTypes evResultType isWrite memberEventName
-      addDecs =<< generateIsUnionEventResultInstance evResultType tagType memberEventResultName
+      addDecs =<< generateEventInstance evType tagType evName name argTypes evResultType isWrite unionEventName
+      addDecs =<< generateEventResultInstance evResultType tagType unionEventResultName
       where
         evName = mkName $ case nameBase name of
           x : xs -> Char.toUpper x : xs
           _ -> []
         evType = ConT evName
-    getDecs' = do
-      decs <- getDecs
-      dec1 <- GraphDBTagInstanceBuilder.getDec graphDBTagInstBldr
-      dec2 <- GraphTagInstanceBuilder.render graphTagInstBldr
-      return $ dec1 : dec2 : decs
+    getDecs' = (:) <$> TIB.render tib <*> getDecs
 
   return $ 
     BoilerplateBuilder 
-      addReachablePair
+      addEdge
       addTransactionFunction
       getDecs'
 
@@ -89,15 +96,15 @@ generateEvent adtName argTypes = return [declaration]
         constructor = NormalC adtName $ map ((IsStrict,)) argTypes
         derivations = [''Eq, ''Generic]
 
-generateIsUnionEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> Name -> Q [Dec]
-generateIsUnionEventInstance eventType tagType eventName functionName argTypes resultType isWrite memberEventName = 
+generateEventInstance :: Type -> Type -> Name -> Name -> [Type] -> Type -> Bool -> Name -> Q [Dec]
+generateEventInstance eventType tagType eventName functionName argTypes resultType isWrite unionEventName = 
   pure $ (:[]) $ InstanceD [] instanceHead decs
   where
-    instanceHead = Type.apply [eventType, tagType, ConT ''API.IsUnionEvent]
-    decs = [dec1, dec2, dec3, dec4]
+    instanceHead = Type.apply [eventType, tagType, ConT ''Engine.Event]
+    decs = [dec1, dec2, dec3]
       where
-        dec1 = TySynInstD ''API.EventResult [tagType, eventType] resultType
-        dec2 = FunD 'API.eventTransaction [clause]
+        dec1 = TySynInstD ''Engine.Event_Result [tagType, eventType] resultType
+        dec2 = FunD 'Engine.eventFinalTransaction [clause]
           where
             clause = Clause [pattern] body []
               where
@@ -105,38 +112,27 @@ generateIsUnionEventInstance eventType tagType eventName functionName argTypes r
                 body = 
                   NormalB $ AppE constructor $ foldl AppE (VarE functionName) $ map VarE argList
                   where
-                    constructor = if isWrite then ConE 'API.Write else ConE 'API.Read
+                    constructor = if isWrite 
+                      then ConE 'Engine.FinalTransaction_Write 
+                      else ConE 'Engine.FinalTransaction_Read
                 argList = zipWith (\i _ -> mkName $ "_" ++ show i) [0..] argTypes
-        dec3 = FunD 'API.toUnionEvent [clause]
+        dec3 = FunD 'Engine.packEvent [clause]
           where
-            clause = Clause [] (NormalB $ ConE memberEventName) []
-        dec4 = FunD 'API.fromUnionEvent [clause]
-          where
-            clause = Clause [] (NormalB $ TH.caseLambda [match1, match2]) []
-              where
-                match1 = Match pattern body []
-                  where
-                    pattern = ConP memberEventName [VarP patternVarName]
-                    patternVarName = mkName "_0"
-                    body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
-                match2 = Match pattern body []
-                  where
-                    pattern = WildP
-                    body = NormalB $ Q.purify [e| Nothing |]
+            clause = Clause [] (NormalB $ ConE unionEventName) []
 
-generateIsUnionEventResultInstance :: Type -> Type -> Name -> Q [Dec]
-generateIsUnionEventResultInstance eventResultType tagType memberEventResultName =  
+generateEventResultInstance :: Type -> Type -> Name -> Q [Dec]
+generateEventResultInstance eventResultType tagType unionEventResultName =  
   [d|
-    instance API.IsUnionEventResult $(return tagType) $(return eventResultType) where
-      toUnionEventResult = $(conE memberEventResultName)
-      fromUnionEventResult = $(fromUnionEventResultLambdaQ)
+    instance Engine.EventResult $(return tagType) $(return eventResultType) where
+      packEventResult = $(conE unionEventResultName)
+      unpackEventResult = $(fromUnionEventResultLambdaQ)
   |]
   where
     fromUnionEventResultLambdaQ = Q.caseLambda [pure match1, pure match2]
       where
         match1 = Match pattern body []
           where
-            pattern = ConP memberEventResultName [VarP patternVarName]
+            pattern = ConP unionEventResultName [VarP patternVarName]
             patternVarName = mkName "_0"
             body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
         match2 = Match pattern body []
@@ -154,9 +150,27 @@ generateSerializableInstance t =
   Q.whenNoInstance ''Serializable [ConT ''IO, t] $ 
     [d| instance Serializable IO $(return t) |]
 
-generateIsUnionValueInstance :: Type -> Type -> Name -> Q [Dec]
-generateIsUnionValueInstance valueType tagType unionValueName = 
+generateValueInstance :: Type -> Type -> Name -> Name -> Q [Dec]
+generateValueInstance valueType tagType unionValueName unionTypeName = 
   [d|
-    instance API.IsUnionValue $(return tagType) $(return valueType) where
-      toUnionValue = $(conE unionValueName)
+    instance Engine.Value $(return tagType) $(return valueType) where
+      packValue v = ($(conE unionTypeName), $(conE unionValueName) v)
+      unpackValue = $(Q.caseLambda [pure match1, pure match2])
+  |]
+  where
+    match1 = Match pattern body []
+      where
+        pattern = ConP unionValueName [VarP patternVarName]
+        patternVarName = mkName "_0"
+        body = NormalB $ Q.purify [e| Just $(varE patternVarName) |]
+    match2 = Match pattern body []
+      where
+        pattern = WildP
+        body = NormalB $ Q.purify [e| Nothing |]
+
+generateIndexInstance :: Type -> Type -> Name -> Q [Dec]
+generateIndexInstance indexType tagType unionIndexName = 
+  [d|
+    instance Engine.Index $(return tagType) $(return indexType) where
+      packIndex = $(conE unionIndexName)
   |]

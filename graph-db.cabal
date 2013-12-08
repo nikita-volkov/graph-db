@@ -40,17 +40,16 @@ library
   hs-source-dirs:
     src
   exposed-modules:
-    -- GraphDB
+    GraphDB
   other-modules:
     GraphDB.Engine.Node
     GraphDB.Engine.Dispatcher
     GraphDB.Engine
     GraphDB.Server
-    -- GraphDB.Macros.BoilerplateBuilder
-    -- GraphDB.Macros.GraphTagInstanceBuilder
-    -- GraphDB.Macros.GraphDBTagInstanceBuilder
-    -- GraphDB.Macros.NamesRegistry
-    -- GraphDB.Macros
+    GraphDB.Macros.NamesRegistry
+    GraphDB.Macros.TagInstanceBuilder
+    GraphDB.Macros.BoilerplateBuilder
+    GraphDB.Macros
     GraphDB.TH
     GraphDB.TH.Q
     GraphDB.TH.Type
@@ -118,153 +117,153 @@ library
     Haskell2010
 
 
--- executable graph-db-demo
---   hs-source-dirs:
---     src
---   main-is:
---     Demo.hs
---   ghc-options:
---     -threaded 
---     "-with-rtsopts=-N"
---   build-depends:
---     parsec,
---     th-expand-syns,
---     attoparsec,
---     monad-stm,
---     cio,
---     unordered-containers,
---     containers,
---     template-haskell,
---     errors,
---     acid-io == 0.1.*,
---     SafeSemaphore == 0.9.*,
---     pipes-cereal-plus == 0.2.*,
---     system-filepath == 0.4.*,
---     vector,
---     hashtables == 1.1.*,
---     hashable == 1.2.*,
---     text,
---     bytestring,
---     stm,
---     transformers,
---     mtl,
---     base >= 4.5 && < 5,
+executable graph-db-demo
+  hs-source-dirs:
+    src
+  main-is:
+    Demo.hs
+  ghc-options:
+    -threaded 
+    "-with-rtsopts=-N"
+  build-depends:
+    parsec,
+    th-expand-syns,
+    attoparsec,
+    monad-stm,
+    cio,
+    unordered-containers,
+    containers,
+    template-haskell,
+    errors,
+    acid-io == 0.1.*,
+    SafeSemaphore == 0.9.*,
+    pipes-cereal-plus == 0.2.*,
+    system-filepath == 0.4.*,
+    vector,
+    hashtables == 1.1.*,
+    hashable == 1.2.*,
+    text,
+    bytestring,
+    stm,
+    transformers,
+    mtl,
+    base >= 4.5 && < 5,
 
---     ghc-datasize,
---     old-locale,
---     time
---   default-extensions:
---     Arrows
---     DeriveGeneric
---     ImpredicativeTypes
---     BangPatterns
---     PatternGuards
---     GADTs
---     StandaloneDeriving
---     MultiParamTypeClasses
---     ScopedTypeVariables
---     FlexibleInstances
---     TypeFamilies
---     TypeOperators
---     FlexibleContexts
---     NoImplicitPrelude
---     EmptyDataDecls
---     DataKinds
---     NoMonomorphismRestriction
---     RankNTypes
---     ConstraintKinds
---     DefaultSignatures
---     TupleSections
---     OverloadedStrings
---     TemplateHaskell
---     QuasiQuotes
---     DeriveDataTypeable
---     GeneralizedNewtypeDeriving
---     RecordWildCards
---     MultiWayIf
---     LiberalTypeSynonyms
---     LambdaCase
---   default-language:
---     Haskell2010
+    ghc-datasize,
+    old-locale,
+    time
+  default-extensions:
+    Arrows
+    DeriveGeneric
+    ImpredicativeTypes
+    BangPatterns
+    PatternGuards
+    GADTs
+    StandaloneDeriving
+    MultiParamTypeClasses
+    ScopedTypeVariables
+    FlexibleInstances
+    TypeFamilies
+    TypeOperators
+    FlexibleContexts
+    NoImplicitPrelude
+    EmptyDataDecls
+    DataKinds
+    NoMonomorphismRestriction
+    RankNTypes
+    ConstraintKinds
+    DefaultSignatures
+    TupleSections
+    OverloadedStrings
+    TemplateHaskell
+    QuasiQuotes
+    DeriveDataTypeable
+    GeneralizedNewtypeDeriving
+    RecordWildCards
+    MultiWayIf
+    LiberalTypeSynonyms
+    LambdaCase
+  default-language:
+    Haskell2010
 
 
--- test-suite graph-db-htf-test-suite
---   type:             
---     exitcode-stdio-1.0
---   hs-source-dirs:   
---     src
---   main-is:          
---     HTFTestSuite.hs
---   ghc-options:
---     -threaded
---     "-with-rtsopts=-N"
---   build-depends:
---     parsec,
---     th-expand-syns,
---     attoparsec,
---     monad-stm,
---     cio,
---     unordered-containers,
---     containers,
---     template-haskell,
---     errors,
---     acid-io == 0.1.*,
---     SafeSemaphore == 0.9.*,
---     pipes-cereal-plus == 0.2.*,
---     system-filepath == 0.4.*,
---     vector,
---     hashtables == 1.1.*,
---     hashable == 1.2.*,
---     text,
---     bytestring,
---     stm,
---     transformers,
---     mtl,
---     base >= 4.5 && < 5,
+test-suite graph-db-htf-test-suite
+  type:             
+    exitcode-stdio-1.0
+  hs-source-dirs:   
+    src
+  main-is:          
+    HTFTestSuite.hs
+  ghc-options:
+    -threaded
+    "-with-rtsopts=-N"
+  build-depends:
+    parsec,
+    th-expand-syns,
+    attoparsec,
+    monad-stm,
+    cio,
+    unordered-containers,
+    containers,
+    template-haskell,
+    errors,
+    acid-io == 0.1.*,
+    SafeSemaphore == 0.9.*,
+    pipes-cereal-plus == 0.2.*,
+    system-filepath == 0.4.*,
+    vector,
+    hashtables == 1.1.*,
+    hashable == 1.2.*,
+    text,
+    bytestring,
+    stm,
+    transformers,
+    mtl,
+    base >= 4.5 && < 5,
 
---     ghc-datasize,
---     directory,
---     system-fileio,
---     old-locale,
---     time,
---     cereal-plus,
---     quickcheck-instances,
---     QuickCheck-GenT == 0.1.*,
---     QuickCheck,
---     HUnit,
---     HTF == 0.11.*
---   default-extensions:
---     Arrows
---     DeriveGeneric
---     ImpredicativeTypes
---     BangPatterns
---     PatternGuards
---     GADTs
---     StandaloneDeriving
---     MultiParamTypeClasses
---     ScopedTypeVariables
---     FlexibleInstances
---     TypeFamilies
---     TypeOperators
---     FlexibleContexts
---     NoImplicitPrelude
---     EmptyDataDecls
---     DataKinds
---     NoMonomorphismRestriction
---     RankNTypes
---     ConstraintKinds
---     DefaultSignatures
---     TupleSections
---     OverloadedStrings
---     TemplateHaskell
---     QuasiQuotes
---     DeriveDataTypeable
---     GeneralizedNewtypeDeriving
---     RecordWildCards
---     MultiWayIf
---     LiberalTypeSynonyms
---     LambdaCase
---   default-language:
---     Haskell2010
+    ghc-datasize,
+    directory,
+    system-fileio,
+    old-locale,
+    time,
+    cereal-plus,
+    quickcheck-instances,
+    QuickCheck-GenT == 0.1.*,
+    QuickCheck,
+    HUnit,
+    HTF == 0.11.*
+  default-extensions:
+    Arrows
+    DeriveGeneric
+    ImpredicativeTypes
+    BangPatterns
+    PatternGuards
+    GADTs
+    StandaloneDeriving
+    MultiParamTypeClasses
+    ScopedTypeVariables
+    FlexibleInstances
+    TypeFamilies
+    TypeOperators
+    FlexibleContexts
+    NoImplicitPrelude
+    EmptyDataDecls
+    DataKinds
+    NoMonomorphismRestriction
+    RankNTypes
+    ConstraintKinds
+    DefaultSignatures
+    TupleSections
+    OverloadedStrings
+    TemplateHaskell
+    QuasiQuotes
+    DeriveDataTypeable
+    GeneralizedNewtypeDeriving
+    RecordWildCards
+    MultiWayIf
+    LiberalTypeSynonyms
+    LambdaCase
+  default-language:
+    Haskell2010
 
 

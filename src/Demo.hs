@@ -25,8 +25,8 @@ data Artist = Artist Int Text deriving (Show, Eq, Generic)
 -- Indexes and relations setup.
 --------------
 
-instance G.Reachable Catalogue Catalogue Artist where
-  data Index Catalogue Catalogue Artist =
+instance G.Edge Catalogue Catalogue Artist where
+  data Edge_Index Catalogue Catalogue Artist =
     Index_Catalogue_Artist_UID Int |
     Index_Catalogue_Artist_SearchTerm Text
     deriving (Show, Eq, Generic)
@@ -34,8 +34,8 @@ instance G.Reachable Catalogue Catalogue Artist where
     map Index_Catalogue_Artist_SearchTerm (textToSearchTerms name) ++
     [Index_Catalogue_Artist_UID uid]
 
-instance G.Reachable Catalogue Catalogue Release where
-  data Index Catalogue Catalogue Release =
+instance G.Edge Catalogue Catalogue Release where
+  data Edge_Index Catalogue Catalogue Release =
     Index_Catalogue_Release_UID Int |
     Index_Catalogue_Release_SearchTerm Text
     deriving (Show, Eq, Generic)
@@ -43,22 +43,22 @@ instance G.Reachable Catalogue Catalogue Release where
     map Index_Catalogue_Release_SearchTerm (textToSearchTerms title) ++
     [Index_Catalogue_Release_UID uid]
 
-instance G.Reachable Catalogue Catalogue Recording where
-  data Index Catalogue Catalogue Recording =
+instance G.Edge Catalogue Catalogue Recording where
+  data Edge_Index Catalogue Catalogue Recording =
     Index_Catalogue_Recording_UID Int
     deriving (Show, Eq, Generic)
   indexes (Recording uid duration typ) =
     [Index_Catalogue_Recording_UID uid]
 
-instance G.Reachable Catalogue Catalogue Song where
-  data Index Catalogue Catalogue Song =
+instance G.Edge Catalogue Catalogue Song where
+  data Edge_Index Catalogue Catalogue Song =
     Index_Catalogue_Song_SearchTerm Text
     deriving (Show, Eq, Generic)
   indexes (Song title) =
     map Index_Catalogue_Song_SearchTerm (textToSearchTerms title)
 
-instance G.Reachable Catalogue Artist Release where
-  data Index Catalogue Artist Release =
+instance G.Edge Catalogue Artist Release where
+  data Edge_Index Catalogue Artist Release =
     -- We really don't need any constructors for this index, 
     -- since we won't be indexing anything.
     -- However, GHC can't generate deriving instances for constructorless types,
@@ -68,57 +68,57 @@ instance G.Reachable Catalogue Artist Release where
     Index_Artist_Release
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Artist Recording where
-  data Index Catalogue Artist Recording =
+instance G.Edge Catalogue Artist Recording where
+  data Edge_Index Catalogue Artist Recording =
     Index_Artist_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Artist Song where
-  data Index Catalogue Artist Song =
+instance G.Edge Catalogue Artist Song where
+  data Edge_Index Catalogue Artist Song =
     Index_Artist_Song
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Release Track where
-  data Index Catalogue Release Track =
+instance G.Edge Catalogue Release Track where
+  data Edge_Index Catalogue Release Track =
     Index_Release_Track_Number Int
     deriving (Show, Eq, Generic)
   indexes (Track number) = [Index_Release_Track_Number number]
 
-instance G.Reachable Catalogue Release TitleArtist where
-  data Index Catalogue Release TitleArtist =
+instance G.Edge Catalogue Release TitleArtist where
+  data Edge_Index Catalogue Release TitleArtist =
     Index_Release_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Release_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue Track Recording where
-  data Index Catalogue Track Recording =
+instance G.Edge Catalogue Track Recording where
+  data Edge_Index Catalogue Track Recording =
     Index_Track_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Recording Song where
-  data Index Catalogue Recording Song =
+instance G.Edge Catalogue Recording Song where
+  data Edge_Index Catalogue Recording Song =
     Index_Recording_Song
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Recording TitleArtist where
-  data Index Catalogue Recording TitleArtist =
+instance G.Edge Catalogue Recording TitleArtist where
+  data Edge_Index Catalogue Recording TitleArtist =
     Index_Recording_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Recording_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue Song Recording where
-  data Index Catalogue Song Recording =
+instance G.Edge Catalogue Song Recording where
+  data Edge_Index Catalogue Song Recording =
     Index_Song_Recording
     deriving (Show, Eq, Generic)
 
-instance G.Reachable Catalogue Song TitleArtist where
-  data Index Catalogue Song TitleArtist =
+instance G.Edge Catalogue Song TitleArtist where
+  data Edge_Index Catalogue Song TitleArtist =
     Index_Song_TitleArtist_Primary Bool
     deriving (Show, Eq, Generic)
   indexes (TitleArtist primary) = [Index_Song_TitleArtist_Primary primary]
 
-instance G.Reachable Catalogue TitleArtist Artist where
-  data Index Catalogue TitleArtist Artist =
+instance G.Edge Catalogue TitleArtist Artist where
+  data Edge_Index Catalogue TitleArtist Artist =
     Index_TitleArtist_Artist
     deriving (Show, Eq, Generic)
 
@@ -175,6 +175,7 @@ populate = do
       G.addTarget titleArtist node
       G.addTarget artist titleArtist
       G.addTarget node artist
+      return ()
 
 -- | Use a counter stored in the root 'Catalogue' node to generate a new unique UID.
 generateNewUID :: G.Write Catalogue s Int
@@ -195,8 +196,8 @@ search text = do
   where
     terms = textToSearchTerms text
     searchByMkIndex :: 
-      (G.Reachable Catalogue Catalogue b, Eq b) => 
-      (Text -> G.Index Catalogue Catalogue b) -> G.Read Catalogue s [b]
+      (G.Edge Catalogue Catalogue b, Eq b) => 
+      (Text -> G.Edge_Index Catalogue Catalogue b) -> G.Read Catalogue s [b]
     searchByMkIndex mkIndex = do
       root <- G.getRoot
       groupedMatches <- forM terms $ \term ->
