@@ -27,6 +27,7 @@ new (tagName, tagType) = do
       NamesRegistry.new (nameBase tagName <> "_UnionEventResult_")
 
   unionIndexTargetTypeClauses <- runIO $ newIORef []
+  unionIndexesClauses <- runIO $ newIORef []
   decomposeUnionValueClauses <- runIO $ newIORef []
   composeUnionValueClauses <- runIO $ newIORef []
   unionEventTransactionMatchesRef <- runIO $ newIORef []
@@ -36,15 +37,30 @@ new (tagName, tagType) = do
     addIndex t = do
       unionName <- Q.liftSTM $ NamesRegistry.resolve indexNR t
       targetUnionTypeName <- Q.liftSTM $ NamesRegistry.resolve typeNR targetType
+      targetUnionValueName <- Q.liftSTM $ NamesRegistry.resolve valueNR targetType
+      sourceUnionTypeName <- Q.liftSTM $ NamesRegistry.resolve typeNR sourceType
       let
-        clause = Clause [ConP unionName [WildP]] (NormalB body) []
+        unionIndexTargetTypeClause = 
+          Clause [ConP unionName [WildP]] (NormalB exp) []
           where
-            body = ConE targetUnionTypeName
-      runIO $ modifyIORef unionIndexTargetTypeClauses $ (:) clause
+            exp = ConE targetUnionTypeName
+        unionIndexesClause =
+          Clause 
+            [ConP targetUnionValueName [VarP varName], ConP sourceUnionTypeName []] 
+            (NormalB exp) 
+            []
+          where
+            varName = mkName "_0"
+            exp = Q.purify [e|
+              map Engine.packIndex (Engine.indexes $(varE varName) 
+                :: [Engine.Edge_Index $(return tagType) $(return sourceType) $(return targetType)])
+              |]
+      runIO $ modifyIORef unionIndexTargetTypeClauses $ (:) unionIndexTargetTypeClause
+      runIO $ modifyIORef unionIndexesClauses $ (:) unionIndexesClause
       return unionName
       where
-        targetType = case t of
-          _ `AppT` _ `AppT` z -> z
+        (sourceType, targetType) = case t of
+          _ `AppT` source `AppT` target -> (source, target)
           _ -> error "Unexpected type of index"
     addValue t = do
       unionValueName <- Q.liftSTM $ NamesRegistry.resolve valueNR t
@@ -138,27 +154,10 @@ new (tagName, tagType) = do
                   pairs <- Q.liftSTM $ NamesRegistry.getPairs eventResultNR
                   forM pairs $ \(t, n) -> return $ NormalC n [(IsStrict, t)]
                 derivations = [''Eq, ''Generic]
-            unionIndexesFunDecQ = FunD <$> pure 'Engine.unionIndexes <*> clausesQ
-              where
-                clausesQ = do
-                  sPairs <- Q.liftSTM $ NamesRegistry.getPairs typeNR
-                  tPairs <- Q.liftSTM $ NamesRegistry.getPairs valueNR
-                  clauses <- fmap (catMaybes . join) $ forM sPairs $ \(st, sn) -> forM tPairs $ \(tt, tn) -> do
-                    isInstance ''Engine.Edge [tagType, st, tt] >>= \case
-                      False -> return Nothing
-                      True -> Just <$> clauseQ (st, sn) (tt, tn)
-                  when (null clauses) $ fail "No clauses generated"
-                  return clauses
-                  where
-                    clauseQ (st, sn) (tt, tn) = 
-                      Clause <$> patternsQ <*> bodyQ <*> pure []
-                      where
-                        targetValueN = mkName "z"
-                        patternsQ = pure [ConP tn [VarP targetValueN], ConP sn []]
-                        bodyQ = NormalB <$>
-                          [e|
-                            map Engine.packIndex (Engine.indexes $(varE targetValueN) :: [Engine.Edge_Index $(return tagType) $(return st) $(return tt)])
-                          |]
+            unionIndexesFunDecQ = do
+              clauses <- runIO $ readIORef unionIndexesClauses
+              when (null clauses) $ fail "No 'unionIndexes' clauses to render"
+              return $ FunD 'Engine.unionIndexes clauses
             unionIndexTargetTypeFunDecQ = do
               clauses <- runIO $ readIORef unionIndexTargetTypeClauses
               when (null clauses) $ fail "No 'unionIndexTargetType' clauses to render"
