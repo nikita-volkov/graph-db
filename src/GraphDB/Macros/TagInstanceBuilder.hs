@@ -51,9 +51,8 @@ new (tagName, tagType) = do
             []
           where
             varName = mkName "_0"
-            exp = Q.purify [e|
-              map Engine.packIndex (Engine.indexes $(varE varName) 
-                :: [Engine.Index $(return tagType) $(return sourceType) $(return targetType)])
+            exp = Q.purify [e| 
+                map Engine.packIndex (Engine.indexes $(varE varName) :: [$(return t)])
               |]
       runIO $ modifyIORef unionIndexTargetTypeClauses $ (:) unionIndexTargetTypeClause
       runIO $ modifyIORef unionIndexesClauses $ (:) unionIndexesClause
