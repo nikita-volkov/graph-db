@@ -64,6 +64,7 @@ library
     GraphDB.Util.IOQueue
     GraphDB.Util.Prelude
   build-depends:
+    placeholders == 0.1.*,
     parsec,
     th-expand-syns,
     attoparsec,
@@ -192,6 +193,7 @@ test-suite graph-db-htf-test-suite
     -threaded
     "-with-rtsopts=-N"
   build-depends:
+    placeholders == 0.1.*,
     parsec,
     th-expand-syns,
     attoparsec,
