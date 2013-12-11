@@ -4,32 +4,37 @@ import GraphDB.Prelude
 import qualified Data.Vector.Mutable as IOVector
 
 -- | Dynamic mutable vector in 'IO'.
--- 
--- FIXME: WTF's MVar here for? It shouldn't care about concurrency.
-newtype DIOVector a = DIOVector (MVar (IOVector.IOVector a, Int))
+newtype DIOVector a = DIOVector (IORef (IOVector.IOVector a, Int))
 
 new :: IO (DIOVector a)
 new = do
   vector <- IOVector.new (2^8)
-  var <- newMVar (vector, 0)
-  return $ DIOVector var
+  ref <- newIORef (vector, 0)
+  return $ DIOVector ref
 
 append :: DIOVector a -> a -> IO ()
-append (DIOVector var) value = 
-  modifyMVar_ var $ \(vector, nextIndex) -> do
-    let length = IOVector.length vector
-    vector' <- 
-      if nextIndex >= length
-        then IOVector.grow vector length
-        else return vector
-    IOVector.write vector' nextIndex value
-    return (vector', succ nextIndex)
+append (DIOVector ref) value = do
+  (vector, nextIndex) <- readIORef ref
+  let size = IOVector.length vector
+  vector' <- 
+    if nextIndex >= size
+      then IOVector.grow vector size
+      else return vector
+  IOVector.write vector' nextIndex value
+  writeIORef ref (vector', succ nextIndex)
+
+lookup :: DIOVector a -> Int -> IO (Maybe a)
+lookup v i = do
+  size <- getSize v
+  if i < size && i >= 0
+    then Just <$> unsafeLookup v i
+    else pure Nothing
 
 unsafeLookup :: DIOVector a -> Int -> IO a
-unsafeLookup (DIOVector var) i = do
-  (vector, _) <- readMVar var
+unsafeLookup (DIOVector ref) i = do
+  (vector, _) <- readIORef ref
   IOVector.read vector i
 
-length :: DIOVector a -> IO Int
-length (DIOVector var) = readMVar var >>= return . snd
+getSize :: DIOVector a -> IO Int
+getSize (DIOVector ref) = readIORef ref >>= return . snd
 
