@@ -121,7 +121,7 @@ executable graph-db-demo
   hs-source-dirs:
     src/graph-db-demo
   main-is:
-    Demo.hs
+    Main.hs
   ghc-options:
     -threaded 
     "-with-rtsopts=-N"
@@ -173,10 +173,10 @@ test-suite graph-db-htf-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    src/htf-test-suite
+    src/graph-db-htf-test-suite
     src/library
   main-is:          
-    HTFTestSuite.hs
+    Main.hs
   ghc-options:
     -threaded
     "-with-rtsopts=-N"
