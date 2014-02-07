@@ -42,6 +42,10 @@ library
   exposed-modules:
     GraphDB
   other-modules:
+    GraphDB.Client
+    GraphDB.Server
+    GraphDB.Storage
+    GraphDB.Storage.Rules
     GraphDB.Engine.Node
     GraphDB.Engine.Dispatcher
     GraphDB.Engine
@@ -69,9 +73,14 @@ library
     containers,
     template-haskell,
     errors,
-    acid-io == 0.1.*,
     SafeSemaphore == 0.9.*,
+    network-simple == 0.3.*,
+    network == 2.4.*,
     pipes-cereal-plus == 0.2.*,
+    pipes-network == 0.6.*,
+    pipes-bytestring == 1.0.*,
+    pipes >= 4.0 && < 4.2,
+    filelock == 0.1.*,
     system-filepath == 0.4.*,
     system-fileio == 0.3.*,
     directory == 1.2.*,
@@ -192,9 +201,14 @@ test-suite graph-db-htf-test-suite
     containers,
     template-haskell,
     errors,
-    acid-io == 0.1.*,
     SafeSemaphore == 0.9.*,
+    network-simple == 0.3.*,
+    network == 2.4.*,
     pipes-cereal-plus == 0.2.*,
+    pipes-network == 0.6.*,
+    pipes-bytestring == 1.0.*,
+    pipes >= 4.0 && < 4.2,
+    filelock == 0.1.*,
     system-filepath == 0.4.*,
     system-fileio == 0.3.*,
     directory == 1.2.*,
@@ -208,6 +222,7 @@ test-suite graph-db-htf-test-suite
     mtl,
     base >= 4.5 && < 5,
 
+    async,
     ghc-datasize,
     directory,
     system-fileio,

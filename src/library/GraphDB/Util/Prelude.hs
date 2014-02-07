@@ -85,6 +85,9 @@ import Filesystem.Path as Exports (FilePath)
 -- hashable
 import Data.Hashable as Exports (Hashable(..), hash)
 
+-- pipes
+import Pipes as Exports
+
 -- pipes-cereal-plus
 import PipesCerealPlus as Exports
 

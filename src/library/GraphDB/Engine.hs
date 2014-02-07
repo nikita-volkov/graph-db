@@ -51,9 +51,9 @@ import GraphDB.Util.Prelude hiding (Read, Write)
 import qualified GraphDB.Engine.Node as Node
 import qualified GraphDB.Engine.Dispatcher as Dispatcher; import GraphDB.Engine.Dispatcher (Dispatcher)
 import qualified GraphDB.Util.IOQueue as IOQueue; import GraphDB.Util.IOQueue (IOQueue)
-import qualified AcidIO.Storage as Storage
-import qualified AcidIO.Server as Server
-import qualified AcidIO.Client as Client
+import qualified GraphDB.Storage as Storage
+import qualified GraphDB.Server as Server
+import qualified GraphDB.Client as Client
 import qualified Filesystem.Path.CurrentOS as FilePath
 
 
