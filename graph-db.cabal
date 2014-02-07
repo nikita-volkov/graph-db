@@ -130,7 +130,7 @@ library
 
 executable graph-db-demo
   hs-source-dirs:
-    src/graph-db-demo
+    src/demo
   main-is:
     Main.hs
   ghc-options:
@@ -184,7 +184,7 @@ test-suite graph-db-htf-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    src/graph-db-htf-test-suite
+    src/htf-test-suite
     src/library
   main-is:          
     Main.hs
