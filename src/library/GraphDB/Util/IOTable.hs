@@ -1,9 +1,9 @@
 -- TODO:
 -- Could be optimized a bit by not implementing 'getSize', since we never use it,
 -- and using a Bool for 'getNull' instead.
-module GraphDB.IOTable where
+module GraphDB.Util.IOTable where
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 import qualified Data.HashTable.IO as HashTables
 
 

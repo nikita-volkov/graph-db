@@ -2,7 +2,7 @@ module GraphDB.Server
   (ServerMode(..), Server, shutdownServer, startServer)
   where
 
-import GraphDB.Prelude hiding (Read, log)
+import GraphDB.Util.Prelude hiding (Read, log)
 import qualified AcidIO.Server as Server
 import qualified GraphDB.Engine as Engine
 

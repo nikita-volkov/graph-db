@@ -50,15 +50,15 @@ library
     GraphDB.Macros.TagInstanceBuilder
     GraphDB.Macros.BoilerplateBuilder
     GraphDB.Macros
-    GraphDB.TH
-    GraphDB.TH.Q
-    GraphDB.TH.Type
-    GraphDB.SNMultiTable
-    GraphDB.IOTable
-    GraphDB.IOStableNameSet
-    GraphDB.DIOVector
-    GraphDB.IOQueue
-    GraphDB.Prelude
+    GraphDB.Util.TH
+    GraphDB.Util.TH.Q
+    GraphDB.Util.TH.Type
+    GraphDB.Util.SNMultiTable
+    GraphDB.Util.IOTable
+    GraphDB.Util.IOStableNameSet
+    GraphDB.Util.DIOVector
+    GraphDB.Util.IOQueue
+    GraphDB.Util.Prelude
   build-depends:
     parsec,
     th-expand-syns,

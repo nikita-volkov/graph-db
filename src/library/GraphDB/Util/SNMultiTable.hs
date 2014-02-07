@@ -1,6 +1,6 @@
-module GraphDB.SNMultiTable where
+module GraphDB.Util.SNMultiTable where
 
-import GraphDB.Prelude hiding (insert, delete, lookup, foldM, traverse)
+import GraphDB.Util.Prelude hiding (insert, delete, lookup, foldM, traverse)
 import qualified Data.HashTable.IO as HT
 
 

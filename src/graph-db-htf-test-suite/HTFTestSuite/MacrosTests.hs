@@ -3,7 +3,7 @@ module HTFTestSuite.MacrosTests where
 
 import Test.Framework
 import Language.Haskell.TH
-import GraphDB.Prelude hiding (assert, elements)
+import GraphDB.Util.Prelude hiding (assert, elements)
 import GraphDB.Macros
 import qualified GraphDB.Engine as Engine
 

@@ -1,12 +1,12 @@
 module GraphDB.Macros.BoilerplateBuilder where
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 import Language.Haskell.TH
 import qualified GraphDB.Engine as Engine
-import qualified GraphDB.TH.Q as Q
-import qualified GraphDB.TH as TH
-import qualified GraphDB.TH.Q as Q
-import qualified GraphDB.TH.Type as Type
+import qualified GraphDB.Util.TH.Q as Q
+import qualified GraphDB.Util.TH as TH
+import qualified GraphDB.Util.TH.Q as Q
+import qualified GraphDB.Util.TH.Type as Type
 import qualified GraphDB.Macros.TagInstanceBuilder as TIB
 import qualified Data.Char as Char
 import qualified Data.Set as Set

@@ -1,10 +1,10 @@
 module GraphDB.Engine.Node where
 
-import GraphDB.Prelude hiding (Any, traverse)
+import GraphDB.Util.Prelude hiding (Any, traverse)
 import GHC.Exts (Any)
-import qualified GraphDB.SNMultiTable as MT
-import qualified GraphDB.DIOVector as DIOVector; import GraphDB.DIOVector (DIOVector)
-import qualified GraphDB.IOStableNameSet as IOStableNameSet; import GraphDB.IOStableNameSet (IOStableNameSet)
+import qualified GraphDB.Util.SNMultiTable as MT
+import qualified GraphDB.Util.DIOVector as DIOVector; import GraphDB.Util.DIOVector (DIOVector)
+import qualified GraphDB.Util.IOStableNameSet as IOStableNameSet; import GraphDB.Util.IOStableNameSet (IOStableNameSet)
 import qualified Data.HashTable.IO as HashTables
 
 

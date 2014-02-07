@@ -1,6 +1,6 @@
 module GraphDB.Macros where
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 import Language.Haskell.TH
 import qualified Data.Char as Char
 import qualified Data.Set as Set
@@ -9,9 +9,9 @@ import qualified Data.Text as Text
 import qualified Text.Parsec as P
 import qualified GraphDB.Engine as Engine
 import qualified GraphDB.Macros.NamesRegistry as NamesRegistry; import GraphDB.Macros.NamesRegistry (NamesRegistry)
-import qualified GraphDB.TH as TH
-import qualified GraphDB.TH.Q as Q
-import qualified GraphDB.TH.Type as Type
+import qualified GraphDB.Util.TH as TH
+import qualified GraphDB.Util.TH.Q as Q
+import qualified GraphDB.Util.TH.Type as Type
 import qualified GraphDB.Macros.BoilerplateBuilder as BoilerplateBuilder
 
 

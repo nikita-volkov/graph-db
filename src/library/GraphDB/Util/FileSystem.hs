@@ -1,7 +1,7 @@
 -- |
 -- Utilities for dealing with 'FilePath'.
 -- 
-module GraphDB.FileSystem
+module GraphDB.Util.FileSystem
   ( 
     module Filesystem,
     module Filesystem.Path.CurrentOS,
@@ -19,7 +19,7 @@ module GraphDB.FileSystem
   )
   where
 
-import GraphDB.Prelude hiding (stripPrefix, last)
+import GraphDB.Util.Prelude hiding (stripPrefix, last)
 import Filesystem.Path.CurrentOS
 import Filesystem
 import qualified System.Directory as Directory

@@ -1,4 +1,4 @@
-module GraphDB.IOQueue 
+module GraphDB.Util.IOQueue 
   (
     IOQueue, 
     start, 
@@ -8,7 +8,7 @@ module GraphDB.IOQueue
   )
   where
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 
 
 data IOQueue = IOQueue {

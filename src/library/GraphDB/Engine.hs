@@ -41,10 +41,10 @@ module GraphDB.Engine
   )
   where
 
-import GraphDB.Prelude hiding (Read, Write)
+import GraphDB.Util.Prelude hiding (Read, Write)
 import qualified GraphDB.Engine.Node as Node
 import qualified GraphDB.Engine.Dispatcher as Dispatcher; import GraphDB.Engine.Dispatcher (Dispatcher)
-import qualified GraphDB.IOQueue as IOQueue; import GraphDB.IOQueue (IOQueue)
+import qualified GraphDB.Util.IOQueue as IOQueue; import GraphDB.Util.IOQueue (IOQueue)
 import qualified AcidIO.Storage as Storage
 import qualified AcidIO.Server as Server
 import qualified AcidIO.Client as Client

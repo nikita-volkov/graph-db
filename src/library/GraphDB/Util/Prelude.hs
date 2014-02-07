@@ -1,4 +1,4 @@
-module GraphDB.Prelude 
+module GraphDB.Util.Prelude 
   ( 
     module Exports,
 

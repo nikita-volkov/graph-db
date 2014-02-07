@@ -1,8 +1,8 @@
-module GraphDB.TH.Q where
+module GraphDB.Util.TH.Q where
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 import Language.Haskell.TH
-import qualified GraphDB.TH.Type as Type
+import qualified GraphDB.Util.TH.Type as Type
 import qualified Data.Attoparsec.Text as AP
 import qualified Data.Text.IO as Text
 import qualified Data.Text as Text

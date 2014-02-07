@@ -1,7 +1,7 @@
 module HTFTestSuite.CatalogueDB where
 
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 import qualified GraphDB as G
 import qualified Data.Text as Text
 import qualified Data.Time

@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
 import Test.Framework
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 
 import {-@ HTF_TESTS @-} HTFTestSuite.GraphDBTests
 import {-@ HTF_TESTS @-} HTFTestSuite.MacrosTests

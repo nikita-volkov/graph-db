@@ -2,12 +2,12 @@
 {-# LANGUAGE TupleSections #-}
 module HTFTestSuite.GraphDBTests where
 
-import GraphDB.Prelude hiding (assert)
+import GraphDB.Util.Prelude hiding (assert)
 import Test.Framework
 import Test.QuickCheck.Monadic
 import HTFTestSuite.CatalogueDB hiding (arbitrary)
 import qualified GraphDB as G
-import qualified GraphDB.FileSystem as FS
+import qualified GraphDB.Util.FileSystem as FS
 import qualified GHC.DataSize
 import qualified Data.Time
 import qualified System.Locale
