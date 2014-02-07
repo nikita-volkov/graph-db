@@ -52,6 +52,7 @@ library
     GraphDB.Util.TH
     GraphDB.Util.TH.Q
     GraphDB.Util.TH.Type
+    GraphDB.Util.FileSystem
     GraphDB.Util.SNMultiTable
     GraphDB.Util.IOTable
     GraphDB.Util.IOStableNameSet
@@ -72,6 +73,8 @@ library
     SafeSemaphore == 0.9.*,
     pipes-cereal-plus == 0.2.*,
     system-filepath == 0.4.*,
+    system-fileio == 0.3.*,
+    directory == 1.2.*,
     vector,
     hashtables == 1.1.*,
     hashable == 1.2.*,
@@ -193,6 +196,8 @@ test-suite graph-db-htf-test-suite
     SafeSemaphore == 0.9.*,
     pipes-cereal-plus == 0.2.*,
     system-filepath == 0.4.*,
+    system-fileio == 0.3.*,
+    directory == 1.2.*,
     vector,
     hashtables == 1.1.*,
     hashable == 1.2.*,
