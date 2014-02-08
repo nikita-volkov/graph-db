@@ -3,10 +3,10 @@ name:
 version:
   0.2.0
 synopsis:
-  Native Haskell graph database.
+  A native Haskell graph database
 description:
   Provides a mutable in-memory graph datastructure with complete ACID guarantees,
-  a persistence layer, server and client.
+  a persistence layer, a server and a client.
 license:
   MIT
 license-file:
