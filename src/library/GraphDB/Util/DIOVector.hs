@@ -12,7 +12,8 @@ new = do
   ref <- newIORef (vector, 0)
   return $ DIOVector ref
 
-append :: DIOVector a -> a -> IO ()
+-- | Append an item and return its index.
+append :: DIOVector a -> a -> IO Int
 append (DIOVector ref) value = do
   (vector, nextIndex) <- readIORef ref
   let size = IOVector.length vector
@@ -22,6 +23,7 @@ append (DIOVector ref) value = do
       else return vector
   IOVector.write vector' nextIndex value
   writeIORef ref (vector', succ nextIndex)
+  return nextIndex
 
 lookup :: DIOVector a -> Int -> IO (Maybe a)
 lookup v i = do
