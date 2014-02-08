@@ -1,4 +1,4 @@
-module GraphDB.IOStableNameSet
+module GraphDB.Util.IOStableNameSet
   (IOStableNameSet,
    new,
    insert,
@@ -11,7 +11,7 @@ module GraphDB.IOStableNameSet
    getList)
   where
 
-import GraphDB.Prelude hiding (insert, delete, lookup, foldM, forM_)
+import GraphDB.Util.Prelude hiding (insert, delete, lookup, foldM, forM_)
 import qualified Data.HashTable.IO as Table
 
 

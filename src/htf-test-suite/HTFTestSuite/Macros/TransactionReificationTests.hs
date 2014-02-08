@@ -2,7 +2,7 @@
 module HTFTestSuite.Macros.TransactionReificationTests where
 
 import Test.Framework
-import GraphDB.Prelude hiding (assert, elements, Read)
+import GraphDB.Util.Prelude hiding (assert, elements, Read)
 import GraphDB.Macros
 import Language.Haskell.TH
 import qualified GraphDB.Engine as Engine

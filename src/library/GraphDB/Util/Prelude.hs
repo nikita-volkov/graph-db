@@ -1,4 +1,4 @@
-module GraphDB.Prelude 
+module GraphDB.Util.Prelude 
   ( 
     module Exports,
 
@@ -84,6 +84,9 @@ import Filesystem.Path as Exports (FilePath)
 
 -- hashable
 import Data.Hashable as Exports (Hashable(..), hash)
+
+-- pipes
+import Pipes as Exports
 
 -- pipes-cereal-plus
 import PipesCerealPlus as Exports

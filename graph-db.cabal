@@ -42,23 +42,27 @@ library
   exposed-modules:
     GraphDB
   other-modules:
+    GraphDB.Client
+    GraphDB.Server
+    GraphDB.Storage
+    GraphDB.Storage.Rules
     GraphDB.Engine.Node
     GraphDB.Engine.Dispatcher
     GraphDB.Engine
-    GraphDB.Server
     GraphDB.Macros.NamesRegistry
     GraphDB.Macros.TagInstanceBuilder
     GraphDB.Macros.BoilerplateBuilder
     GraphDB.Macros
-    GraphDB.TH
-    GraphDB.TH.Q
-    GraphDB.TH.Type
-    GraphDB.SNMultiTable
-    GraphDB.IOTable
-    GraphDB.IOStableNameSet
-    GraphDB.DIOVector
-    GraphDB.IOQueue
-    GraphDB.Prelude
+    GraphDB.Util.TH
+    GraphDB.Util.TH.Q
+    GraphDB.Util.TH.Type
+    GraphDB.Util.FileSystem
+    GraphDB.Util.SNMultiTable
+    GraphDB.Util.IOTable
+    GraphDB.Util.IOStableNameSet
+    GraphDB.Util.DIOVector
+    GraphDB.Util.IOQueue
+    GraphDB.Util.Prelude
   build-depends:
     parsec,
     th-expand-syns,
@@ -69,10 +73,17 @@ library
     containers,
     template-haskell,
     errors,
-    acid-io == 0.1.*,
     SafeSemaphore == 0.9.*,
+    network-simple == 0.3.*,
+    network == 2.4.*,
     pipes-cereal-plus == 0.2.*,
+    pipes-network == 0.6.*,
+    pipes-bytestring == 1.0.*,
+    pipes >= 4.0 && < 4.2,
+    filelock == 0.1.*,
     system-filepath == 0.4.*,
+    system-fileio == 0.3.*,
+    directory == 1.2.*,
     vector,
     hashtables == 1.1.*,
     hashable == 1.2.*,
@@ -119,7 +130,7 @@ library
 
 executable graph-db-demo
   hs-source-dirs:
-    src/graph-db-demo
+    src/demo
   main-is:
     Main.hs
   ghc-options:
@@ -173,7 +184,7 @@ test-suite graph-db-htf-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    src/graph-db-htf-test-suite
+    src/htf-test-suite
     src/library
   main-is:          
     Main.hs
@@ -190,10 +201,17 @@ test-suite graph-db-htf-test-suite
     containers,
     template-haskell,
     errors,
-    acid-io == 0.1.*,
     SafeSemaphore == 0.9.*,
+    network-simple == 0.3.*,
+    network == 2.4.*,
     pipes-cereal-plus == 0.2.*,
+    pipes-network == 0.6.*,
+    pipes-bytestring == 1.0.*,
+    pipes >= 4.0 && < 4.2,
+    filelock == 0.1.*,
     system-filepath == 0.4.*,
+    system-fileio == 0.3.*,
+    directory == 1.2.*,
     vector,
     hashtables == 1.1.*,
     hashable == 1.2.*,
@@ -204,6 +222,7 @@ test-suite graph-db-htf-test-suite
     mtl,
     base >= 4.5 && < 5,
 
+    async,
     ghc-datasize,
     directory,
     system-fileio,

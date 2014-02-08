@@ -1,10 +1,10 @@
 module GraphDB.Macros.TagInstanceBuilder where
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 import Language.Haskell.TH
 import qualified GraphDB.Engine as Engine
-import qualified GraphDB.TH as TH
-import qualified GraphDB.TH.Q as Q
+import qualified GraphDB.Util.TH as TH
+import qualified GraphDB.Util.TH.Q as Q
 import qualified GraphDB.Macros.NamesRegistry as NamesRegistry
 import qualified Data.Set as Set
 

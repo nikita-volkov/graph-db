@@ -36,10 +36,13 @@ module GraphDB
     generateBoilerplate,
 
     -- * Server 
-    module GraphDB.Server,
+    ServerMode(..), 
+    Server, 
+    shutdownServer, 
+    startServer,
   ) 
   where
 
 import GraphDB.Engine
-import GraphDB.Server
 import GraphDB.Macros (generateBoilerplate)
+

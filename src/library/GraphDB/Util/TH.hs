@@ -1,6 +1,6 @@
-module GraphDB.TH where
+module GraphDB.Util.TH where
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 import Language.Haskell.TH
 
 

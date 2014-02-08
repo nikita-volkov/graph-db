@@ -1,6 +1,6 @@
-module GraphDB.DIOVector where
+module GraphDB.Util.DIOVector where
 
-import GraphDB.Prelude
+import GraphDB.Util.Prelude
 import qualified Data.Vector.Mutable as IOVector
 
 -- | Dynamic mutable vector in 'IO'.

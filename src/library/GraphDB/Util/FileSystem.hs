@@ -1,7 +1,7 @@
 -- |
 -- Utilities for dealing with 'FilePath'.
 -- 
-module GraphDB.FileSystem
+module GraphDB.Util.FileSystem
   ( 
     module Filesystem,
     module Filesystem.Path.CurrentOS,
@@ -15,16 +15,21 @@ module GraphDB.FileSystem
     move,
     copy,
     resolve,
+    Lock,
+    withLock,
+    acquireLock,
+    releaseLock,
     listFilesByExtension,
   )
   where
 
-import GraphDB.Prelude hiding (stripPrefix, last)
+import GraphDB.Util.Prelude hiding (stripPrefix, last)
 import Filesystem.Path.CurrentOS
 import Filesystem
 import qualified System.Directory as Directory
 import qualified Data.List as List
 import qualified System.IO.Error as IOError
+import qualified System.FileLock as Lock
 
 
 
@@ -108,6 +113,32 @@ resolve path = case splitDirectories path of
     home <- getHomeDirectory
     return $ mconcat $ home : t
   _ -> return path
+
+
+
+type Lock = Lock.FileLock
+
+-- | 
+-- Execute an IO action while using a file as an interprocess lock, 
+-- thus ensuring that only a single action executes across all processes 
+-- of the running system.
+-- 
+-- If a file exists already it checks whether it is locked on by any running process, 
+-- including the current one,
+-- and acquires it if it's not.
+-- 
+-- Releases the lock in case of any failure in executed action or when the action is executed.
+withLock :: FilePath -> IO a -> IO a
+withLock file io = bracket (acquireLock file) releaseLock (const io)
+
+acquireLock :: FilePath -> IO Lock
+acquireLock path = 
+  Lock.tryLockFile (encodeString path) Lock.Exclusive >>= \case
+    Just lock -> return lock
+    _ -> error $ "Lock `" ++ show path ++ "` is already in use"
+
+releaseLock :: Lock -> IO ()
+releaseLock = Lock.unlockFile
 
 listFilesByExtension :: FilePath -> Text -> IO [FilePath]
 listFilesByExtension dir extension = 
