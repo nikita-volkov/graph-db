@@ -1,7 +1,7 @@
 name:
   graph-db
 version:
-  0.2.0
+  0.3.0
 synopsis:
   A native Haskell graph database
 description:
