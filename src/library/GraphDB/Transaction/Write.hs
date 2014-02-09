@@ -4,7 +4,6 @@ import GraphDB.Util.Prelude hiding (Write)
 import qualified GraphDB.Persistence.Log.Transaction as LogTransaction
 import qualified GraphDB.Persistence.Log as Log; import GraphDB.Persistence.Log (Log)
 import qualified GraphDB.Engine.Node as Node; import GraphDB.Engine.Node (Node)
-import qualified GraphDB.Util.DIOVector as DIOVector; import GraphDB.Util.DIOVector (DIOVector)
 
 
 -- |
@@ -15,7 +14,7 @@ newtype Write t s r =
   deriving (Monad, Functor, Applicative, MonadIO)
 
 type EnvReader t = ReaderT (Env t)
-type Env t = (Node t, DIOVector (Node t))
+type Env t = (Node t, IORef Int)
 type ActionsWriter t = WriterT [LogTransaction.Action t]
 
 
@@ -24,8 +23,8 @@ type ActionsWriter t = WriterT [LogTransaction.Action t]
 -- persist the updates if successful.
 run :: Write t s r -> (Node t, Log t) -> IO r
 run (Write writer) (root, log) = do
-  refs <- DIOVector.new
-  (r, actions) <- runReaderT (runWriterT writer) (root, refs)
+  index <- newIORef 0
+  (r, actions) <- runReaderT (runWriterT writer) (root, index)
   Log.persist log $ LogTransaction.Transaction actions
   return r
 
@@ -35,8 +34,13 @@ data Ref t s = Ref !Int !(Node t)
 
 newRef :: Node t -> Write t s (Ref t s)
 newRef node = Write $ do
-  (_, refs) <- ask
-  index <- liftIO $ DIOVector.append refs node
+  index <- do
+    (_, ref) <- ask
+    value <- liftIO $ do
+      value <- readIORef ref
+      modifyIORef' ref succ
+      return value
+    return value
   return $ Ref index node
 
 getRoot :: Write t s (Ref t s)
