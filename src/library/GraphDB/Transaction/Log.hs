@@ -1,13 +1,19 @@
-module GraphDB.Persistence.Log.Transaction where
+{-# LANGUAGE UndecidableInstances #-}
+module GraphDB.Transaction.Log where
 
 import GraphDB.Util.Prelude
 import qualified GraphDB.Util.DIOVector as DIOVector; import GraphDB.Util.DIOVector (DIOVector)
 import qualified GraphDB.Engine.Node as Node; import GraphDB.Engine.Node (Node)
 
 -- |
+-- A serializable reproduction of all the modifications to the graph done during a transaction.
+newtype Log t = Log [Entry t] deriving (Generic)
+instance (Serializable m (Node.Index t), Serializable m t, Serializable m (Node.Value t)) => Serializable m (Log t)
+
+-- |
 -- A serializable representation of a granular transaction action.
 -- Essential for persistence.
-data Action t =
+data Entry t =
   GetRoot |
   NewNode (Node.Value t) |
   GetTargetsByType Ref t |
@@ -16,16 +22,16 @@ data Action t =
   RemoveTarget Ref Ref |
   GetValue Ref |
   SetValue (Node.Value t) Ref
-  
+  deriving (Generic)
+instance (Serializable m (Node.Index t), Serializable m t, Serializable m (Node.Value t)) => Serializable m (Entry t)
+
 type Ref = Int
 
-newtype Transaction t = Transaction [Action t]
-
-applyTransaction :: (Node.Type t) => Node t -> Transaction t -> IO ()
-applyTransaction root (Transaction actions) = do
+apply :: (Node.Type t) => Node t -> Log t -> IO ()
+apply root (Log actions) = do
   refs <- DIOVector.new
   let
-    applyAction = \case
+    applyEntry = \case
       GetRoot -> do
         DIOVector.append refs root
         return ()
@@ -41,4 +47,4 @@ applyTransaction root (Transaction actions) = do
         Node.addTarget source target
         return ()
       _ -> $notImplemented
-  forM_ actions applyAction
+  forM_ actions applyEntry
