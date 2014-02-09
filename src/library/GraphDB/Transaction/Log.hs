@@ -2,44 +2,43 @@
 module GraphDB.Transaction.Log where
 
 import GraphDB.Util.Prelude
-import qualified GraphDB.Util.DIOVector as DIOVector; import GraphDB.Util.DIOVector (DIOVector)
-import qualified GraphDB.Engine.Node as Node; import GraphDB.Engine.Node (Node)
+import qualified GraphDB.Util.DIOVector as DIOVector
+import qualified GraphDB.Transaction.Node as Node
 
 -- |
 -- A serializable reproduction of all the modifications to the graph done during a transaction.
-newtype Log t = Log [Entry t] deriving (Generic)
-instance (Serializable m (Node.Index t), Serializable m t, Serializable m (Node.Value t)) => Serializable m (Log t)
+newtype Log n = Log [Entry n] deriving (Generic)
+instance (Serializable m (Node.Index n), Serializable m (Node.Type n), Serializable m (Node.Value n)) => Serializable m (Log n)
 
 -- |
 -- A serializable representation of a granular transaction action.
 -- Essential for persistence.
-data Entry t =
+data Entry n =
   GetRoot |
-  NewNode (Node.Value t) |
-  GetTargetsByType Ref t |
-  GetTargetsByIndex Ref (Node.Index t) |
+  NewNode (Node.Value n) |
+  GetTargetsByType Ref (Node.Type n) |
+  GetTargetsByIndex Ref (Node.Index n) |
   AddTarget Ref Ref |
   RemoveTarget Ref Ref |
   GetValue Ref |
-  SetValue (Node.Value t) Ref
+  SetValue (Node.Value n) Ref
   deriving (Generic)
-instance (Serializable m (Node.Index t), Serializable m t, Serializable m (Node.Value t)) => Serializable m (Entry t)
+instance (Serializable m (Node.Index n), Serializable m (Node.Type n), Serializable m (Node.Value n)) => Serializable m (Entry n)
 
 type Ref = Int
 
-apply :: (Node.Type t) => Node t -> Log t -> IO ()
+apply :: forall n. (Node.Node n) => n -> Log n -> IO ()
 apply root (Log actions) = do
   refs <- DIOVector.new
   let
     applyEntry = \case
       GetRoot -> do
-        DIOVector.append refs root
-        return ()
+        void $ DIOVector.append refs root
       NewNode value -> $notImplemented
       GetTargetsByType ref typ -> do
-        node <- DIOVector.unsafeLookup refs ref
-        targets <- Node.getTargetsByType node typ
-        forM_ targets $ DIOVector.append refs
+        mapM_ (DIOVector.append refs) =<< do
+          node <- DIOVector.unsafeLookup refs ref
+          Node.getTargetsByType node typ
       GetTargetsByIndex index ref -> $notImplemented
       AddTarget sRef tRef -> do
         source <- DIOVector.unsafeLookup refs sRef
