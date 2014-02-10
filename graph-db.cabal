@@ -42,7 +42,7 @@ library
   exposed-modules:
     GraphDB
   other-modules:
-    GraphDB.Remote.Protocol
+    GraphDB.Service.Protocol
     GraphDB.Transaction.Node
     GraphDB.Transaction.Log
     GraphDB.Transaction.Read

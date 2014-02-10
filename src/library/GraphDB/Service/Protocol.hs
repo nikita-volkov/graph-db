@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module GraphDB.Remote.Protocol where
+module GraphDB.Service.Protocol where
 
 import GraphDB.Util.Prelude
 
