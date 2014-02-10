@@ -8,7 +8,6 @@ import qualified GraphDB.Transaction.Write as Write
 import qualified GraphDB.Transaction.Log as Log
 
 
-type Node = Node.Node
 type Read = Read.Read
 type Write = Write.Write
 type Log n = Log.Log n
@@ -16,25 +15,31 @@ type Storage n = Storage.Storage n (Log n)
 
 
 -- | A packed uncomposable specific transaction with information about its type.
-data FinalTransaction n r =
-  FinalTransaction_Write (forall s. Write n s r) |
-  FinalTransaction_Read (forall s. Read n s r)
+data Transaction n r =
+  Write (forall s. Write n s r) |
+  Read (forall s. Read n s r)
 
-instance Functor (FinalTransaction n) where
+instance Functor (Transaction n) where
   fmap f = \case
-    FinalTransaction_Read read -> FinalTransaction_Read $ fmap f read
-    FinalTransaction_Write write -> FinalTransaction_Write $ fmap f write
+    Read read -> Read $ fmap f read
+    Write write -> Write $ fmap f write
 
 -- |
 -- Apply the transaction to the in-memory data-structure and
 -- persist the updates if successful.
-runFinalTransaction :: (Serializable IO (Log n)) => FinalTransaction n r -> (n, Storage n) -> IO r
-runFinalTransaction transaction (root, storage) = case transaction of
-  FinalTransaction_Read read -> Read.run read root
-  FinalTransaction_Write write -> do
+run :: (Serializable IO (Log n)) => Transaction n r -> (n, Storage n) -> IO r
+run transaction (root, storage) = case transaction of
+  Read read -> Read.run read root
+  Write write -> do
     (r, log) <- Write.run write root
     Storage.persistEvent storage log
     return r
+
+runWrite :: Write n s r -> n -> IO (r, Log n)
+runWrite = Write.run
+
+runRead :: Read n s r -> n -> IO r
+runRead = Read.run
 
 
 -- |
