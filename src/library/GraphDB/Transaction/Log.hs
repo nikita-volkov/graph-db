@@ -3,31 +3,32 @@ module GraphDB.Transaction.Log where
 
 import GraphDB.Util.Prelude
 import qualified GraphDB.Util.DIOVector as DIOVector
-import qualified GraphDB.Transaction.Node as Node
+import qualified GraphDB.Union as Union
+import qualified GraphDB.Engine.Node as Node
 
 -- |
 -- A serializable reproduction of all the modifications to the graph done during a transaction.
-newtype Log n = Log [Entry n] deriving (Generic)
-instance (Serializable m (Node.Index n), Serializable m (Node.Type n), Serializable m (Node.Value n)) => Serializable m (Log n)
+newtype Log u = Log [Entry u] deriving (Generic)
+instance (Serializable m (Union.Index u), Serializable m (Union.Type u), Serializable m (Union.Value u)) => Serializable m (Log u)
 
 -- |
 -- A serializable representation of a granular transaction action.
 -- Essential for persistence.
-data Entry n =
+data Entry u =
   GetRoot |
-  NewNode (Node.Value n) |
-  GetTargetsByType Ref (Node.Type n) |
-  GetTargetsByIndex Ref (Node.Index n) |
+  NewNode (Union.Value u) |
+  GetTargetsByType Ref (Union.Type u) |
+  GetTargetsByIndex Ref (Union.Index u) |
   AddTarget Ref Ref |
   RemoveTarget Ref Ref |
   GetValue Ref |
-  SetValue (Node.Value n) Ref
+  SetValue (Union.Value u) Ref
   deriving (Generic)
-instance (Serializable m (Node.Index n), Serializable m (Node.Type n), Serializable m (Node.Value n)) => Serializable m (Entry n)
+instance (Serializable m (Union.Index u), Serializable m (Union.Type u), Serializable m (Union.Value u)) => Serializable m (Entry u)
 
 type Ref = Int
 
-apply :: forall n. (Node.Node n) => n -> Log n -> IO ()
+apply :: forall u. (Union.Union u) => Union.Node u -> Log u -> IO ()
 apply root (Log actions) = do
   refs <- DIOVector.new
   let
@@ -47,3 +48,26 @@ apply root (Log actions) = do
         return ()
       _ -> $notImplemented
   forM_ actions applyEntry
+
+
+-- newtype Build u m r = 
+--   Build (WriterT [Entry u] (StateT Int m) r) 
+--   deriving (Functor, Applicative, Monad, MonadIO)
+
+-- runBuild :: Build u m r -> m r
+-- runBuild (Build t) = runStateT (runWriterT [] t) 0
+
+-- execBuild :: Build u m r -> m (Log u)
+-- execBuild = runBuild >>> \(_, list) -> Log list
+
+-- instance MonadIO m => Tx (Build u m) where
+--   type Ref (Build u m) = Int
+--   getRoot = Build $ do
+--     tell GetRoot
+--     modify succ >> get
+--   getTargetsByType ref t = Build $ do
+--     tell $ GetTargetsByType ref t
+--     -- querying without returning the result is dumb!
+--     mapM newRef =<< do liftIO $ Node.getTargetsByType node t
+
+

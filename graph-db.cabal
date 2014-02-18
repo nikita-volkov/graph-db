@@ -42,7 +42,7 @@ library
   exposed-modules:
     GraphDB
   other-modules:
-    GraphDB.Transaction.Node
+    GraphDB.Union
     GraphDB.Transaction.Log
     GraphDB.Transaction.Read
     GraphDB.Transaction.Write

@@ -2,25 +2,28 @@ module GraphDB.Transaction.Write where
 
 import GraphDB.Util.Prelude hiding (Write)
 import qualified GraphDB.Transaction.Log as Log
-import qualified GraphDB.Transaction.Node as Node
+import qualified GraphDB.Union as Union
+import qualified GraphDB.Engine.Node as Node
+
+
 
 
 -- |
--- A monad performing the modification of data structure in IO and
+-- A monad performing the modification of a data structure in IO and
 -- accumulating all the information needed to be serialized.
-newtype Write node state result = 
-  Write (LogEntriesWriter node (EnvReader node IO) result)
+newtype Write union state result = 
+  Write (LogEntriesWriter union (EnvReader union IO) result)
   deriving (Monad, Functor, Applicative, MonadIO)
 
-type EnvReader n = ReaderT (Env n)
-type Env n = (n, IORef Int)
-type LogEntriesWriter n = WriterT [Log.Entry n]
+type EnvReader u = ReaderT (Env u)
+type Env u = (Union.Node u, IORef Int)
+type LogEntriesWriter u = WriterT [Log.Entry u]
 
 
 -- |
 -- Apply the transaction to the in-memory data-structure and
--- accumulate the modification log.
-run :: Write n s r -> n -> IO (r, Log.Log n)
+-- accumulate the modifications log.
+run :: Write u s r -> Union.Node u -> IO (r, Log.Log u)
 run (Write writer) root = do
   index <- newIORef 0
   (r, entries) <- runReaderT (runWriterT writer) (root, index)
@@ -28,10 +31,13 @@ run (Write writer) root = do
   return (r, log)
 
 
-data Ref n s = Ref !Int !n
+-- |
+-- A transaction-local index of the node used for serialization
+-- and the node itself. 
+data Ref u s = Ref !Int !(Union.Node u)
 
 
-newRef :: n -> Write n s (Ref n s)
+newRef :: Union.Node u -> Write u s (Ref u s)
 newRef node = Write $ do
   index <- do
     (_, ref) <- ask
@@ -42,27 +48,27 @@ newRef node = Write $ do
     return value
   return $ Ref index node
 
-getRoot :: Write n s (Ref n s)
+getRoot :: Write u s (Ref u s)
 getRoot = do
   logEntry $ Log.GetRoot
   newRef =<< do
     (root, _) <- Write $ ask
     return root
 
-getTargetsByType :: Node.Node n => Ref n s -> Node.Type n -> Write n s [Ref n s]
+getTargetsByType :: Union.Union u => Ref u s -> Union.Type u -> Write u s [Ref u s]
 getTargetsByType (Ref index node) t = do
   logEntry $ Log.GetTargetsByType index t
   mapM newRef =<< do liftIO $ Node.getTargetsByType node t
 
-newNode :: Node.Node n => Node.Value n -> Write n s (Ref n s)
+newNode :: Union.Union u => Union.Value u -> Write u s (Ref u s)
 newNode value = do
   logEntry $ Log.NewNode value
   newRef =<< do liftIO $ Node.new value
 
-addTarget :: Node.Node n => Ref n s -> Ref n s -> Write n s Bool
+addTarget :: Union.Union u => Ref u s -> Ref u s -> Write u s Bool
 addTarget (Ref taIn ta) (Ref soIn so) = do
   logEntry $ Log.AddTarget taIn soIn
   liftIO $ Node.addTarget ta so
 
-logEntry :: Log.Entry n -> Write n s ()
+logEntry :: Log.Entry u -> Write u s ()
 logEntry a = Write $ tell [a]
