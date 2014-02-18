@@ -11,6 +11,8 @@ module GraphDB.Util.Prelude
     packText,
     unpackText,
     bug,
+    (|>),
+    (<|),
   )
   where
 
@@ -124,3 +126,11 @@ packText = Data.Text.pack
 unpackText = Data.Text.unpack
 
 bug = placeholderNoWarning . (++) "'graph-db' package bug: "
+
+(|>) :: a -> (a -> b) -> b
+(|>) = flip ($)
+{-# INLINE (|>) #-}
+
+(<|) :: (a -> b) -> a -> b
+(<|) = ($)
+{-# INLINE (<|) #-}
