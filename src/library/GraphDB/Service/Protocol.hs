@@ -4,31 +4,36 @@ module GraphDB.Service.Protocol where
 import GraphDB.Util.Prelude
 
 
-data Request n v t =
-  Request_Transaction (Request_Transaction_Spec n v t) |
+data Request n v t i =
+  Request_Transaction (Request_Transaction_Spec n v t i) |
   Request_StartTransaction Bool |
   Request_EndTransaction
   deriving (Generic)
 
-instance (Serializable m n, Serializable m v, Serializable m t) => Serializable m (Request n v t)
+instance (Serializable m n, Serializable m v, Serializable m t, Serializable m i) => 
+         Serializable m (Request n v t i)
 
-data Request_Transaction_Spec n v t =
+data Request_Transaction_Spec n v t i =
   Request_Transaction_Spec_GetRoot |
   Request_Transaction_Spec_NewNode v |
-  Request_Transaction_Spec_GetTargetsByType n t
+  Request_Transaction_Spec_GetTargetsByType n t |
+  Request_Transaction_Spec_GetTargetsByIndex n i |
+  Request_Transaction_Spec_AddTarget n n
   deriving (Generic)
 
-instance (Serializable m n, Serializable m v, Serializable m t) => Serializable m (Request_Transaction_Spec n v t)
+instance (Serializable m n, Serializable m v, Serializable m t, Serializable m i) => 
+         Serializable m (Request_Transaction_Spec n v t i)
 
-data Response n v =
-  Response_Transaction (Response_Transaction_Spec n v) |
+data Response n v t i =
+  Response_Transaction (Response_Transaction_Spec n v t i) |
   Response_StartTransaction |
   Response_EndTransaction
   deriving (Generic)
 
-instance (Serializable m n, Serializable m v) => Serializable m (Response n v)
+instance (Serializable m n, Serializable m v, Serializable m t, Serializable m i) => 
+         Serializable m (Response n v t i)
 
-data Response_Transaction_Spec n v =
+data Response_Transaction_Spec n v t i =
   Response_Transaction_Spec_GetRoot n |
   Response_Transaction_Spec_NewNode n |
   Response_Transaction_Spec_GetTargetsByType [n] |
@@ -40,5 +45,6 @@ data Response_Transaction_Spec n v =
   Response_Transaction_Spec_GetStats (Int, Int)
   deriving (Generic)
 
-instance (Serializable m n, Serializable m v) => Serializable m (Response_Transaction_Spec n v)
+instance (Serializable m n, Serializable m v, Serializable m t, Serializable m i) => 
+         Serializable m (Response_Transaction_Spec n v t i)
 

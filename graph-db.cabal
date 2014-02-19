@@ -42,6 +42,7 @@ library
   exposed-modules:
     GraphDB
   other-modules:
+    GraphDB.Service.Client
     GraphDB.Service.Protocol
     GraphDB.Union
     GraphDB.Transaction.Log
