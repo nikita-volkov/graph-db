@@ -13,6 +13,7 @@ module GraphDB.Util.Prelude
     bug,
     (|>),
     (<|),
+    IOE,
   )
   where
 
@@ -110,6 +111,7 @@ import qualified Prelude
 
 type LazyByteString = Data.ByteString.Lazy.ByteString
 type LazyText = Data.Text.Lazy.Text
+type IOE = EitherT Text IO
 
 
 (?:) :: Maybe a -> a -> a
@@ -134,3 +136,4 @@ bug = placeholderNoWarning . (++) "'graph-db' package bug: "
 (<|) :: (a -> b) -> a -> b
 (<|) = ($)
 {-# INLINE (<|) #-}
+
