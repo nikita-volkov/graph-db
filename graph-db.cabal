@@ -42,6 +42,7 @@ library
   exposed-modules:
     GraphDB
   other-modules:
+    GraphDB.Transaction.Tx
     GraphDB.Service.Client
     GraphDB.Service.Protocol
     GraphDB.Union
@@ -112,6 +113,7 @@ library
     MultiParamTypeClasses
     ScopedTypeVariables
     FlexibleInstances
+    FunctionalDependencies
     TypeFamilies
     TypeOperators
     FlexibleContexts

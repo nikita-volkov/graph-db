@@ -3,25 +3,29 @@ module GraphDB.Transaction where
 import GraphDB.Util.Prelude hiding (Read, Write)
 import qualified GraphDB.Union as Union
 import qualified GraphDB.Engine.Node as Node
+import qualified GraphDB.Transaction.Tx as Tx
 
 
+newtype Read u b s r = Read (Tx.Tx u b r) deriving (Monad, Functor, Applicative, MonadIO)
+newtype Write u b s r = Write (Tx.Tx u b r) deriving (Monad, Functor, Applicative, MonadIO)
+type ReadOrWrite u b s r = forall t. (LiftTx t) => t u b s r
 
--- The backend modules provide specific implementations.
--- They also have to discern the specific types of transactions in runners, e.g. "runWrite".
+class LiftTx t where liftTx :: Tx.Tx u b r -> t u b s r
+instance LiftTx Read where liftTx = Read
+instance LiftTx Write where liftTx = Write
 
-type family Ref (t :: * -> * -> * -> *) u s
+-- | A transaction-local reference to node, which may not escape the transaction.
+newtype Node u b s = Node (Tx.Node u b)
 
-class Read t where
-  getRoot :: t u s (Ref t u s)
-  getTargetsByType :: Union.Union u => Ref t u s -> Union.Type u -> t u s [Ref t u s]
+getRoot :: Tx.Backend u b => ReadOrWrite u b s (Node u b s)
+getRoot = liftTx $ Tx.getRoot >>= pure . Node
 
-class Write t where
-  addTarget :: Ref t u s -> Ref t u s -> t u s Bool
+addTarget :: Tx.Backend u b => Node u b s -> Node u b s -> Write u b s Bool
+addTarget (Node s) (Node t) = Write $ Tx.addTarget s t
 
--- Synonyms still require specifying the transaction type, because of "Ref t"
--- getRoot :: ReadOrWrite u s (Ref t u s)
--- type ReadOrWrite u s = forall t. (ReadOps t, MonadIO (t u s), Applicative (t u s)) => t u s
--- type Write u s = forall t. (ReadOps t, WriteOps t, MonadIO (t u s), Applicative (t u s)) => t u s
+runWrite :: Tx.Backend u b => Write u b s r -> b -> IO r
+runWrite (Write tx) = Tx.runTx tx True
 
-
+runRead :: Tx.Backend u b => Read u b s r -> b -> IO r
+runRead (Read tx) = Tx.runTx tx False
 
