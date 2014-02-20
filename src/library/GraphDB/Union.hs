@@ -3,7 +3,7 @@ module GraphDB.Union where
 import GraphDB.Util.Prelude
 import qualified GraphDB.Engine.Node as Node
 
-class (Serializable IO (Value u), Hashable (Type u), Eq (Type u), Hashable (Index u), Eq (Index u)) => Union u where
+class (SerializableUnion u, Hashable (Type u), Eq (Type u), Hashable (Index u), Eq (Index u)) => Union u where
   data Index u
   data Value u
   data Type u
@@ -22,4 +22,5 @@ instance (Union u) => Node.Type (Type u) where
 
 type Node u = Node.Node (Type u)
 
+type SerializableUnion u = (Serializable IO (Value u), Serializable IO (Index u), Serializable IO (Type u))
 

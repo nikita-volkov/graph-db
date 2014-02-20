@@ -3,7 +3,7 @@ module GraphDB.Service.Client where
 import GraphDB.Util.Prelude 
 import qualified GraphDB.Service.Protocol as P
 import qualified GraphDB.Transaction as T
-import qualified GraphDB.Transaction.Tx as T
+import qualified GraphDB.Transaction.Backend as T
 import qualified GraphDB.Union as U
 
 
@@ -15,22 +15,19 @@ type Response u = P.Response Int (U.Value u) (U.Type u) (U.Index u)
 type Tx u = T.Tx (Client u)
 
 instance T.Backend (Client u) where
-  type Node (Client u) = Int
+  type Tx (Client u) = ReaderT (Client u) IO
+  newtype Node (Client u) = Node Int
   type Value (Client u) = U.Value u
   type Type (Client u) = U.Type u
   type Index (Client u) = U.Index u
-  runTx tx isWrite client = 
-    flip T.runTxReader client $ do
-      runRequest $ P.Request_StartTransaction isWrite
-      r <- tx
-      runRequest $ P.Request_EndTransaction
-      return r
+  runRead = txRunner False
+  runWrite = txRunner True
   getRoot = runRequestAndParse parse request where
     parse = \case
-      P.Response_Transaction (P.Response_Transaction_Spec_GetRoot r) -> Just r
+      P.Response_Transaction (P.Response_Transaction_Spec_GetRoot r) -> Just $ Node r
       _ -> Nothing
     request = P.Request_Transaction $ P.Request_Transaction_Spec_GetRoot
-  addTarget s t = runRequestAndParse parse request where
+  addTarget (Node s) (Node t) = runRequestAndParse parse request where
     parse = \case
       P.Response_Transaction (P.Response_Transaction_Spec_AddTarget r) -> Just r
       _ -> Nothing
@@ -47,5 +44,10 @@ runRequestAndParse parseResponse request =
 
 
 
-
+txRunner :: Bool -> (ReaderT (Client u) IO r -> Client u -> IO r)
+txRunner isWrite = \tx client -> flip runReaderT client $ do
+  runRequest $ P.Request_StartTransaction isWrite
+  r <- tx
+  runRequest $ P.Request_EndTransaction
+  return r
 
