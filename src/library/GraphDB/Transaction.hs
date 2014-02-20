@@ -25,7 +25,6 @@ module GraphDB.Transaction
 
 import GraphDB.Util.Prelude hiding (Read, Write)
 import qualified GraphDB.Transaction.Backend as B
-import qualified GraphDB.Union as U
 
 
 -- |
