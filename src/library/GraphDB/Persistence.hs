@@ -41,7 +41,7 @@ start (bufferSize, paths, defaultRoot) = do
 stop :: (U.Union u) => Persistence u -> IO ()
 stop (Persistence g s b) = do
   IOQueue.shutdown b
-  S.checkpoint s $notImplemented
+  S.checkpoint s g
   S.release s
 
 with :: (U.Union u, U.PolyValue u a) => Settings a -> (Persistence u -> IO r) -> IO r
