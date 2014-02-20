@@ -21,7 +21,6 @@ data Entry b =
   GetTargetsByIndex Ref (B.Index b) |
   AddTarget Ref Ref |
   RemoveTarget Ref Ref |
-  GetValue Ref |
   SetValue Ref (B.Value b)
   deriving (Generic)
 instance (Serializable m (B.Index b), Serializable m (B.Type b), Serializable m (B.Value b)) => 
@@ -49,8 +48,6 @@ apply graph (Log actions) = do
         void $ join $ B.addTarget <$> resolveRef s <*> resolveRef t
       RemoveTarget s t -> 
         void $ join $ B.removeTarget <$> resolveRef s <*> resolveRef t
-      GetValue r -> 
-        void $ join $ B.getValue <$> resolveRef r
       SetValue r v -> 
         void $ join $ B.setValue <$> resolveRef r <*> pure v
       where

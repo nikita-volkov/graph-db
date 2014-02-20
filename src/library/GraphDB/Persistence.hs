@@ -105,12 +105,31 @@ instance (B.Backend b, Serializable IO (TL.Log b)) =>
     (r, entries) <- B.runWrite (evalRWST tx () 0) g
     IOQueue.enqueue b $ S.persistEvent s $ TL.Log entries
     return r
+  newNode (Value v) = do
+    tell $ pure $ TL.NewNode v
+    newGraphNodeTx =<< do lift $ B.newNode v
+  getValue (Node _ n) = do
+    B.getValue n |> lift |> fmap Value
+  setValue (Node i n) (Value v) = do
+    TL.SetValue i v |> pure |> tell
+    B.setValue n v |> lift
   getRoot = do
     tell $ pure $ TL.GetRoot
     newGraphNodeTx =<< do lift $ B.getRoot
+  getTargetsByType (Node i n) (Type t) = do
+    TL.GetTargetsByType i t |> pure |> tell
+    B.getTargetsByType n t |> lift >>= mapM newGraphNodeTx
+  getTargetsByIndex (Node si sn) (Index i) = do
+    TL.GetTargetsByIndex si i |> pure |> tell
+    B.getTargetsByIndex sn i |> lift >>= mapM newGraphNodeTx
   addTarget (Node si sn) (Node ti tn) = do
     tell $ pure $ TL.AddTarget si ti
     lift $ B.addTarget sn tn
+  removeTarget (Node si sn) (Node ti tn) = do
+    tell $ pure $ TL.RemoveTarget si ti
+    lift $ B.removeTarget sn tn
+  getStats (Node i n) = do
+    lift $ B.getStats n
 
 newGraphNodeTx :: Monad (B.Tx b) => B.Node b -> Tx b (B.Node (Persistence b))
 newGraphNodeTx n = do

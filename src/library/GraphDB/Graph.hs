@@ -32,8 +32,15 @@ instance (U.Union u) => B.Backend (Graph u) where
   newtype Index (Graph u) = Index (U.Index u)
   runRead tx g = let Graph _ l = g in L.withRead l $ runReaderT tx g
   runWrite tx g = let Graph _ l = g in L.withWrite l $ runReaderT tx g
+  newNode (Value uv) = N.new uv |> liftIO |> fmap Node
+  getValue (Node un) = N.getValue un |> liftIO |> fmap Value
+  setValue (Node un) (Value uv) = N.setValue un uv |> liftIO
   getRoot = do Graph root _ <- ask; return $ Node root
   getTargetsByType (Node n) (Type t) = liftIO $ N.getTargetsByType n t >>= return . map Node
+  getTargetsByIndex (Node un) (Index ui) = N.getTargetsByIndex un ui |> liftIO |> fmap (map Node)
+  addTarget (Node s) (Node t) = N.addTarget s t |> liftIO
+  removeTarget (Node s) (Node t) = N.removeTarget s t |> liftIO
+  getStats (Node n) = N.getStats n |> liftIO
 
 instance (U.Union u) => Serializable IO (Graph u) where
   serialize (Graph n _) = serialize n
