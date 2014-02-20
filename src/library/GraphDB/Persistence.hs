@@ -44,6 +44,9 @@ stop (Persistence g s b) = do
   S.checkpoint s g
   S.release s
 
+-- |
+-- Run a computation on Persistence, 
+-- while automatically acquiring and releasing all related resources.
 with :: (U.Union u, U.PolyValue u a) => Settings a -> (Persistence u -> IO r) -> IO r
 with settings = bracket (start settings) stop
 
