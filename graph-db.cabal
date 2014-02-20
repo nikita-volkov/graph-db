@@ -41,14 +41,15 @@ library
     src/library
   exposed-modules:
     GraphDB
-  other-modules:
+    GraphDB.Transaction
+    GraphDB.Graph
+    GraphDB.Persistence
     GraphDB.Service.Client
+  other-modules:
+    GraphDB.Persistence.TransactionLog
+    GraphDB.Transaction.Backend
     GraphDB.Service.Protocol
     GraphDB.Union
-    GraphDB.Transaction.Log
-    GraphDB.Transaction.Read
-    GraphDB.Transaction.Write
-    GraphDB.Transaction
     GraphDB.Client
     GraphDB.Server
     GraphDB.Storage
@@ -112,6 +113,7 @@ library
     MultiParamTypeClasses
     ScopedTypeVariables
     FlexibleInstances
+    FunctionalDependencies
     TypeFamilies
     TypeOperators
     FlexibleContexts
