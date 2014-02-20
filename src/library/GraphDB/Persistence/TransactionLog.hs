@@ -49,25 +49,3 @@ apply root (Log actions) = do
       _ -> $notImplemented
   forM_ actions applyEntry
 
-
--- newtype Build u m r = 
---   Build (WriterT [Entry u] (StateT Int m) r) 
---   deriving (Functor, Applicative, Monad, MonadIO)
-
--- runBuild :: Build u m r -> m r
--- runBuild (Build t) = runStateT (runWriterT [] t) 0
-
--- execBuild :: Build u m r -> m (Log u)
--- execBuild = runBuild >>> \(_, list) -> Log list
-
--- instance MonadIO m => Tx (Build u m) where
---   type Ref (Build u m) = Int
---   getRoot = Build $ do
---     tell GetRoot
---     modify succ >> get
---   getTargetsByType ref t = Build $ do
---     tell $ GetTargetsByType ref t
---     -- querying without returning the result is dumb!
---     mapM newRef =<< do liftIO $ Node.getTargetsByType node t
-
-
