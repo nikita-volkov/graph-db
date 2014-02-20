@@ -131,10 +131,10 @@ unpackText = Data.Text.unpack
 bug = placeholderNoWarning . (++) "'graph-db' package bug: "
 
 (|>) :: a -> (a -> b) -> b
-(|>) = flip ($)
+a |> aToB = aToB a
 {-# INLINE (|>) #-}
 
 (<|) :: (a -> b) -> a -> b
-(<|) = ($)
+aToB <| a = aToB a
 {-# INLINE (<|) #-}
 
