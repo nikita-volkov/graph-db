@@ -22,7 +22,7 @@ data Graph u = Graph !(U.Node u) !(L.RWLock)
 new :: U.PolyValue u a => a -> IO (Graph u)
 new root = Graph <$> initRoot <*> L.new
   where
-    initRoot = pure (U.packValue root) >>= pure . snd >>= N.new
+    initRoot = U.packValue root |> \(_, uv) -> N.new uv
 
 instance (U.Union u) => B.Backend (Graph u) where
   type Tx (Graph u) = ReaderT (Graph u) IO
