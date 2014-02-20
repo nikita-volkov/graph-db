@@ -38,3 +38,10 @@ instance (U.Union u) => B.Backend (Graph u) where
 instance (U.Union u) => Serializable IO (Graph u) where
   serialize (Graph n _) = serialize n
   deserialize = Graph <$> deserialize <*> liftIO L.new
+
+instance U.PolyValue u v => B.PolyValue (Graph u) v where
+  packValue v = U.packValue v |> \(ut, uv) -> (Type ut, Value uv)
+  unpackValue (Value uv) = U.unpackValue uv
+
+instance U.PolyIndex u i => B.PolyIndex (Graph u) i where
+  packIndex i = U.packIndex i |> Index
