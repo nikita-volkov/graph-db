@@ -32,7 +32,7 @@ import qualified GraphDB.Graph as G
 data Persistence u = Persistence !(G.Graph u) !(Storage u) !IOQueue.IOQueue
 type Storage u = S.Storage (G.Graph u) (TL.Log (G.Graph u))
 
-start :: forall u a. (U.Union u, U.PolyValue u a) => Settings a -> IO (Persistence u)
+start :: (U.Union u, U.PolyValue u a) => Settings a -> IO (Persistence u)
 start (bufferSize, paths, defaultRoot) = do
   (storage, graph) <- S.acquireAndLoad (G.new defaultRoot) TL.apply paths
   buffer <- IOQueue.start bufferSize
