@@ -17,9 +17,9 @@ type Tx u = T.Tx (Client u)
 instance T.Backend (Client u) where
   type Tx (Client u) = ReaderT (Client u) IO
   newtype Node (Client u) = Node Int
-  type Value (Client u) = U.Value u
-  type Type (Client u) = U.Type u
-  type Index (Client u) = U.Index u
+  newtype Value (Client u) = Value (U.Value u)
+  newtype Type (Client u) = Type (U.Type u)
+  newtype Index (Client u) = Index (U.Index u)
   runRead = txRunner False
   runWrite = txRunner True
   getRoot = runRequestAndParse parse request where

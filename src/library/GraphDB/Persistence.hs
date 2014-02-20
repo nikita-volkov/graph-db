@@ -95,9 +95,9 @@ instance (B.Backend b, Serializable IO (TL.Log b)) =>
          B.Backend (Persistence b) where
   type Tx (Persistence b) = Tx b
   data Node (Persistence b) = Node Int (B.Node b)
-  type Value (Persistence b) = B.Value b
-  type Type (Persistence b) = B.Type b
-  type Index (Persistence b) = B.Index b
+  newtype Value (Persistence b) = Value (B.Value b)
+  newtype Type (Persistence b) = Type (B.Type b)
+  newtype Index (Persistence b) = Index (B.Index b)
   runRead tx (Persistence g _ _) = do
     (r, _) <- B.runRead (evalRWST tx () 0) g
     return r

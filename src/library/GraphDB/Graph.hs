@@ -27,13 +27,13 @@ new root = Graph <$> initRoot <*> L.new
 instance (U.Union u) => B.Backend (Graph u) where
   type Tx (Graph u) = ReaderT (Graph u) IO
   newtype Node (Graph u) = Node (U.Node u)
-  type Value (Graph u) = U.Value u
-  type Type (Graph u) = U.Type u
-  type Index (Graph u) = U.Index u
+  newtype Value (Graph u) = Value (U.Value u)
+  newtype Type (Graph u) = Type (U.Type u)
+  newtype Index (Graph u) = Index (U.Index u)
   runRead tx g = let Graph _ l = g in L.withRead l $ runReaderT tx g
   runWrite tx g = let Graph _ l = g in L.withWrite l $ runReaderT tx g
   getRoot = do Graph root _ <- ask; return $ Node root
-  getTargetsByType (Node n) t = liftIO $ N.getTargetsByType n t >>= return . map Node
+  getTargetsByType (Node n) (Type t) = liftIO $ N.getTargetsByType n t >>= return . map Node
 
 instance (U.Union u) => Serializable IO (Graph u) where
   serialize (Graph n _) = serialize n
