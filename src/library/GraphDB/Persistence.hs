@@ -8,7 +8,7 @@ module GraphDB.Persistence
     Settings,
     BufferSize,
     Paths,
-    DefaultRoot,
+    InitBackend,
     pathsFromName,
   )
   where
@@ -17,10 +17,8 @@ import GraphDB.Util.Prelude
 import qualified GraphDB.Util.FileSystem as FS
 import qualified GraphDB.Util.IOQueue as IOQueue
 import qualified GraphDB.Transaction.Backend as B
-import qualified GraphDB.Union as U
 import qualified GraphDB.Storage as S
 import qualified GraphDB.Persistence.TransactionLog as TL
-import qualified GraphDB.Graph as G
 
 
 ------------------
@@ -28,17 +26,23 @@ import qualified GraphDB.Graph as G
 ------------------
 
 -- |
--- A local database with persistence.
-data Persistence u = Persistence !(G.Graph u) !(Storage u) !IOQueue.IOQueue
-type Storage u = S.Storage (G.Graph u) (TL.Log (G.Graph u))
+-- A persistence wrapper backend for any other serializable backend,
+-- e.g., an in-memory graph.
+data Persistence b = Persistence !b !(S.Storage b (TL.Log b)) !IOQueue.IOQueue
 
-start :: (U.Union u, U.PolyValue u a) => Settings a -> IO (Persistence u)
-start (bufferSize, paths, defaultRoot) = do
-  (storage, graph) <- S.acquireAndLoad (G.new defaultRoot) TL.apply paths
+-- |
+-- A constraint for any serializable backend implementation.
+type SerializableBackend b =
+  (B.Backend b, Serializable IO b, 
+   Serializable IO (B.Value b), Serializable IO (B.Type b), Serializable IO (B.Index b))
+
+start :: (SerializableBackend b) => Settings b -> IO (Persistence b)
+start (bufferSize, paths, initBackend) = do
+  (storage, backend) <- S.acquireAndLoad initBackend TL.apply paths
   buffer <- IOQueue.start bufferSize
-  return $ Persistence graph storage buffer
+  return $ Persistence backend storage buffer
 
-stop :: (U.Union u) => Persistence u -> IO ()
+stop :: (Serializable IO b) => Persistence b -> IO ()
 stop (Persistence g s b) = do
   IOQueue.shutdown b
   S.checkpoint s g
@@ -47,7 +51,7 @@ stop (Persistence g s b) = do
 -- |
 -- Run a computation on Persistence, 
 -- while automatically acquiring and releasing all related resources.
-with :: (U.Union u, U.PolyValue u a) => Settings a -> (Persistence u -> IO r) -> IO r
+with :: SerializableBackend b => Settings b -> (Persistence b -> IO r) -> IO r
 with settings = bracket (start settings) stop
 
 ------------------
@@ -56,7 +60,7 @@ with settings = bracket (start settings) stop
 
 -- |
 -- Persistence settings.
-type Settings a = (BufferSize, Paths, DefaultRoot a)
+type Settings b = (BufferSize, Paths, InitBackend b)
 -- |
 -- An admissible amount of transactions,
 -- by which the persistence layer may be lagging behind the actual state of the graph. 
@@ -70,10 +74,10 @@ type BufferSize = Int
 -- Storage paths. Determines where to store logs, checkpoints and archive.
 type Paths = S.Paths
 -- |
--- A default value for root node. 
+-- A default initializer for backend.
 -- Will only be used if the graph hasn't been previously persisted,
 -- i.e. on the first run of the DB.
-type DefaultRoot a = a
+type InitBackend b = IO b
 -- | 
 -- Determine paths from a unique name among all storages running on this machine. 
 -- It will be used to set default values for storage paths under \"~\/.graph-db\/\[name\]\/\".
@@ -84,15 +88,15 @@ pathsFromName name = S.pathsFromDirectory ("~/.graph-db/" <> FS.fromText name)
 -- Transactions
 ------------------
 
-type Tx u = RWST () [TL.Entry (G.Graph u)] Int (B.Tx (G.Graph u))
+type Tx b = RWST () [TL.Entry b] Int (B.Tx b)
 
-instance (B.Backend (G.Graph u), Serializable IO (TL.Log (G.Graph u))) => 
-         B.Backend (Persistence u) where
-  type Tx (Persistence u) = Tx u
-  data Node (Persistence u) = Node Int (B.Node (G.Graph u))
-  type Value (Persistence u) = B.Value (G.Graph u)
-  type Type (Persistence u) = B.Type (G.Graph u)
-  type Index (Persistence u) = B.Index (G.Graph u)
+instance (B.Backend b, Serializable IO (TL.Log b)) => 
+         B.Backend (Persistence b) where
+  type Tx (Persistence b) = Tx b
+  data Node (Persistence b) = Node Int (B.Node b)
+  type Value (Persistence b) = B.Value b
+  type Type (Persistence b) = B.Type b
+  type Index (Persistence b) = B.Index b
   runRead tx (Persistence g _ _) = do
     (r, _) <- B.runRead (evalRWST tx () 0) g
     return r
@@ -107,7 +111,7 @@ instance (B.Backend (G.Graph u), Serializable IO (TL.Log (G.Graph u))) =>
     tell $ pure $ TL.AddTarget si ti
     lift $ B.addTarget sn tn
 
-newGraphNodeTx :: B.Node (G.Graph u) -> Tx u (B.Node (Persistence u))
+newGraphNodeTx :: Monad (B.Tx b) => B.Node b -> Tx b (B.Node (Persistence b))
 newGraphNodeTx n = do
   index <- get
   modify succ
