@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module GraphDB.Transaction.Log where
+module GraphDB.Persistence.TransactionLog where
 
 import GraphDB.Util.Prelude
 import qualified GraphDB.Util.DIOVector as DIOVector

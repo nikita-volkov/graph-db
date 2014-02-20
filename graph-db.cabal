@@ -42,14 +42,14 @@ library
   exposed-modules:
     GraphDB
   other-modules:
+    GraphDB.Persistence.TransactionLog
+    GraphDB.Persistence
+    GraphDB.Graph
     GraphDB.Transaction.Tx
+    GraphDB.Transaction
     GraphDB.Service.Client
     GraphDB.Service.Protocol
     GraphDB.Union
-    GraphDB.Transaction.Log
-    GraphDB.Transaction.Read
-    GraphDB.Transaction.Write
-    GraphDB.Transaction
     GraphDB.Client
     GraphDB.Server
     GraphDB.Storage
