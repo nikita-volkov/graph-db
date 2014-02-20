@@ -16,7 +16,6 @@ class (MonadIO (Tx b), Applicative (Tx b)) => Backend b where
   type Value b
   type Type b
   type Index b
-  runTx :: Tx b r -> b -> IO r
   runWrite :: Tx b r -> b -> IO r
   runRead :: Tx b r -> b -> IO r
   getRoot :: Tx b (Node b)
