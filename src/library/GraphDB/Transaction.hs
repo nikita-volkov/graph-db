@@ -110,7 +110,7 @@ getRoot = liftTx $ B.getRoot >>= pure . Node
 -- Get all linked nodes with values of the provided type.
 -- Supposed to be used like this:
 -- 
--- > getTargetsByType (undefined :: Artist) ...
+-- > getTargetsByType node (undefined :: Artist)
 -- 
 getTargetsByType :: 
   (B.Backend b, B.PolyValue b v') => 
