@@ -30,7 +30,7 @@ import qualified GraphDB.Graph as G
 -- |
 -- A local database with persistence.
 data Persistence u = Persistence !(G.Graph u) !(Storage u) !IOQueue.IOQueue
-type Storage u = S.Storage (G.Graph u) (TL.Log u)
+type Storage u = S.Storage (G.Graph u) (TL.Log (G.Graph u))
 
 start :: forall u a. (U.Union u, U.PolyValue u a) => Settings a -> IO (Persistence u)
 start (bufferSize, paths, defaultRoot) = do
@@ -81,14 +81,15 @@ pathsFromName name = S.pathsFromDirectory ("~/.graph-db/" <> FS.fromText name)
 -- Transactions
 ------------------
 
-type Tx u = RWST () [TL.Entry u] Int (B.Tx (G.Graph u))
+type Tx u = RWST () [TL.Entry (G.Graph u)] Int (B.Tx (G.Graph u))
 
-instance (U.Union u) => B.Backend (Persistence u) where
+instance (B.Backend (G.Graph u), Serializable IO (TL.Log (G.Graph u))) => 
+         B.Backend (Persistence u) where
   type Tx (Persistence u) = Tx u
   data Node (Persistence u) = Node Int (B.Node (G.Graph u))
-  type Value (Persistence u) = U.Value u
-  type Type (Persistence u) = U.Type u
-  type Index (Persistence u) = U.Index u
+  type Value (Persistence u) = B.Value (G.Graph u)
+  type Type (Persistence u) = B.Type (G.Graph u)
+  type Index (Persistence u) = B.Index (G.Graph u)
   runRead tx (Persistence g _ _) = do
     (r, _) <- B.runRead (evalRWST tx () 0) g
     return r
