@@ -5,7 +5,7 @@ import GraphDB.Util.Prelude
 import qualified GraphDB.Util.DIOVector as DIOVector
 import qualified GraphDB.Union as Union
 import qualified GraphDB.Graph as Graph
-import qualified GraphDB.Transaction.Backend as Backend
+import qualified GraphDB.Transaction.Backend as B
 
 
 -- |
@@ -24,7 +24,7 @@ data Entry u =
   AddTarget Ref Ref |
   RemoveTarget Ref Ref |
   GetValue Ref |
-  SetValue (Union.Value u) Ref
+  SetValue Ref (Union.Value u)
   deriving (Generic)
 instance (Union.Serializable m u) => Serializable m (Entry u)
 
@@ -36,20 +36,27 @@ apply graph (Log actions) = do
   let
     applyEntry = \case
       GetRoot -> do
-        root <- Backend.getRoot :: Backend.Tx (Graph.Graph u) (Backend.Node (Graph.Graph u))
-        liftIO $ void $ DIOVector.append refs root
-      NewNode value -> $notImplemented
+        root <- B.getRoot :: B.Tx (Graph.Graph u) (B.Node (Graph.Graph u))
+        appendRef root
+      NewNode value -> do
+        appendRef =<< B.newNode value
       GetTargetsByType ref typ -> do
-        mapM_ (liftIO . DIOVector.append refs) =<< do
-          node <- liftIO $ DIOVector.unsafeLookup refs ref
-          Backend.getTargetsByType node typ
-      GetTargetsByIndex index ref -> $notImplemented
-      AddTarget sRef tRef -> do
-        source <- liftIO $ DIOVector.unsafeLookup refs sRef
-        target <- liftIO $ DIOVector.unsafeLookup refs tRef
-        Backend.addTarget source target
-        return ()
-      _ -> $notImplemented
-  flip Backend.runWrite graph $ forM_ actions applyEntry
+        mapM_ appendRef =<< do
+          node <- resolveRef ref
+          B.getTargetsByType node typ
+      GetTargetsByIndex r i ->
+        mapM_ appendRef =<< do join $ B.getTargetsByIndex <$> resolveRef r <*> pure i
+      AddTarget s t -> 
+        void $ join $ B.addTarget <$> resolveRef s <*> resolveRef t
+      RemoveTarget s t -> 
+        void $ join $ B.removeTarget <$> resolveRef s <*> resolveRef t
+      GetValue r -> 
+        void $ join $ B.getValue <$> resolveRef r
+      SetValue r v -> 
+        void $ join $ B.setValue <$> resolveRef r <*> pure v
+      where
+        appendRef = liftIO . void . DIOVector.append refs
+        resolveRef = liftIO . DIOVector.unsafeLookup refs
+  flip B.runWrite graph $ forM_ actions applyEntry
   
 
