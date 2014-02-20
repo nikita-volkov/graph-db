@@ -90,7 +90,7 @@ newNode v = do
   return $ Node bn
 
 -- | 
--- Get the value of the node.
+-- Get a value of the node.
 getValue :: (B.Backend b, B.PolyValue b v) => Node b s v -> ReadOrWrite b s v
 getValue (Node n) = do
   pv <- liftTx $ B.getValue n
@@ -134,7 +134,7 @@ getTargetsByIndex (Node n) i = do
 -- while automatically generating all the indexes.
 -- 
 -- The result signals, whether the operation has actually been performed.
--- If the node was already there it will return 'False'.
+-- If the node is already there it will return 'False'.
 addTarget :: B.Backend b => Node b s v -> Node b s v' -> Write b s Bool
 addTarget (Node s) (Node t) = Write $ B.addTarget s t
 
@@ -142,7 +142,7 @@ addTarget (Node s) (Node t) = Write $ B.addTarget s t
 -- Remove the target node /v'/ and all its indexes from the source node /v/.
 -- 
 -- The result signals, whether the operation has actually been performed.
--- If the node was not found it will return 'False'.
+-- If the node is not found it will return 'False'.
 removeTarget :: B.Backend b => Node b s v -> Node b s v' -> Write b s Bool
 removeTarget (Node s) (Node t) = Write $ B.removeTarget s t
 
