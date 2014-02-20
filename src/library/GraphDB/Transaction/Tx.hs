@@ -26,14 +26,3 @@ class Backend u b | b -> u where
   addTarget :: Node u b -> Node u b -> Tx u b Bool
   removeTarget :: Node u b -> Node u b -> Tx u b Bool
   getStats :: Node u b -> Tx u b (Int, Int)
-
-
-class Monad m => MonadTx m where
-  type MonadTx_Union m
-  type MonadTx_Backend m
-  liftTx :: Tx (MonadTx_Union m) (MonadTx_Backend m) r -> m r
-
-instance MonadTx (Tx u b) where
-  type MonadTx_Backend (Tx u b) = b
-  type MonadTx_Union (Tx u b) = u
-  liftTx = id
