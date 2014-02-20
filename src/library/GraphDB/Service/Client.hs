@@ -12,10 +12,13 @@ data Client u
 type Request u = P.Request Int (U.Value u) (U.Type u) (U.Index u)
 type Response u = P.Response Int (U.Value u) (U.Type u) (U.Index u)
 
-type Tx u = T.Tx (Client u) u
+type Tx u = T.Tx (Client u)
 
-instance T.Backend (Client u) u where
-  type Node (Client u) u = Int
+instance T.Backend (Client u) where
+  type Node (Client u) = Int
+  type Value (Client u) = U.Value u
+  type Type (Client u) = U.Type u
+  type Index (Client u) = U.Index u
   runTx tx isWrite client = 
     flip T.runTxReader client $ do
       runRequest $ P.Request_StartTransaction isWrite
