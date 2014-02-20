@@ -10,6 +10,7 @@ module GraphDB.Persistence
     Paths,
     InitBackend,
     pathsFromName,
+    S.pathsFromDirectory,
   )
   where
 
