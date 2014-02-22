@@ -168,10 +168,10 @@ getStats = do
 
 -- |
 -- Run a 'Write' transaction on the specified backend.
-runWrite :: B.Backend b u => b -> Write b u s r -> IO r
+runWrite :: B.Backend b u => b -> (forall s. Write b u s r) -> IO r
 runWrite b (Write tx) = B.runWrite tx b
 
 -- |
 -- Run a 'Read' transaction on the specified backend.
-runRead :: B.Backend b u => b -> Read b u s r -> IO r
+runRead :: B.Backend b u => b -> (forall s. Read b u s r) -> IO r
 runRead b (Read tx) = B.runRead tx b
