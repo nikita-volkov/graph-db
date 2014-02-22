@@ -71,7 +71,7 @@ instance Functor (B.Tx b) => Functor (Write b s) where
 -- |
 -- An abstract type. 
 -- Transactions of this type can be composed with both 'Read' and 'Write'.
-type ReadOrWrite b s r = forall t. (LiftTx t, MonadIO (t b s), Applicative (t b s)) => t b s r
+type ReadOrWrite b s r = forall t. (LiftTx t, Monad (t b s), Applicative (t b s)) => t b s r
 
 class LiftTx t where liftTx :: B.Tx b r -> t b s r
 instance LiftTx Read where liftTx = Read
