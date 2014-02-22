@@ -154,7 +154,7 @@ instance Hashable Data.Time.Day
 -----------
 
 -- | Populate the DB with test data.
-populate :: G.Backend b Catalogue => G.Write b Catalogue s ()
+populate :: G.Write b Catalogue s ()
 populate = do
   metallicaArtist <- do
     uid <- generateNewUID
@@ -201,7 +201,7 @@ populate = do
       return ()
 
 -- | Use a counter stored in the root 'Catalogue' node to generate a new unique UID.
-generateNewUID :: G.Backend b Catalogue => G.Write b Catalogue s Int
+generateNewUID :: G.Write b Catalogue s Int
 generateNewUID = do
   root <- G.getRoot
   Catalogue lastUID <- G.getValue root
@@ -210,7 +210,7 @@ generateNewUID = do
   return newUID
 
 -- | Search thru titles of songs, releases and artists.
-search :: G.Backend b Catalogue => Text -> G.Read b Catalogue s [Either Artist (Either Release Song)]
+search :: Text -> G.Read b Catalogue s [Either Artist (Either Release Song)]
 search text = do
   artists <- searchByMkIndex terms Index_Catalogue_Artist_SearchTerm
   releases <- searchByMkIndex terms Index_Catalogue_Release_SearchTerm
@@ -227,7 +227,7 @@ search text = do
         then return []
         else return $ foldr1 union groupedMatches
 
-getRecordingsByArtistUID :: G.Backend b Catalogue => Int -> G.Read b Catalogue s [Recording]
+getRecordingsByArtistUID :: Int -> G.Read b Catalogue s [Recording]
 getRecordingsByArtistUID uid =
   -- An example of a point-free query.
   G.getRoot >>=
