@@ -7,8 +7,8 @@ import qualified GraphDB.Model.Union as U
 class (MonadIO (Tx b u), Applicative (Tx b u)) => Backend b u where
   -- | 
   -- A low level transaction which both Read and Write revolve around.
-  data Tx
-  data Node
+  data Tx b u r
+  type Node b u
   runWrite :: Tx b u r -> b -> IO r
   runRead :: Tx b u r -> b -> IO r
   newNode :: U.Value u -> Tx b u (Node b u)

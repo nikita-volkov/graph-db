@@ -26,18 +26,18 @@ new root = Graph <$> initRoot <*> L.new
 
 instance (U.Union u) => B.Backend (Graph u) u where
   newtype Tx (Graph u) u r = Tx (ReaderT (Graph u) IO r)
-  newtype Node (Graph u) u = Node (U.Node u)
+  type Node (Graph u) u = U.Node u
   runRead (Tx tx) g = let Graph _ l = g in L.withRead l $ runReaderT tx g
   runWrite (Tx tx) g = g |> \(Graph _ l) -> runReaderT tx g |> L.withWrite l
-  newNode uv = N.new uv |> liftIO |> fmap Node
-  getValue (Node un) = N.getValue un |> liftIO
-  setValue (Node un) uv = N.setValue un uv |> liftIO
-  getRoot = do Graph root _ <- Tx ask; return $ Node root
-  getTargetsByType (Node un) ut = liftIO $ N.getTargetsByType un ut >>= return . map Node
-  getTargetsByIndex (Node un) ui = N.getTargetsByIndex un ui |> liftIO |> fmap (map Node)
-  addTarget (Node s) (Node t) = N.addTarget s t |> liftIO
-  removeTarget (Node s) (Node t) = N.removeTarget s t |> liftIO
-  getStats (Node n) = N.getStats n |> liftIO
+  newNode uv = N.new uv |> liftIO
+  getValue un = N.getValue un |> liftIO
+  setValue un uv = N.setValue un uv |> liftIO
+  getRoot = do Graph root _ <- Tx ask; return root
+  getTargetsByType un ut = liftIO $ N.getTargetsByType un ut
+  getTargetsByIndex un ui = N.getTargetsByIndex un ui |> liftIO
+  addTarget s t = N.addTarget s t |> liftIO
+  removeTarget s t = N.removeTarget s t |> liftIO
+  getStats un = N.getStats un |> liftIO
 
 instance (U.Union u) => Serializable IO (Graph u) where
   serialize (Graph n _) = serialize n
