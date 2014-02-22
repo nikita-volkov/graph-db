@@ -7,7 +7,7 @@ module GraphDB.Persistence
     -- ** Settings
     Settings,
     BufferSize,
-    Paths,
+    S.Paths,
     InitBackend,
     pathsFromName,
     S.pathsFromDirectory,
@@ -61,7 +61,7 @@ with settings = bracket (start settings) stop
 
 -- |
 -- Persistence settings.
-type Settings b = (BufferSize, Paths, InitBackend b)
+type Settings b = (BufferSize, S.Paths, InitBackend b)
 -- |
 -- An admissible amount of transactions,
 -- by which the persistence layer may be lagging behind the actual state of the graph. 
@@ -71,9 +71,6 @@ type Settings b = (BufferSize, Paths, InitBackend b)
 -- set this to @1@. 
 -- Thus you can make sure that the persistence of events is always done synchronously.
 type BufferSize = Int
--- |
--- Storage paths. Determines where to store logs, checkpoints and archive.
-type Paths = S.Paths
 -- |
 -- A default initializer for backend.
 -- Will only be used if the graph hasn't been previously persisted,
