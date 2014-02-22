@@ -44,7 +44,7 @@ library
     GraphDB.Model.Union
     GraphDB.Model.Macros
     GraphDB.Util.TH.Parsers
-    -- GraphDB.Persistence.TransactionLog
+    GraphDB.Persistence.TransactionLog
     GraphDB.Transaction.Backend
     GraphDB.Service.Protocol
     GraphDB.Client
@@ -71,7 +71,7 @@ library
   exposed-modules:
     GraphDB.Transaction
     GraphDB.Graph
-    -- GraphDB.Persistence
+    GraphDB.Persistence
     -- GraphDB.Service.Client
     GraphDB.Model
   build-depends:
