@@ -2,6 +2,7 @@ module GraphDB.Util.TH where
 
 import GraphDB.Util.Prelude
 import Language.Haskell.TH
+import qualified GraphDB.Util.TH.Parsers as P
 
 
 
@@ -16,3 +17,5 @@ caseFunDec name matches =
   where
     argName = mkName "_0"
 
+reifyLocalInstances :: Q [P.Instance]
+reifyLocalInstances = P.runParse P.instances

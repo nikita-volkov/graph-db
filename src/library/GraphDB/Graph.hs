@@ -2,6 +2,8 @@ module GraphDB.Graph
   ( 
     Graph,
     new,
+    E.Edge(..),
+    M.generateUnion,
   )
   where
 
@@ -11,6 +13,8 @@ import qualified GraphDB.Transaction.Backend as B
 import qualified GraphDB.Union as U
 import qualified GraphDB.Engine.Node as N
 import qualified Control.Concurrent.FairRWLock as L
+import qualified GraphDB.Graph.Edge as E
+import qualified GraphDB.Graph.Macros as M
 
 
 -- |
@@ -31,7 +35,7 @@ instance (U.Union u) => B.Backend (Graph u) where
   newtype Type (Graph u) = Type (U.Type u)
   newtype Index (Graph u) = Index (U.Index u)
   runRead tx g = let Graph _ l = g in L.withRead l $ runReaderT tx g
-  runWrite tx g = let Graph _ l = g in L.withWrite l $ runReaderT tx g
+  runWrite tx g = g |> \(Graph _ l) -> runReaderT tx g |> L.withWrite l
   newNode (Value uv) = N.new uv |> liftIO |> fmap Node
   getValue (Node un) = N.getValue un |> liftIO |> fmap Value
   setValue (Node un) (Value uv) = N.setValue un uv |> liftIO

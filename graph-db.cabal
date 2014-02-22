@@ -46,6 +46,9 @@ library
     GraphDB.Persistence
     GraphDB.Service.Client
   other-modules:
+    GraphDB.Util.TH.Parsers
+    GraphDB.Graph.Edge
+    GraphDB.Graph.Macros
     GraphDB.Persistence.TransactionLog
     GraphDB.Transaction.Backend
     GraphDB.Service.Protocol
