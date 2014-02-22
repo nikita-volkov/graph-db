@@ -37,7 +37,7 @@ import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Model.Edge as E
 
 
-type Tx b u r = (B.Backend b u) => B.Tx b u r
+type Tx b u r = (B.Backend b, B.Union b ~ u) => B.Tx b r
 
 -- |
 -- A read-only transaction. Gets executed concurrently.
@@ -87,7 +87,7 @@ instance LiftTx Write where liftTx = Write
 -- 
 -- The /s/ is a state-thread making the escape of nodes from transaction
 -- impossible. Much inspired by the realization of 'ST'.
-newtype Node b u s v = Node (B.Node b u)
+newtype Node b s v = Node (B.Node b)
 
 
 -- |
@@ -95,26 +95,26 @@ newtype Node b u s v = Node (B.Node b u)
 -- 
 -- This node won't get stored if you don't insert at least a single edge 
 -- from another stored node to it.
-newNode :: (U.PolyValue u v) => v -> Write b u s (Node b u s v)
+newNode :: (U.PolyValue u v) => v -> Write b u s (Node b s v)
 newNode v = do
   bn <- liftTx $ B.newNode $ snd $ U.packValue v
   return $ Node bn
 
 -- | 
 -- Get a value of the node.
-getValue :: (U.PolyValue u v) => Node b u s v -> ReadOrWrite b u s v
+getValue :: forall b u s v. (U.PolyValue u v) => Node b s v -> ReadOrWrite b u s v
 getValue (Node n) = do
-  pv <- liftTx $ B.getValue n
+  pv :: U.Value u <- liftTx $ B.getValue n
   return $ U.unpackValue pv ?: $(bug "Unexpected packed value")
 
 -- | 
 -- Replace the value of the specified node.
-setValue :: (U.PolyValue u v) => Node b u s v -> v -> Write b u s ()
+setValue :: (U.PolyValue u v) => Node b s v -> v -> Write b u s ()
 setValue (Node n) v = Write $ B.setValue n (snd $ U.packValue v)
 
 -- |
 -- Get the root node.
-getRoot :: ReadOrWrite b u s (Node b u s u)
+getRoot :: ReadOrWrite b u s (Node b s u)
 getRoot = liftTx $ B.getRoot >>= pure . Node
 
 -- |
@@ -123,19 +123,16 @@ getRoot = liftTx $ B.getRoot >>= pure . Node
 -- 
 -- > getTargetsByType node (undefined :: Artist)
 -- 
-getTargetsByType :: 
-  (U.PolyValue u v') => 
-  Node b u s v -> v' -> ReadOrWrite b u s [Node b u s v']
+getTargetsByType :: (U.PolyValue u v') => Node b s v -> v' -> ReadOrWrite b u s [Node b s v']
 getTargetsByType (Node n) v = do
-  let (t, _) = U.packValue v
-  ns <- liftTx $ B.getTargetsByType n t
+  ns <- liftTx $ B.getTargetsByType n $ fst $ U.packValue v
   return $ map Node ns
 
 -- |
 -- Get target nodes reachable by the provided index.
 getTargetsByIndex :: 
   (U.PolyIndex u i) => 
-  Node b u s v -> i -> ReadOrWrite b u s [Node b u s v']
+  Node b s v -> i -> ReadOrWrite b u s [Node b s v']
 getTargetsByIndex (Node n) i = do
   ns <- liftTx $ B.getTargetsByIndex n (U.packIndex i)
   return $ map Node ns
@@ -146,7 +143,7 @@ getTargetsByIndex (Node n) i = do
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node is already there it will return 'False'.
-addTarget :: (E.Edge v v') => Node b u s v -> Node b u s v' -> Write b u s Bool
+addTarget :: (E.Edge v v') => Node b s v -> Node b s v' -> Write b u s Bool
 addTarget (Node s) (Node t) = Write $ B.addTarget s t
 
 -- |
@@ -154,7 +151,7 @@ addTarget (Node s) (Node t) = Write $ B.addTarget s t
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node is not found it will return 'False'.
-removeTarget :: (E.Edge v v') => Node b u s v -> Node b u s v' -> Write b u s Bool
+removeTarget :: (E.Edge v v') => Node b s v -> Node b s v' -> Write b u s Bool
 removeTarget (Node s) (Node t) = Write $ B.removeTarget s t
 
 -- |
@@ -168,10 +165,10 @@ getStats = do
 
 -- |
 -- Run a 'Write' transaction on the specified backend.
-runWrite :: B.Backend b u => b -> (forall s. Write b u s r) -> IO r
+runWrite :: B.Backend b => b -> (forall s. Write b (B.Union b) s r) -> IO r
 runWrite b (Write tx) = B.runWrite tx b
 
 -- |
 -- Run a 'Read' transaction on the specified backend.
-runRead :: B.Backend b u => b -> (forall s. Read b u s r) -> IO r
+runRead :: B.Backend b => b -> (forall s. Read b (B.Union b) s r) -> IO r
 runRead b (Read tx) = B.runRead tx b

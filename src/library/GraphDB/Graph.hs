@@ -24,9 +24,10 @@ new root = Graph <$> initRoot <*> L.new
   where
     initRoot = U.packValue root |> \(_, uv) -> N.new uv
 
-instance (U.Union u) => B.Backend (Graph u) u where
-  newtype Tx (Graph u) u r = Tx (ReaderT (Graph u) IO r)
-  type Node (Graph u) u = U.Node u
+instance (U.Union u) => B.Backend (Graph u) where
+  type Union (Graph u) = u
+  newtype Tx (Graph u) r = Tx (ReaderT (Graph u) IO r)
+  type Node (Graph u) = U.Node u
   runRead (Tx tx) g = let Graph _ l = g in L.withRead l $ runReaderT tx g
   runWrite (Tx tx) g = g |> \(Graph _ l) -> runReaderT tx g |> L.withWrite l
   newNode uv = N.new uv |> liftIO
@@ -46,16 +47,16 @@ instance (U.Union u) => Serializable IO (Graph u) where
 -- Yeah. Redundant boilerplate, 
 -- but GHC doesn't yet have the features required to elude it implemented.
 
-instance MonadIO (B.Tx (Graph u) u) where
+instance MonadIO (B.Tx (Graph u)) where
   liftIO = Tx . liftIO
 
-instance Monad (B.Tx (Graph u) u) where
+instance Monad (B.Tx (Graph u)) where
   return = Tx . return
   Tx a >>= k = Tx $ a >>= return . k >>= \(Tx b) -> b
 
-instance Applicative (B.Tx (Graph u) u) where 
+instance Applicative (B.Tx (Graph u)) where 
   pure = Tx . pure
   Tx a <*> Tx b = Tx $ a <*> b
 
-instance Functor (B.Tx (Graph u) u) where
+instance Functor (B.Tx (Graph u)) where
   fmap f (Tx a) = Tx $ fmap f a

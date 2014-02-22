@@ -30,21 +30,21 @@ import qualified GraphDB.Persistence.TransactionLog as TL
 -- |
 -- A persistence wrapper backend for any other serializable backend,
 -- e.g., an in-memory graph.
-data Persistence b u = Persistence !b !(S.Storage b (TL.Log b u)) !IOQueue.IOQueue
+data Persistence b = Persistence !b !(S.Storage b (TL.Log b)) !IOQueue.IOQueue
 
 -- |
 -- A constraint for any serializable backend implementation.
-type SerializableBackend b u =
-  (B.Backend b u, Serializable IO b, 
-   Serializable IO (U.Value u), Serializable IO (U.Type u), Serializable IO (U.Index u))
+type SerializableBackend b =
+  (B.Backend b, Serializable IO b, 
+   Serializable IO (B.Value b), Serializable IO (B.Type b), Serializable IO (B.Index b))
 
-start :: (SerializableBackend b u) => Settings b -> IO (Persistence b u)
+start :: (SerializableBackend b) => Settings b -> IO (Persistence b)
 start (bufferSize, paths, initBackend) = do
   (storage, backend) <- S.acquireAndLoad initBackend TL.apply paths
   buffer <- IOQueue.start bufferSize
   return $ Persistence backend storage buffer
 
-stop :: (Serializable IO b) => Persistence b u -> IO ()
+stop :: (Serializable IO b) => Persistence b -> IO ()
 stop (Persistence g s b) = do
   IOQueue.shutdown b
   S.checkpoint s g
@@ -53,7 +53,7 @@ stop (Persistence g s b) = do
 -- |
 -- Run a computation on Persistence, 
 -- while automatically acquiring and releasing all related resources.
-with :: SerializableBackend b u => Settings b -> (Persistence b u -> IO r) -> IO r
+with :: SerializableBackend b => Settings b -> (Persistence b -> IO r) -> IO r
 with settings = bracket (start settings) stop
 
 ------------------
@@ -87,10 +87,10 @@ pathsFromName name = S.pathsFromDirectory ("~/.graph-db/" <> FS.fromText name)
 -- Transactions
 ------------------
 
-instance (B.Backend b u, Serializable IO (TL.Log b u)) => 
-         B.Backend (Persistence b u) u where
-  newtype Tx (Persistence b u) u r = Tx (RWST () [TL.Entry u] Int (B.Tx b u) r)
-  type Node (Persistence b u) u = (Int, (B.Node b u))
+instance (B.Backend b, Serializable IO (TL.Log b)) => B.Backend (Persistence b) where
+  type Union (Persistence b) = B.Union b
+  newtype Tx (Persistence b) r = Tx (RWST () [TL.Entry b] Int (B.Tx b) r)
+  type Node (Persistence b) = (Int, (B.Node b))
   runRead (Tx tx) (Persistence g _ _) = do
     (r, _) <- B.runRead (evalRWST tx () 0) g
     return r
@@ -124,22 +124,22 @@ instance (B.Backend b u, Serializable IO (TL.Log b u)) =>
   getStats (i, n) = do
     Tx $ lift $ B.getStats n
 
-instance MonadIO (B.Tx b u) => MonadIO (B.Tx (Persistence b u) u) where
+instance MonadIO (B.Tx b) => MonadIO (B.Tx (Persistence b)) where
   liftIO = Tx . liftIO
 
-instance Monad (B.Tx b u) => Monad (B.Tx (Persistence b u) u) where
+instance Monad (B.Tx b) => Monad (B.Tx (Persistence b)) where
   return = Tx . return
   Tx a >>= k = Tx $ a >>= return . k >>= \(Tx b) -> b
 
 -- Why it won't compile without a Monad constraint is a mystery.
-instance (Applicative (B.Tx b u), Monad (B.Tx b u)) => Applicative (B.Tx (Persistence b u) u) where 
+instance (Applicative (B.Tx b), Monad (B.Tx b)) => Applicative (B.Tx (Persistence b)) where 
   pure = Tx . pure
   Tx a <*> Tx b = Tx $ a <*> b
 
-instance Functor (B.Tx b u) => Functor (B.Tx (Persistence b u) u) where
+instance Functor (B.Tx b) => Functor (B.Tx (Persistence b)) where
   fmap f (Tx a) = Tx $ fmap f a
 
-newBaseNodeTx :: Monad (B.Tx b u) => B.Node b u -> B.Tx (Persistence b u) u (B.Node (Persistence b u) u)
+newBaseNodeTx :: Monad (B.Tx b) => B.Node b -> B.Tx (Persistence b) (B.Node (Persistence b))
 newBaseNodeTx n = Tx $ do
   index <- get
   modify succ
