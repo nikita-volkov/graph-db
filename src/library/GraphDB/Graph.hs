@@ -32,7 +32,7 @@ instance (U.Union u) => B.Backend (Graph u) u where
   newNode uv = N.new uv |> liftIO
   getValue un = N.getValue un |> liftIO
   setValue un uv = N.setValue un uv |> liftIO
-  getRoot = do Graph root _ <- Tx ask; return root
+  getRoot = Tx ask >>= \(Graph r _) -> return r
   getTargetsByType un ut = liftIO $ N.getTargetsByType un ut
   getTargetsByIndex un ui = N.getTargetsByIndex un ui |> liftIO
   addTarget s t = N.addTarget s t |> liftIO
