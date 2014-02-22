@@ -4,37 +4,38 @@ module GraphDB.Persistence.TransactionLog where
 import GraphDB.Util.Prelude
 import qualified GraphDB.Util.DIOVector as DIOVector
 import qualified GraphDB.Transaction.Backend as B
+import qualified GraphDB.Model.Union as U
 
 
 -- |
 -- A serializable reproduction of all the modifications to the graph done during a transaction.
-newtype Log b = Log [Entry b] deriving (Generic)
-instance (Serializable m (Entry b)) => Serializable m (Log b)
+newtype Log b u = Log [Entry u] deriving (Generic)
+instance (Serializable m (Entry u)) => Serializable m (Log b u)
 
 -- |
 -- A serializable representation of a granular transaction action.
 -- Essential for persistence.
-data Entry b =
+data Entry u =
   GetRoot |
-  NewNode (B.Value b) |
-  GetTargetsByType Ref (B.Type b) |
-  GetTargetsByIndex Ref (B.Index b) |
+  NewNode (U.Value u) |
+  GetTargetsByType Ref (U.Type u) |
+  GetTargetsByIndex Ref (U.Index u) |
   AddTarget Ref Ref |
   RemoveTarget Ref Ref |
-  SetValue Ref (B.Value b)
+  SetValue Ref (U.Value u)
   deriving (Generic)
-instance (Serializable m (B.Index b), Serializable m (B.Type b), Serializable m (B.Value b)) => 
-         Serializable m (Entry b)
+instance (Serializable m (U.Index u), Serializable m (U.Type u), Serializable m (U.Value u)) => 
+         Serializable m (Entry u)
 
 type Ref = Int
 
-apply :: forall b. (B.Backend b) => b -> Log b -> IO ()
+apply :: forall b u. (B.Backend b u) => b -> Log b u -> IO ()
 apply graph (Log actions) = do
   refs <- DIOVector.new
   let
     applyEntry = \case
       GetRoot -> do
-        root <- B.getRoot :: B.Tx b (B.Node b)
+        root <- B.getRoot :: B.Tx b u (B.Node b u)
         appendRef root
       NewNode value -> do
         appendRef =<< B.newNode value

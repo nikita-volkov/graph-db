@@ -72,7 +72,7 @@ library
     GraphDB.Transaction
     GraphDB.Graph
     GraphDB.Persistence
-    GraphDB.Service.Client
+    -- GraphDB.Service.Client
     GraphDB.Model
   build-depends:
     placeholders == 0.1.*,
