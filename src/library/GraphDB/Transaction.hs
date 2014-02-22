@@ -34,6 +34,7 @@ module GraphDB.Transaction
 import GraphDB.Util.Prelude hiding (Read, Write)
 import qualified GraphDB.Transaction.Backend as B
 import qualified GraphDB.Model.Union as U
+import qualified GraphDB.Model.Edge as E
 
 
 type Tx b u r = (B.Backend b u) => B.Tx b u r
@@ -113,7 +114,7 @@ setValue (Node n) v = Write $ B.setValue n (snd $ U.packValue v)
 
 -- |
 -- Get the root node.
-getRoot :: ReadOrWrite b u s (Node b u s v)
+getRoot :: ReadOrWrite b u s (Node b u s u)
 getRoot = liftTx $ B.getRoot >>= pure . Node
 
 -- |
@@ -145,7 +146,7 @@ getTargetsByIndex (Node n) i = do
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node is already there it will return 'False'.
-addTarget :: Node b u s v -> Node b u s v' -> Write b u s Bool
+addTarget :: (E.Edge v v') => Node b u s v -> Node b u s v' -> Write b u s Bool
 addTarget (Node s) (Node t) = Write $ B.addTarget s t
 
 -- |
@@ -153,7 +154,7 @@ addTarget (Node s) (Node t) = Write $ B.addTarget s t
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node is not found it will return 'False'.
-removeTarget :: Node b u s v -> Node b u s v' -> Write b u s Bool
+removeTarget :: (E.Edge v v') => Node b u s v -> Node b u s v' -> Write b u s Bool
 removeTarget (Node s) (Node t) = Write $ B.removeTarget s t
 
 -- |

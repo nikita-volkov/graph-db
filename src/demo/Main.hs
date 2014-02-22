@@ -169,17 +169,17 @@ populate = do
   untilItSleepsSong <- G.newNode $ Song "Until It Sleeps"
   
   root <- G.getRoot
-  G.addTarget metallicaArtist root
-  G.addTarget loadRelease root
-  G.addTarget untilItSleepsRelease root
+  G.addTarget root metallicaArtist
+  G.addTarget root loadRelease
+  G.addTarget root untilItSleepsRelease
   
   addRecording loadRelease [metallicaArtist] aintMyBitchSong 1 (5*60+4) StudioRecording
   addRecording loadRelease [metallicaArtist] untilItSleepsSong 4 (4*60+28) StudioRecording
   addRecording untilItSleepsRelease [metallicaArtist] untilItSleepsSong 4 (4*60+36) StudioRecording
   
-  addPrimaryArtist metallicaArtist loadRelease
-  addPrimaryArtist metallicaArtist untilItSleepsRelease
-  addPrimaryArtist metallicaArtist aintMyBitchSong
+  addPrimaryArtist loadRelease metallicaArtist
+  addPrimaryArtist untilItSleepsRelease metallicaArtist
+  addPrimaryArtist aintMyBitchSong metallicaArtist
   
   where
     mkDay = Data.Time.readTime System.Locale.defaultTimeLocale "%Y-%m-%d"
@@ -188,16 +188,16 @@ populate = do
       recording <- do
         uid <- generateNewUID
         G.newNode $ Recording uid duration typ
-      forM_ primaryArtists $ \artist -> addPrimaryArtist artist recording
-      G.addTarget recording track
-      G.addTarget track release
-      G.addTarget song recording
+      forM_ primaryArtists $ \artist -> addPrimaryArtist recording artist
+      G.addTarget track recording
+      G.addTarget release track
       G.addTarget recording song
-    addPrimaryArtist artist node = do
+      G.addTarget song recording
+    addPrimaryArtist node artist = do
       titleArtist <- G.newNode $ TitleArtist True
-      G.addTarget titleArtist node
-      G.addTarget artist titleArtist
-      G.addTarget node artist
+      G.addTarget node titleArtist
+      G.addTarget titleArtist artist
+      G.addTarget artist node
       return ()
 
 -- | Use a counter stored in the root 'Catalogue' node to generate a new unique UID.
