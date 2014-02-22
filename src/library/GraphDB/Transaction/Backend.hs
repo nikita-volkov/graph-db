@@ -3,6 +3,7 @@ module GraphDB.Transaction.Backend where
 import GraphDB.Util.Prelude
 
 
+-- | A low level interface for types capable of executing transactions.
 class (MonadIO (Tx b), Applicative (Tx b)) => Backend b where
   -- | 
   -- A low level transaction which both Read and Write revolve around.

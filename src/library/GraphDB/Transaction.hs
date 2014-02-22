@@ -1,4 +1,7 @@
 -- |
+-- A shared transactions composition and execution API
+-- for all types implementing the 'B.Backend' interface.
+-- 
 -- The types in this module share some parameters, here is their description:
 -- 
 -- [@b@] A backend implementation. E.g., an in-memory or persisted graph or a client.
@@ -11,6 +14,11 @@ module GraphDB.Transaction
     Read,
     ReadOrWrite,
     Node,
+    B.Backend,
+    -- ** Execution
+    runWrite,
+    runRead,
+    -- ** Operations
     newNode,
     getValue,
     setValue,
@@ -153,3 +161,13 @@ getStats :: B.Backend b => ReadOrWrite b s (Int, Int)
 getStats = do
   Node n <- getRoot
   liftTx $ B.getStats n
+
+-- |
+-- Run a 'Write' transaction on the specified backend.
+runWrite :: B.Backend b => Write b s r -> b -> IO r
+runWrite (Write tx) = B.runWrite tx
+
+-- |
+-- Run a 'Read' transaction on the specified backend.
+runRead :: B.Backend b => Read b s r -> b -> IO r
+runRead (Read tx) = B.runRead tx
