@@ -3,6 +3,9 @@
 module GraphDB.Model
   (
     E.Edge(..),
+    U.Union,
+    U.PolyValue,
+    U.PolyIndex,
     M.generateUnion,
   ) where
 

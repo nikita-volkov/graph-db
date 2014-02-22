@@ -24,20 +24,17 @@ new root = Graph <$> initRoot <*> L.new
   where
     initRoot = U.packValue root |> \(_, uv) -> N.new uv
 
-instance (U.Union u) => B.Backend (Graph u) where
-  type Tx (Graph u) = ReaderT (Graph u) IO
-  newtype Node (Graph u) = Node (U.Node u)
-  newtype Value (Graph u) = Value (U.Value u)
-  newtype Type (Graph u) = Type (U.Type u)
-  newtype Index (Graph u) = Index (U.Index u)
-  runRead tx g = let Graph _ l = g in L.withRead l $ runReaderT tx g
-  runWrite tx g = g |> \(Graph _ l) -> runReaderT tx g |> L.withWrite l
-  newNode (Value uv) = N.new uv |> liftIO |> fmap Node
-  getValue (Node un) = N.getValue un |> liftIO |> fmap Value
-  setValue (Node un) (Value uv) = N.setValue un uv |> liftIO
-  getRoot = do Graph root _ <- ask; return $ Node root
-  getTargetsByType (Node n) (Type t) = liftIO $ N.getTargetsByType n t >>= return . map Node
-  getTargetsByIndex (Node un) (Index ui) = N.getTargetsByIndex un ui |> liftIO |> fmap (map Node)
+instance (U.Union u) => B.Backend (Graph u) u where
+  newtype Tx (Graph u) u r = Tx (ReaderT (Graph u) IO r)
+  newtype Node (Graph u) u = Node (U.Node u)
+  runRead (Tx tx) g = let Graph _ l = g in L.withRead l $ runReaderT tx g
+  runWrite (Tx tx) g = g |> \(Graph _ l) -> runReaderT tx g |> L.withWrite l
+  newNode uv = N.new uv |> liftIO |> fmap Node
+  getValue (Node un) = N.getValue un |> liftIO
+  setValue (Node un) uv = N.setValue un uv |> liftIO
+  getRoot = do Graph root _ <- Tx ask; return $ Node root
+  getTargetsByType (Node un) ut = liftIO $ N.getTargetsByType un ut >>= return . map Node
+  getTargetsByIndex (Node un) ui = N.getTargetsByIndex un ui |> liftIO |> fmap (map Node)
   addTarget (Node s) (Node t) = N.addTarget s t |> liftIO
   removeTarget (Node s) (Node t) = N.removeTarget s t |> liftIO
   getStats (Node n) = N.getStats n |> liftIO
@@ -46,9 +43,19 @@ instance (U.Union u) => Serializable IO (Graph u) where
   serialize (Graph n _) = serialize n
   deserialize = Graph <$> deserialize <*> liftIO L.new
 
-instance U.PolyValue u v => B.PolyValue (Graph u) v where
-  packValue v = U.packValue v |> \(ut, uv) -> (Type ut, Value uv)
-  unpackValue (Value uv) = U.unpackValue uv
+-- Yeah. Redundant boilerplate, 
+-- but GHC doesn't yet have the features required to elude it implemented.
 
-instance U.PolyIndex u i => B.PolyIndex (Graph u) i where
-  packIndex i = U.packIndex i |> Index
+instance MonadIO (B.Tx (Graph u) u) where
+  liftIO = Tx . liftIO
+
+instance Monad (B.Tx (Graph u) u) where
+  return = Tx . return
+  Tx a >>= k = Tx $ a >>= return . k >>= \(Tx b) -> b
+
+instance Applicative (B.Tx (Graph u) u) where 
+  pure = Tx . pure
+  Tx a <*> Tx b = Tx $ a <*> b
+
+instance Functor (B.Tx (Graph u) u) where
+  fmap f (Tx a) = Tx $ fmap f a
