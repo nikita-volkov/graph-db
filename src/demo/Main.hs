@@ -3,7 +3,7 @@ import BasicPrelude
 import GHC.Generics
 import CerealPlus.Serializable
 import qualified GraphDB.Graph as G
--- import qualified GraphDB.Persistence as GP
+import qualified GraphDB.Persistence as GP
 import qualified GraphDB.Transaction as G
 import qualified GraphDB.Model as G
 import qualified Data.Text as Text
@@ -238,31 +238,32 @@ getRecordingsByArtistUID uid =
 
 ---------
 
--- main = do
---   settings <- do
---     paths <- GP.pathsFromDirectory "./dist/demo/db"
---     let newGraph = G.new $ Catalogue 0
---     return (100, paths, newGraph)
---   GP.with settings $ \db -> do
-
---     putStrLn "Search for term 'It':"
---     print =<< G.runRead db (search "It")
---     putStrLn "Search for term 'metallica':"
---     print =<< G.runRead db (search "metallica")
---     putStrLn "Search for term 'load':"
---     print =<< G.runRead db (search "load")
---     putStrLn "All recordings of artists findable by term 'metallica':"
---     print
---       =<< return . concat
---       =<< mapM (G.runRead db . getRecordingsByArtistUID)
---       =<< return . catMaybes . map (\case Left (Artist uid _) -> Just uid; _ -> Nothing)
---       =<< G.runWrite db (search "metallica")
-
---     putStrLn "Memory footprint (bytes):"
---     print =<< GHC.DataSize.recursiveSize db
---     putStrLn "Total amounts of nodes and edges in the graph:"
---     print =<< G.runRead db G.getStats
-main = undefined
+main = do
+  settings <- do
+    paths <- GP.pathsFromDirectory "./dist/demo/db"
+    let newGraph = G.new $ Catalogue 0
+    return (100, paths, newGraph)
+  GP.with settings $ \db -> do
+    G.runWrite db populate
+    putStrLn "Search for term 'It':"
+    print =<< G.runRead db (search "It")
+    putStrLn "Search for term 'metallica':"
+    print =<< G.runRead db (search "metallica")
+    putStrLn "Search for term 'load':"
+    print =<< G.runRead db (search "load")
+    putStrLn "All recordings of artists findable by term 'metallica':"
+    -- Composing transactions:
+    do
+      results <- G.runRead db $
+        search "metallica" >>=
+        return . catMaybes . map (\case Left (Artist uid _) -> Just uid; _ -> Nothing) >>=
+        mapM getRecordingsByArtistUID >>=
+        return . concat
+      print results
+    putStrLn "Memory footprint (bytes):"
+    print =<< GHC.DataSize.recursiveSize db
+    putStrLn "Total amounts of nodes and edges in the graph:"
+    print =<< G.runRead db G.getStats
 
 
 

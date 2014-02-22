@@ -4,7 +4,7 @@ import GraphDB.Util.Prelude
 import qualified GraphDB.Model.Union as U
 
 -- | A low level interface for types capable of executing transactions.
-class (MonadIO (Tx b u), Applicative (Tx b u)) => Backend b u where
+class (MonadIO (Tx b u), Applicative (Tx b u)) => Backend b u | b -> u where
   -- | 
   -- A low level transaction which both Read and Write revolve around.
   data Tx b u r
