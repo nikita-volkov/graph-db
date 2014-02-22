@@ -2,19 +2,15 @@ module GraphDB.Graph
   ( 
     Graph,
     new,
-    E.Edge(..),
-    M.generateUnion,
   )
   where
 
 import GraphDB.Util.Prelude
 import qualified GraphDB.Transaction
 import qualified GraphDB.Transaction.Backend as B
-import qualified GraphDB.Union as U
+import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Engine.Node as N
 import qualified Control.Concurrent.FairRWLock as L
-import qualified GraphDB.Graph.Edge as E
-import qualified GraphDB.Graph.Macros as M
 
 
 -- |

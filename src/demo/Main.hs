@@ -4,6 +4,7 @@ import GHC.Generics
 import CerealPlus.Serializable
 import qualified GraphDB.Graph as G
 import qualified GraphDB.Transaction as G
+import qualified GraphDB.Model as G
 import qualified Data.Text as Text
 import qualified Data.Time
 import qualified System.Locale

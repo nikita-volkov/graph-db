@@ -1,11 +1,11 @@
-module GraphDB.Graph.Macros where
+module GraphDB.Model.Macros where
  
 import GraphDB.Util.Prelude
 import qualified Language.Haskell.TH as TH
 import qualified GraphDB.Util.TH as THU
 import qualified GraphDB.Util.TH.Q as Q
-import qualified GraphDB.Union as Union
-import qualified GraphDB.Graph.Edge as Edge
+import qualified GraphDB.Model.Union as Union
+import qualified GraphDB.Model.Edge as Edge
 
 
 type Settings = (UnionType, Indexes, Values)

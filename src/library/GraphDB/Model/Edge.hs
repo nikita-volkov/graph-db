@@ -1,4 +1,4 @@
-module GraphDB.Graph.Edge where
+module GraphDB.Model.Edge where
 
 import GraphDB.Util.Prelude
 

@@ -1,4 +1,4 @@
-module GraphDB.Union where
+module GraphDB.Model.Union where
 
 import GraphDB.Util.Prelude hiding (Serializable)
 import qualified GraphDB.Util.Prelude as P

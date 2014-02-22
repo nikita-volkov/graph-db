@@ -4,7 +4,7 @@ import GraphDB.Util.Prelude
 import qualified GraphDB.Service.Protocol as P
 import qualified GraphDB.Transaction as T
 import qualified GraphDB.Transaction.Backend as T
-import qualified GraphDB.Union as U
+import qualified GraphDB.Model.Union as U
 
 
 data Client u
