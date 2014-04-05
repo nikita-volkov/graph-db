@@ -9,7 +9,7 @@ import GraphDB.Util.Prelude
 import qualified GraphDB.Transaction
 import qualified GraphDB.Transaction.Backend as B
 import qualified GraphDB.Model.Union as U
-import qualified GraphDB.Engine.Node as N
+import qualified GraphDB.Graph.Node as N
 import qualified Control.Concurrent.FairRWLock as L
 
 
