@@ -38,7 +38,7 @@ source-repository head
 
 library
   hs-source-dirs:
-    src/library
+    library
   other-modules:
     GraphDB.Model.Edge
     GraphDB.Model.Union
@@ -47,17 +47,9 @@ library
     GraphDB.Persistence.TransactionLog
     GraphDB.Transaction.Backend
     GraphDB.Service.Protocol
-    GraphDB.Client
-    GraphDB.Server
     GraphDB.Storage
     GraphDB.Storage.Rules
-    GraphDB.Engine.Node
-    GraphDB.Engine.Dispatcher
-    GraphDB.Engine
-    GraphDB.Macros.NamesRegistry
-    GraphDB.Macros.TagInstanceBuilder
-    GraphDB.Macros.BoilerplateBuilder
-    GraphDB.Macros
+    GraphDB.Graph.Node
     GraphDB.Util.TH
     GraphDB.Util.TH.Q
     GraphDB.Util.TH.Type
@@ -143,7 +135,7 @@ library
 
 executable graph-db-demo
   hs-source-dirs:
-    src/demo
+    demo
   main-is:
     Main.hs
   ghc-options:
@@ -197,8 +189,8 @@ test-suite graph-db-htf-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    src/htf-test-suite
-    src/library
+    htf-test-suite
+    library
   main-is:          
     Main.hs
   ghc-options:

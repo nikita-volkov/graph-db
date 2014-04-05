@@ -2,7 +2,7 @@ module GraphDB.Model.Union where
 
 import GraphDB.Util.Prelude hiding (Serializable)
 import qualified GraphDB.Util.Prelude as P
-import qualified GraphDB.Engine.Node as Node
+import qualified GraphDB.Graph.Node as Node
 
 class (Serializable IO u, Hashable (Type u), Eq (Type u), Hashable (Index u), Eq (Index u)) => Union u where
   data Index u
