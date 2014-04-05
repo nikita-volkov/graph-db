@@ -40,6 +40,7 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.FreeTransaction
     GraphDB.Model.Edge
     GraphDB.Model.Union
     GraphDB.Model.Macros
@@ -67,6 +68,7 @@ library
     -- GraphDB.Service.Client
     GraphDB.Model
   build-depends:
+    free == 4.*,
     placeholders == 0.1.*,
     parsec,
     th-expand-syns,
@@ -200,6 +202,7 @@ test-suite graph-db-htf-test-suite
     -threaded
     "-with-rtsopts=-N"
   build-depends:
+    free == 4.*,
     placeholders == 0.1.*,
     parsec,
     th-expand-syns,
