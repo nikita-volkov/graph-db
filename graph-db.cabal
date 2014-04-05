@@ -1,7 +1,7 @@
 name:
   graph-db
 version:
-  0.2.0
+  0.3.0
 synopsis:
   A native Haskell graph database
 description:
@@ -22,7 +22,7 @@ maintainer:
 copyright:
   (c) 2013, Nikita Volkov
 category:
-  Database
+  Database, Graphs
 build-type:
   Simple
 cabal-version:
@@ -38,21 +38,18 @@ source-repository head
 
 library
   hs-source-dirs:
-    src/library
-  exposed-modules:
-    GraphDB
+    library
   other-modules:
-    GraphDB.Client
-    GraphDB.Server
+    GraphDB.Model.Edge
+    GraphDB.Model.Union
+    GraphDB.Model.Macros
+    GraphDB.Util.TH.Parsers
+    GraphDB.Persistence.TransactionLog
+    GraphDB.Transaction.Backend
+    GraphDB.Service.Protocol
     GraphDB.Storage
     GraphDB.Storage.Rules
-    GraphDB.Engine.Node
-    GraphDB.Engine.Dispatcher
-    GraphDB.Engine
-    GraphDB.Macros.NamesRegistry
-    GraphDB.Macros.TagInstanceBuilder
-    GraphDB.Macros.BoilerplateBuilder
-    GraphDB.Macros
+    GraphDB.Graph.Node
     GraphDB.Util.TH
     GraphDB.Util.TH.Q
     GraphDB.Util.TH.Type
@@ -63,6 +60,12 @@ library
     GraphDB.Util.DIOVector
     GraphDB.Util.IOQueue
     GraphDB.Util.Prelude
+  exposed-modules:
+    GraphDB.Transaction
+    GraphDB.Graph
+    GraphDB.Persistence
+    -- GraphDB.Service.Client
+    GraphDB.Model
   build-depends:
     placeholders == 0.1.*,
     parsec,
@@ -77,9 +80,9 @@ library
     SafeSemaphore == 0.9.*,
     network-simple == 0.3.*,
     network == 2.4.*,
-    pipes-cereal-plus == 0.2.*,
+    pipes-cereal-plus == 0.3.*,
     pipes-network == 0.6.*,
-    pipes-bytestring == 1.0.*,
+    pipes-bytestring == 2.0.*,
     pipes >= 4.0 && < 4.2,
     filelock == 0.1.*,
     system-filepath == 0.4.*,
@@ -105,6 +108,7 @@ library
     MultiParamTypeClasses
     ScopedTypeVariables
     FlexibleInstances
+    FunctionalDependencies
     TypeFamilies
     TypeOperators
     FlexibleContexts
@@ -131,7 +135,7 @@ library
 
 executable graph-db-demo
   hs-source-dirs:
-    src/demo
+    demo
   main-is:
     Main.hs
   ghc-options:
@@ -185,8 +189,8 @@ test-suite graph-db-htf-test-suite
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    src/htf-test-suite
-    src/library
+    htf-test-suite
+    library
   main-is:          
     Main.hs
   ghc-options:
@@ -206,9 +210,9 @@ test-suite graph-db-htf-test-suite
     SafeSemaphore == 0.9.*,
     network-simple == 0.3.*,
     network == 2.4.*,
-    pipes-cereal-plus == 0.2.*,
+    pipes-cereal-plus == 0.3.*,
     pipes-network == 0.6.*,
-    pipes-bytestring == 1.0.*,
+    pipes-bytestring == 2.0.*,
     pipes >= 4.0 && < 4.2,
     filelock == 0.1.*,
     system-filepath == 0.4.*,

@@ -11,6 +11,9 @@ module GraphDB.Util.Prelude
     packText,
     unpackText,
     bug,
+    (|>),
+    (<|),
+    IOE,
   )
   where
 
@@ -57,6 +60,7 @@ import Control.Monad.Identity as Exports hiding (mapM_, sequence_, forM_, msum, 
 import Control.Monad.State as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
 import Control.Monad.Reader as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
 import Control.Monad.Writer as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM, Any)
+import Control.Monad.RWS as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM, Any)
 import Control.Monad.Trans as Exports
 
 -- stm
@@ -108,6 +112,7 @@ import qualified Prelude
 
 type LazyByteString = Data.ByteString.Lazy.ByteString
 type LazyText = Data.Text.Lazy.Text
+type IOE = EitherT Text IO
 
 
 (?:) :: Maybe a -> a -> a
@@ -124,3 +129,12 @@ packText = Data.Text.pack
 unpackText = Data.Text.unpack
 
 bug = placeholderNoWarning . (++) "'graph-db' package bug: "
+
+(|>) :: a -> (a -> b) -> b
+a |> aToB = aToB a
+{-# INLINE (|>) #-}
+
+(<|) :: (a -> b) -> a -> b
+aToB <| a = aToB a
+{-# INLINE (<|) #-}
+

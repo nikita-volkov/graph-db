@@ -8,7 +8,6 @@ module GraphDB.Storage
   ( 
     -- * Configuration
     Paths,
-    pathsFromName,
     pathsFromDirectory,
     -- * Workflow
     Storage,
@@ -52,14 +51,6 @@ data StorageException =
   DeserializationFailure Text
   deriving (Typeable, Show, Eq, Ord)
 instance Exception StorageException
-
--- | 
--- Determine paths from a unique name among all storages running on this machine. 
--- It will be used to set default values for storage paths under \"~\/.acid\/\[name\]\/\".
-pathsFromName :: Text -> IO Paths
-pathsFromName name = do
-  base <- FileSystem.resolve $ "~/.acid/" <> FileSystem.fromText name
-  return $ Paths base base (base <> "archive") (base <> ".lock")
 
 -- |
 -- Determine paths based on a provided root-directory.
