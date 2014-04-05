@@ -50,12 +50,6 @@ library
     GraphDB.Storage
     GraphDB.Storage.Rules
     GraphDB.Engine.Node
-    GraphDB.Engine.Dispatcher
-    GraphDB.Engine
-    GraphDB.Macros.NamesRegistry
-    GraphDB.Macros.TagInstanceBuilder
-    GraphDB.Macros.BoilerplateBuilder
-    GraphDB.Macros
     GraphDB.Util.TH
     GraphDB.Util.TH.Q
     GraphDB.Util.TH.Type

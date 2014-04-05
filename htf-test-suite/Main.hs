@@ -3,8 +3,6 @@
 import Test.Framework
 import GraphDB.Util.Prelude
 
-import {-@ HTF_TESTS @-} HTFTestSuite.GraphDBTests
-import {-@ HTF_TESTS @-} HTFTestSuite.Macros.TransactionReificationTests
 import {-@ HTF_TESTS @-} HTFTestSuite.StorageTests
 
 
