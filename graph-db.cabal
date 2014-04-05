@@ -47,8 +47,6 @@ library
     GraphDB.Persistence.TransactionLog
     GraphDB.Transaction.Backend
     GraphDB.Service.Protocol
-    GraphDB.Client
-    GraphDB.Server
     GraphDB.Storage
     GraphDB.Storage.Rules
     GraphDB.Engine.Node
