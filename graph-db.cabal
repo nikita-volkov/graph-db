@@ -22,7 +22,7 @@ maintainer:
 copyright:
   (c) 2013, Nikita Volkov
 category:
-  Database
+  Database, Graphs
 build-type:
   Simple
 cabal-version:
