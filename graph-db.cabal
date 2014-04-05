@@ -99,36 +99,37 @@ library
     base >= 4.5 && < 5
   default-extensions:
     Arrows
-    DeriveGeneric
-    ImpredicativeTypes
     BangPatterns
-    PatternGuards
-    GADTs
-    StandaloneDeriving
-    MultiParamTypeClasses
-    ScopedTypeVariables
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveDataTypeable
+    DeriveFunctor
+    DeriveGeneric
+    EmptyDataDecls
+    FlexibleContexts
     FlexibleInstances
     FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    ImpredicativeTypes
+    LambdaCase
+    LiberalTypeSynonyms
+    MultiParamTypeClasses
+    MultiWayIf
+    NoImplicitPrelude
+    NoMonomorphismRestriction
+    OverloadedStrings
+    PatternGuards
+    QuasiQuotes
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
     TypeFamilies
     TypeOperators
-    FlexibleContexts
-    NoImplicitPrelude
-    EmptyDataDecls
-    DataKinds
-    NoMonomorphismRestriction
-    RankNTypes
-    ConstraintKinds
-    DefaultSignatures
-    TupleSections
-    OverloadedStrings
-    TemplateHaskell
-    QuasiQuotes
-    DeriveDataTypeable
-    GeneralizedNewtypeDeriving
-    RecordWildCards
-    MultiWayIf
-    LiberalTypeSynonyms
-    LambdaCase
   default-language:
     Haskell2010
 
@@ -152,35 +153,37 @@ executable graph-db-demo
     base >= 4.5 && < 5
   default-extensions:
     Arrows
-    DeriveGeneric
-    ImpredicativeTypes
     BangPatterns
-    PatternGuards
-    GADTs
-    StandaloneDeriving
-    MultiParamTypeClasses
-    ScopedTypeVariables
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveDataTypeable
+    DeriveFunctor
+    DeriveGeneric
+    EmptyDataDecls
+    FlexibleContexts
     FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    ImpredicativeTypes
+    LambdaCase
+    LiberalTypeSynonyms
+    MultiParamTypeClasses
+    MultiWayIf
+    NoImplicitPrelude
+    NoMonomorphismRestriction
+    OverloadedStrings
+    PatternGuards
+    QuasiQuotes
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
     TypeFamilies
     TypeOperators
-    FlexibleContexts
-    NoImplicitPrelude
-    EmptyDataDecls
-    DataKinds
-    NoMonomorphismRestriction
-    RankNTypes
-    ConstraintKinds
-    DefaultSignatures
-    TupleSections
-    OverloadedStrings
-    TemplateHaskell
-    QuasiQuotes
-    DeriveDataTypeable
-    GeneralizedNewtypeDeriving
-    RecordWildCards
-    MultiWayIf
-    LiberalTypeSynonyms
-    LambdaCase
   default-language:
     Haskell2010
 
@@ -242,35 +245,37 @@ test-suite graph-db-htf-test-suite
     HTF == 0.11.*
   default-extensions:
     Arrows
-    DeriveGeneric
-    ImpredicativeTypes
     BangPatterns
-    PatternGuards
-    GADTs
-    StandaloneDeriving
-    MultiParamTypeClasses
-    ScopedTypeVariables
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveDataTypeable
+    DeriveFunctor
+    DeriveGeneric
+    EmptyDataDecls
+    FlexibleContexts
     FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    ImpredicativeTypes
+    LambdaCase
+    LiberalTypeSynonyms
+    MultiParamTypeClasses
+    MultiWayIf
+    NoImplicitPrelude
+    NoMonomorphismRestriction
+    OverloadedStrings
+    PatternGuards
+    QuasiQuotes
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
     TypeFamilies
     TypeOperators
-    FlexibleContexts
-    NoImplicitPrelude
-    EmptyDataDecls
-    DataKinds
-    NoMonomorphismRestriction
-    RankNTypes
-    ConstraintKinds
-    DefaultSignatures
-    TupleSections
-    OverloadedStrings
-    TemplateHaskell
-    QuasiQuotes
-    DeriveDataTypeable
-    GeneralizedNewtypeDeriving
-    RecordWildCards
-    MultiWayIf
-    LiberalTypeSynonyms
-    LambdaCase
   default-language:
     Haskell2010
 
