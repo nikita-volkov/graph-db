@@ -5,7 +5,6 @@ module GraphDB.Util.Prelude
     LazyByteString,
     LazyText,
 
-    (?:),
     traceM,
     applyAll,
     packText,
@@ -114,10 +113,6 @@ type LazyByteString = Data.ByteString.Lazy.ByteString
 type LazyText = Data.Text.Lazy.Text
 type IOE = EitherT Text IO
 
-
-(?:) :: Maybe a -> a -> a
-maybeA ?: b = fromMaybe b maybeA
-{-# INLINE (?:) #-}
 
 traceM :: (Monad m) => String -> m ()
 traceM s = trace s $ return ()
