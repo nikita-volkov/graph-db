@@ -24,65 +24,100 @@
 -- 
 -- * A 'Client'. The networking interface for communication with server.
 -- 
-module GraphDB where
+module GraphDB
+(
+  -- * Session
+  Backend,
+  Session,
+  SessionSettings,
+  SessionResult,
+  runSession,
+  write,
+  read,
+  serve,
+  -- ** Backends
+  Graph,
+  Client,
+  Persistence,
+  -- * Transactions
+  Transaction.Read,
+  Transaction.Write,
+  Transaction.ReadOrWrite,
+  Transaction.Node,
+  -- ** Operations
+  Transaction.newNode,
+  Transaction.getValue,
+  Transaction.setValue,
+  Transaction.getRoot,
+  Transaction.getTargetsByType,
+  Transaction.getTargetsByIndex,
+  Transaction.addTarget,
+  Transaction.removeTarget,
+  Transaction.getStats,
+  -- * Modeling
+  Union.Union,
+  Union.PolyValue,
+  Union.PolyIndex,
+  Edge.Edge(..),
+  Macros.generateUnion,
+  -- * Server
+  Serve,
+  block,
+)
+where
 
-import GraphDB.Util.Prelude hiding (write, read, Write, Read)
-
+import GraphDB.Util.Prelude hiding (write, read, Write, Read, block)
+import qualified GraphDB.FreeTransaction as Transaction
+import qualified GraphDB.FreeTransaction.Action as Action
+import qualified GraphDB.Model.Union as Union
+import qualified GraphDB.Model.Edge as Edge
+import qualified GraphDB.Model.Macros as Macros
 
 
 -- * Session
 -------------------------
 
 -- |
--- A monad transformer, 
--- which can execute transactions and run a server over some @backend@.
--- The specifics of the implementation are provided by the instance of 
--- the 'Backend' class.
-data Session backend union (monad :: * -> *) result
-
--- |
--- Session failure.
-data SessionFailure b =
-  BackendFailure (BackendFailure b)
+-- A session backend.
+class Backend b where
+  -- |
+  -- A monad transformer, 
+  -- which can execute transactions and run a server over some backend.
+  type Session b
+  -- |
+  -- Backend-specific settings of a session.
+  data SessionSettings b 
+  -- |
+  -- A backend-specific session result.
+  type SessionResult b
+  runAction :: (Monad m) => Bool -> Action.Action b u r -> Session b u m r 
+  -- |
+  -- Run a session on a backend with the provided settings.
+  runSession :: SessionSettings b -> Session b u m r -> m (SessionResult b)
 
 -- |
 -- Execute a writing transaction.
 -- 
 -- Does not allow concurrent transactions, 
 -- so all concurrent transactions are put on hold for the time of execution.
-write :: (forall s. Write u s r) -> Session b u m r
-write = $notImplemented
+write :: (Backend b, Monad m) => (forall s. Transaction.Write b u s r) -> Session b u m r
+write (Transaction.Write a) = runAction True a
 
 -- |
 -- Execute a read-only transaction.
 -- Gets executed concurrently.
-read :: (forall s. Read u s r) -> Session b u m r
-read = $notImplemented
+read :: (Backend b, Monad m) => (forall s. Transaction.Read b u s r) -> Session b u m r
+read (Transaction.Read a) = runAction False a
 
 -- |
 -- Run a server on this session.
 serve :: Serve b u m r -> Session b u m r
 serve = $notImplemented
 
--- |
--- Run a session on a backend with the provided settings.
-runSession :: (Backend b) => BackendSettings b -> Session b u m r -> m (Either (SessionFailure b) r)
-runSession = $notImplemented
-
 
 
 -- * Backends
 -------------------------
-
--- |
--- A session backend.
-class Backend b where
-  -- |
-  -- A failure inherent to the backend.
-  data BackendFailure b
-  -- |
-  -- Settings for running a session on the backend.
-  data BackendSettings b
 
 
 
@@ -94,8 +129,6 @@ class Backend b where
 data Graph
 
 instance Backend Graph where
-  data BackendFailure Graph
-  data BackendSettings Graph
 
 
 
@@ -106,8 +139,6 @@ instance Backend Graph where
 data Client
 
 instance Backend Client where
-  data BackendFailure Client
-  data BackendSettings Client
 
 
 
@@ -132,21 +163,6 @@ instance Backend Client where
 data Persistence wrappedBackend
 
 instance (Backend w) => Backend (Persistence w) where
-  data BackendFailure (Persistence w)
-  data BackendSettings (Persistence w)
-
-
-
--- * Transactions
--------------------------
-
--- | 
--- A write and read transaction.
-data Write union stateThread result
-
--- | 
--- A read-only transaction. 
-data Read union stateThread result
 
 
 
