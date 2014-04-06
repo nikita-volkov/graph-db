@@ -16,7 +16,8 @@ class Backend b where
   -- |
   -- A backend-specific session result.
   type SessionResult b
-  runAction :: (Monad m) => Bool -> Action.Action b u r -> Session b u m r 
+  type Node b
+  runAction :: (Monad m) => Bool -> Action.Action (Node b) u r -> Session b u m r 
   -- |
   -- Run a session on a backend with the provided settings.
   runSession :: SessionSettings b -> Session b u m r -> m (SessionResult b r)
