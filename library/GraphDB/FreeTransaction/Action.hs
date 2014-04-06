@@ -4,8 +4,6 @@
 module GraphDB.FreeTransaction.Action where
 
 import GraphDB.Util.Prelude hiding (Read, Write, read, write)
-import Control.Monad.Free
-import Control.Monad.Free.TH
 import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Model.Edge as E
 

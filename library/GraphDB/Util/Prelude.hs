@@ -74,6 +74,10 @@ import Control.Monad.Base as Exports
 -- monad-control
 import Control.Monad.Trans.Control as Exports
 
+-- free
+import Control.Monad.Free as Exports
+import Control.Monad.Free.TH as Exports
+
 -- stm
 import Control.Concurrent.STM as Exports
 
