@@ -40,7 +40,7 @@ runRequest r = do
 
 runRequestAndParse :: (Response u -> Maybe r) -> Request u -> Tx u r
 runRequestAndParse parseResponse request = 
-  runRequest request >>= pure . parseResponse >>= pure . fromMaybe ($(bug "Unexpected response"))
+  runRequest request >>= pure . parseResponse >>= pure . fromMaybe ($bug $ "Unexpected response")
 
 
 

@@ -67,35 +67,49 @@ library
     -- GraphDB.Service.Client
     GraphDB.Model
   build-depends:
-    placeholders == 0.1.*,
+    -- parsing:
     parsec,
-    th-expand-syns,
     attoparsec,
-    monad-stm,
-    cio,
-    unordered-containers,
-    containers,
+    -- template-haskell:
     template-haskell,
-    errors >= 1.4.6 && < 1.5,
-    SafeSemaphore == 0.9.*,
-    network-simple == 0.3.*,
+    th-expand-syns,
+    -- networking:
     network == 2.4.*,
-    pipes-cereal-plus == 0.3.*,
+    network-simple == 0.3.*,
     pipes-network == 0.6.*,
-    pipes-bytestring == 2.0.*,
+    -- streaming:
     pipes >= 4.0 && < 4.2,
+    pipes-bytestring == 2.0.*,
+    pipes-cereal-plus == 0.3.*,
+    -- file-system:
+    directory == 1.2.*,
     filelock == 0.1.*,
     system-filepath == 0.4.*,
     system-fileio == 0.3.*,
-    directory == 1.2.*,
+    -- concurrency:
+    stm,
+    SafeSemaphore == 0.9.*,
+    monad-stm,
+    -- data:
+    hashable == 1.2.*,
+    bytestring,
+    text,
+    containers,
+    unordered-containers,
     vector,
     hashtables == 1.1.*,
-    hashable == 1.2.*,
-    text,
-    bytestring,
-    stm,
+    time,
+    old-locale,
+    -- control:
+    errors >= 1.4.6 && < 1.5,
+    monad-control == 0.3.*,
+    transformers-base == 0.4.*,
     transformers,
     mtl,
+    -- debugging:
+    loch-th == 0.2.*,
+    placeholders == 0.1.*,
+    -- 
     base >= 4.5 && < 5
   default-extensions:
     Arrows
@@ -200,37 +214,7 @@ test-suite graph-db-htf-test-suite
     -threaded
     "-with-rtsopts=-N"
   build-depends:
-    placeholders == 0.1.*,
-    parsec,
-    th-expand-syns,
-    attoparsec,
-    monad-stm,
-    cio,
-    unordered-containers,
-    containers,
-    template-haskell,
-    errors >= 1.4.6 && < 1.5,
-    SafeSemaphore == 0.9.*,
-    network-simple == 0.3.*,
-    network == 2.4.*,
-    pipes-cereal-plus == 0.3.*,
-    pipes-network == 0.6.*,
-    pipes-bytestring == 2.0.*,
-    pipes >= 4.0 && < 4.2,
-    filelock == 0.1.*,
-    system-filepath == 0.4.*,
-    system-fileio == 0.3.*,
-    directory == 1.2.*,
-    vector,
-    hashtables == 1.1.*,
-    hashable == 1.2.*,
-    text,
-    bytestring,
-    stm,
-    transformers,
-    mtl,
-    base >= 4.5 && < 5,
-
+    -- testing:
     async,
     ghc-datasize,
     directory,
@@ -242,7 +226,51 @@ test-suite graph-db-htf-test-suite
     QuickCheck-GenT == 0.1.*,
     QuickCheck,
     HUnit,
-    HTF == 0.11.*
+    HTF == 0.11.*,
+    -- parsing:
+    parsec,
+    attoparsec,
+    -- template-haskell:
+    template-haskell,
+    th-expand-syns,
+    -- networking:
+    network == 2.4.*,
+    network-simple == 0.3.*,
+    pipes-network == 0.6.*,
+    -- streaming:
+    pipes >= 4.0 && < 4.2,
+    pipes-bytestring == 2.0.*,
+    pipes-cereal-plus == 0.3.*,
+    -- file-system:
+    directory == 1.2.*,
+    filelock == 0.1.*,
+    system-filepath == 0.4.*,
+    system-fileio == 0.3.*,
+    -- concurrency:
+    stm,
+    SafeSemaphore == 0.9.*,
+    monad-stm,
+    -- data:
+    hashable == 1.2.*,
+    bytestring,
+    text,
+    containers,
+    unordered-containers,
+    vector,
+    hashtables == 1.1.*,
+    time,
+    old-locale,
+    -- control:
+    errors >= 1.4.6 && < 1.5,
+    monad-control == 0.3.*,
+    transformers-base == 0.4.*,
+    transformers,
+    mtl,
+    -- debugging:
+    loch-th == 0.2.*,
+    placeholders == 0.1.*,
+    -- 
+    base >= 4.5 && < 5
   default-extensions:
     Arrows
     BangPatterns
