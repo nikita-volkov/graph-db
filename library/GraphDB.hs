@@ -31,11 +31,11 @@
 module GraphDB
 (
   -- * Session
-  Backend,
-  Session,
-  SessionSettings,
-  SessionResult,
-  runSession,
+  Backend.Backend,
+  Backend.Session,
+  Backend.SessionSettings,
+  Backend.SessionResult,
+  Backend.runSession,
   write,
   read,
   serve,
@@ -71,6 +71,7 @@ module GraphDB
 where
 
 import GraphDB.Util.Prelude hiding (write, read, Write, Read, block)
+import qualified GraphDB.Backend as Backend
 import qualified GraphDB.FreeTransaction as Transaction
 import qualified GraphDB.FreeTransaction.Action as Action
 import qualified GraphDB.Model.Union as Union
@@ -82,40 +83,22 @@ import qualified GraphDB.Model.Macros as Macros
 -------------------------
 
 -- |
--- A session backend.
-class Backend b where
-  -- |
-  -- A monad transformer, 
-  -- which can execute transactions and run a server over some backend.
-  type Session b
-  -- |
-  -- Backend-specific settings of a session.
-  data SessionSettings b 
-  -- |
-  -- A backend-specific session result.
-  type SessionResult b
-  runAction :: (Monad m) => Bool -> Action.Action b u r -> Session b u m r 
-  -- |
-  -- Run a session on a backend with the provided settings.
-  runSession :: SessionSettings b -> Session b u m r -> m (SessionResult b)
-
--- |
 -- Execute a writing transaction.
 -- 
 -- Does not allow concurrent transactions, 
 -- so all concurrent transactions are put on hold for the time of execution.
-write :: (Backend b, Monad m) => (forall s. Transaction.Write b u s r) -> Session b u m r
-write (Transaction.Write a) = runAction True a
+write :: (Backend.Backend b, Monad m) => (forall s. Transaction.Write b u s r) -> Backend.Session b u m r
+write (Transaction.Write a) = Backend.runAction True a
 
 -- |
 -- Execute a read-only transaction.
 -- Gets executed concurrently.
-read :: (Backend b, Monad m) => (forall s. Transaction.Read b u s r) -> Session b u m r
-read (Transaction.Read a) = runAction False a
+read :: (Backend.Backend b, Monad m) => (forall s. Transaction.Read b u s r) -> Backend.Session b u m r
+read (Transaction.Read a) = Backend.runAction False a
 
 -- |
 -- Run a server on this session.
-serve :: Serve b u m r -> Session b u m r
+serve :: Serve b u m r -> Backend.Session b u m r
 serve = $notImplemented
 
 
@@ -132,8 +115,6 @@ serve = $notImplemented
 -- An in-memory graph datastructure.
 data Graph
 
-instance Backend Graph where
-
 
 
 -- ** Client
@@ -141,8 +122,6 @@ instance Backend Graph where
 
 -- | A networking interface for communication with server.
 data Client
-
-instance Backend Client where
 
 
 
@@ -165,8 +144,6 @@ instance Backend Client where
 -- * @Persistence 'Graph'@ -
 -- not hard to guess what it does.
 data Persistence wrappedBackend
-
-instance (Backend w) => Backend (Persistence w) where
 
 
 
