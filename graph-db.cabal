@@ -40,6 +40,8 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Session
+    GraphDB.Session.TransactionLog
     GraphDB.Backend
     GraphDB.FreeTransaction
     GraphDB.FreeTransaction.Action
