@@ -21,7 +21,7 @@ data ActionF b u a =
   GetTargetsByIndex (Node b) (U.Index u) ([Node b] -> a) |
   AddTarget (Node b) (Node b) (Bool -> a) |
   RemoveTarget (Node b) (Node b) (Bool -> a) |
-  GetStats (Node b) ((Int, Int) -> a)
+  GetStats ((Int, Int) -> a)
   deriving (Functor)
 
 type family Node b

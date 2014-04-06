@@ -5,17 +5,33 @@
 module GraphDB.FreeTransaction where
 
 import GraphDB.Util.Prelude hiding (Read, Write, read, write)
-import Control.Monad.Free
 import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Model.Edge as E
 import qualified GraphDB.FreeTransaction.Action as A
 
 
-newtype Write b u s r = Write (A.Action b u r) deriving (Functor, Applicative, Monad)
-newtype Read b u s r = Read (A.Action b u r) deriving (Functor, Applicative, Monad)
+-- | 
+-- A write and read transaction.
+-- 
+-- Does not allow concurrency, 
+-- so all concurrent transactions are put on hold for the time of its execution.
+newtype Write backend union stateThread result = 
+  Write (A.Action backend union result) 
+  deriving (Functor, Applicative, Monad)
+
+-- | 
+-- A read-only transaction. 
+-- 
+-- Gets executed concurrently.
+newtype Read backend union stateThread result = 
+  Read (A.Action backend union result) 
+  deriving (Functor, Applicative, Monad)
+
 -- |
 -- Transactions of this type can be composed with both 'Read' and 'Write'.
-type ReadOrWrite b u s r = forall t. (LiftAction t, Monad (t b u s), Applicative (t b u s)) => t b u s r
+type ReadOrWrite b u s r = 
+  forall t. (LiftAction t, Monad (t b u s), Applicative (t b u s)) => 
+  t b u s r
 
 class LiftAction t where liftAction :: A.Action b u r -> t b u s r
 instance LiftAction Read where liftAction = Read
@@ -46,7 +62,7 @@ setValue (Node n) v = Write $ A.setValue n (snd $ U.packValue v)
 -- |
 -- Get the root node.
 getRoot :: ReadOrWrite b u s (Node b s u)
-getRoot = liftAction $ A.getRoot >>= pure . Node
+getRoot = fmap Node $ liftAction $ A.getRoot
 
 -- |
 -- Get all linked nodes with values of the provided type.
@@ -55,18 +71,14 @@ getRoot = liftAction $ A.getRoot >>= pure . Node
 -- > getTargetsByType node (undefined :: Artist)
 -- 
 getTargetsByType :: (U.PolyValue u v') => Node b s v -> v' -> ReadOrWrite b u s [Node b s v']
-getTargetsByType (Node n) v = do
-  ns <- liftAction $ A.getTargetsByType n $ fst $ U.packValue v
-  return $ map Node ns
+getTargetsByType (Node n) v =
+  fmap (map Node) $ liftAction $ A.getTargetsByType n $ fst $ U.packValue v
 
 -- |
 -- Get target nodes reachable by the provided index.
-getTargetsByIndex :: 
-  (U.PolyIndex u i) => 
-  Node b s v -> i -> ReadOrWrite b u s [Node b s v']
-getTargetsByIndex (Node n) i = do
-  ns <- liftAction $ A.getTargetsByIndex n (U.packIndex i)
-  return $ map Node ns
+getTargetsByIndex :: (U.PolyIndex u i) => Node b s v -> i -> ReadOrWrite b u s [Node b s v']
+getTargetsByIndex (Node n) i = 
+  fmap (map Node) $ liftAction $ A.getTargetsByIndex n $ U.packIndex i
 
 -- |
 -- Add a link to the provided target node /v'/, 
@@ -90,7 +102,5 @@ removeTarget (Node s) (Node t) = Write $ A.removeTarget s t
 -- 
 -- Requires a traversal of the whole graph, so beware.
 getStats :: ReadOrWrite b u s (Int, Int)
-getStats = do
-  Node n <- getRoot
-  liftAction $ A.getStats n
+getStats = liftAction $ A.getStats
 
