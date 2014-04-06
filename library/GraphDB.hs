@@ -24,6 +24,10 @@
 -- 
 -- * A 'Client'. The networking interface for communication with server.
 -- 
+-- The API of this library is free of exceptions and resource management.
+-- This is achieved using monad transformers.
+-- All the IO failures are encoded in the results of monad transformers.
+-- All the resources are properly released.
 module GraphDB
 (
   -- * Session
