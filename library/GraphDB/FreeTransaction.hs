@@ -37,7 +37,14 @@ class LiftAction t where liftAction :: A.Action b u r -> t b u s r
 instance LiftAction Read where liftAction = Read
 instance LiftAction Write where liftAction = Write
 
-newtype Node b s v = Node (A.Node b)
+-- | 
+-- A transaction-local reference to the actual node of a graph-datastructure.
+-- 
+-- The /stateThread/ is an uninstantiated type-variable,
+-- which makes it impossible to return a node from transaction,
+-- when it is executed using 'write' or 'read'.
+-- Much inspired by the implementation of 'ST'.
+newtype Node backend stateThread value = Node (A.Node backend)
 
 -- |
 -- Create a new node. 
