@@ -105,7 +105,7 @@ newNode v = do
 getValue :: forall b u s v. (U.PolyValue u v) => Node b s v -> ReadOrWrite b u s v
 getValue (Node n) = do
   pv :: U.Value u <- liftTx $ B.getValue n
-  return $ U.unpackValue pv ?: $(bug "Unexpected packed value")
+  return $ U.unpackValue pv ?: ($bug $ "Unexpected packed value")
 
 -- | 
 -- Replace the value of the specified node.

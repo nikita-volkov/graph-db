@@ -1,6 +1,7 @@
 module GraphDB.Model.Union where
 
 import GraphDB.Util.Prelude hiding (Serializable)
+import qualified GHC.Exts
 import qualified GraphDB.Util.Prelude as P
 import qualified GraphDB.Graph.Node as Node
 
@@ -10,8 +11,8 @@ class (Serializable IO u, Hashable (Type u), Eq (Type u), Hashable (Index u), Eq
   data Type u
   indexes :: Value u -> Type u -> [Index u]
   indexTargetType :: Index u -> Type u
-  decomposeValue :: Value u -> (Type u, Any)
-  composeValue :: Type u -> Any -> Value u
+  decomposeValue :: Value u -> (Type u, GHC.Exts.Any)
+  composeValue :: Type u -> GHC.Exts.Any -> Value u
 
 instance (Union u) => Node.Type (Type u) where
   type Index (Type u) = Index u
