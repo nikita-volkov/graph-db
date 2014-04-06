@@ -41,6 +41,7 @@ library
     library
   other-modules:
     GraphDB.FreeTransaction
+    GraphDB.FreeTransaction.Action
     GraphDB.Model.Edge
     GraphDB.Model.Union
     GraphDB.Model.Macros
