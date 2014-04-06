@@ -20,7 +20,7 @@ instances (unionType, polyIndexes, polyValues) =
   where
     unionName = case unionType of
       TH.ConT n -> n
-      _ -> $(bug "Not a constructor type")
+      _ -> $bug $ "Not a constructor type"
     polyIndexToIndexList = do
       (polyIndex, i) <- polyIndexes `zip` [0..]
       let cn = TH.mkName $ "Union_" <> TH.nameBase unionName <> "_Index_" <> show i
@@ -55,13 +55,13 @@ instances (unionType, polyIndexes, polyValues) =
                                     (TH.NormalB exp) [] where
               (sourceT, targetT) = case pit of
                 _ `TH.AppT` source `TH.AppT` target -> (source, target)
-                _ -> $(bug "Unexpected type of index")
+                _ -> $bug $ "Unexpected type of index"
               sourceTypeCN = lookup sourceT polyValueToValueToTypeList |> \case
                 Just (_, cn) -> cn
-                _ -> $(bug "Poly value type not found")
+                _ -> $bug $ "Poly value type not found"
               targetValueCN = lookup targetT polyValueToValueToTypeList |> \case
                 Just (cn, _) -> cn
-                _ -> $(bug "Poly value type not found")
+                _ -> $bug $ "Poly value type not found"
               var = TH.mkName "_0"
               exp = Q.purify [e| map Union.packIndex (Edge.indexes $(TH.varE var) :: [$(pure pit)]) |]
         indexTargetTypeFD = TH.FunD 'Union.indexTargetType clauses where
@@ -70,10 +70,10 @@ instances (unionType, polyIndexes, polyValues) =
               exp = TH.ConE targetTypeCN where
                 (sourceT, targetT) = case pit of
                   _ `TH.AppT` source `TH.AppT` target -> (source, target)
-                  _ -> $(bug "Unexpected type of index")
+                  _ -> $bug $ "Unexpected type of index"
                 targetTypeCN = lookup targetT polyValueToValueToTypeList |> \case
                   Just (_, cn) -> cn
-                  _ -> $(bug "Poly value type not found")
+                  _ -> $bug $ "Poly value type not found"
         decomposeValueFD = TH.FunD 'Union.decomposeValue clauses where
           clauses = map clause polyValueToValueToTypeList where
             clause (pvt, (vcn, tcn)) = TH.Clause [TH.ConP vcn [TH.VarP var]] (TH.NormalB exp) [] where

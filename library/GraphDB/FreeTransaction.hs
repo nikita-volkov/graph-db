@@ -35,7 +35,7 @@ newNode v = fmap Node $ liftAction $ A.newNode $ snd $ U.packValue v
 -- Get a value of the node.
 getValue :: (U.PolyValue u v) => Node b s v -> ReadOrWrite b u s v
 getValue (Node n) = 
-  fmap (fromMaybe $(bug "Unexpected packed value") . U.unpackValue) $ 
+  fmap (fromMaybe ($bug "Unexpected packed value") . U.unpackValue) $ 
   liftAction $ A.getValue n
 
 -- | 

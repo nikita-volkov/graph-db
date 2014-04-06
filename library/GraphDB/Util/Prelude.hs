@@ -6,13 +6,17 @@ module GraphDB.Util.Prelude
     LazyText,
 
     traceM,
-    applyAll,
+    traceIO,
+    traceIOWithTime,
     packText,
     unpackText,
     bug,
     (|>),
     (<|),
-    IOE,
+    (|$>),
+    bracketME,
+    finallyME,
+    tracingExceptions,
   )
   where
 
@@ -22,10 +26,11 @@ import Control.Monad as Exports hiding (mapM_, sequence_, forM_, msum, mapM, seq
 import Control.Applicative as Exports
 import Control.Arrow as Exports hiding (left, right)
 import Control.Category as Exports
-import Data.Monoid as Exports hiding (Any)
+import Data.Monoid as Exports
 import Data.Foldable as Exports
 import Data.Traversable as Exports hiding (for)
 import Data.Maybe as Exports
+import Data.Either as Exports
 import Data.List as Exports hiding (concat, foldr, foldl1, maximum, minimum, product, sum, all, and, any, concatMap, elem, foldl, foldr1, notElem, or, find, maximumBy, minimumBy, mapAccumL, mapAccumR, foldl')
 import Data.Tuple as Exports
 import Data.Ord as Exports (Down(..))
@@ -37,7 +42,7 @@ import Data.Fixed as Exports
 import Data.Ix as Exports
 import Data.Data as Exports
 import Text.Read as Exports (readMaybe, readEither)
-import Control.Exception as Exports hiding (tryJust)
+import Control.Exception as Exports hiding (tryJust, try, assert)
 import Control.Concurrent as Exports hiding (yield)
 import System.Mem.StableName as Exports
 import System.Timeout as Exports
@@ -46,13 +51,13 @@ import System.IO.Unsafe as Exports
 import System.IO as Exports (Handle, hClose)
 import System.IO.Error as Exports
 import Unsafe.Coerce as Exports
-import GHC.Exts as Exports hiding (traceEvent)
+import GHC.Exts as Exports hiding (Any, traceEvent)
 import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
-import Debug.Trace as Exports
 import Data.IORef as Exports
 import Data.STRef as Exports
 import Control.Monad.ST as Exports
+import Debug.Trace as Exports hiding (traceIO)
 
 -- mtl
 import Control.Monad.Identity as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
@@ -61,6 +66,13 @@ import Control.Monad.Reader as Exports hiding (mapM_, sequence_, forM_, msum, ma
 import Control.Monad.Writer as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM, Any)
 import Control.Monad.RWS as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM, Any)
 import Control.Monad.Trans as Exports
+import Control.Monad.Error as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
+
+-- transformers-base
+import Control.Monad.Base as Exports
+
+-- monad-control
+import Control.Monad.Trans.Control as Exports
 
 -- stm
 import Control.Concurrent.STM as Exports
@@ -88,6 +100,9 @@ import Filesystem.Path as Exports (FilePath)
 -- hashable
 import Data.Hashable as Exports (Hashable(..), hash)
 
+-- time
+import Data.Time.Clock as Exports
+
 -- pipes
 import Pipes as Exports
 
@@ -97,33 +112,22 @@ import PipesCerealPlus as Exports
 -- either
 import Control.Error as Exports
 
--- cio
-import CIO as Exports
-
 -- placeholders
 import Development.Placeholders as Exports
 
+import qualified Debug.Trace.LocationTH
 import qualified Data.ByteString.Lazy
 import qualified Data.Text.Lazy
 import qualified Data.Text
 import qualified Prelude
+import qualified Debug.Trace
+import qualified System.Locale
+import qualified Data.Time
 
 
 type LazyByteString = Data.ByteString.Lazy.ByteString
 type LazyText = Data.Text.Lazy.Text
-type IOE = EitherT Text IO
 
-
-traceM :: (Monad m) => String -> m ()
-traceM s = trace s $ return ()
-
-applyAll :: Monad m => [a -> m b] -> a -> m [b]
-applyAll ops a = sequence $ map ($ a) ops
-
-packText = Data.Text.pack
-unpackText = Data.Text.unpack
-
-bug = placeholderNoWarning . (++) "'graph-db' package bug: "
 
 (|>) :: a -> (a -> b) -> b
 a |> aToB = aToB a
@@ -132,4 +136,62 @@ a |> aToB = aToB a
 (<|) :: (a -> b) -> a -> b
 aToB <| a = aToB a
 {-# INLINE (<|) #-}
+
+-- | 
+-- The following are all the same:
+-- fmap f a == f <$> a == a |> fmap f == a |$> f
+-- 
+-- This operator accomodates the left-to-right operators: >>=, >>>, |>.
+(|$>) = flip fmap
+{-# INLINE (|$>) #-}
+
+packText = Data.Text.pack
+unpackText = Data.Text.unpack
+
+bug = [e| $(Debug.Trace.LocationTH.failure) . (msg <>) |]
+  where
+    msg = "A \"graph-db\" package bug: " :: String
+
+bottom = [e| $bug "Bottom evaluated" |]
+
+bracketME :: (MonadError e m) => m a -> (a -> m b) -> (a -> m c) -> m c
+bracketME acquire release apply = do
+  r <- acquire
+  z <- catchError (liftM Right $ apply r) (return . Left)
+  release r
+  either throwError return z
+
+finallyME :: (MonadError e m) => m a -> m b -> m a
+finallyME m f = do
+  z <- catchError (liftM Right $ m) (return . Left)
+  f
+  either throwError return z
+
+traceM :: (Monad m) => String -> m ()
+traceM s = trace s $ return ()
+
+traceIO :: (MonadIO m) => String -> m ()
+traceIO = liftIO . Debug.Trace.traceIO
+
+traceIOWithTime :: (MonadIO m) => String -> m ()
+traceIOWithTime s = do
+  time <- liftIO $ getCurrentTime
+  traceIO $ 
+    formatTime time <> ": " <> s
+  where
+    formatTime = 
+      take 15 . 
+      Data.Time.formatTime System.Locale.defaultTimeLocale "%X.%q"
+
+tracingExceptions :: (MonadBaseControl IO m) => m a -> m a
+tracingExceptions m = 
+  control $ \runInIO -> catch (runInIO m) $ \(SomeException e) -> runInIO $ do
+    let rep = typeOf e
+        tyCon = typeRepTyCon rep
+    traceM $ 
+      "## Uncaught exception: " ++ show e ++ "\n" ++
+      "   Type: " ++ show rep ++ "\n" ++
+      "   Module: " ++ tyConModule tyCon ++ "\n" ++
+      "   Package: " ++ tyConPackage tyCon
+    liftBase $ throwIO $ e
 
