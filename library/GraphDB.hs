@@ -5,7 +5,7 @@
 -- The main monad transformer.
 -- It executes transactions and runs the server.
 -- 
--- * 'Read' and 'Write' transactions.
+-- * 'Transaction.Read' and 'Transaction.Write' transactions.
 -- Monads,
 -- which execute granular updates or reads on the database with ACID guarantees.
 -- 
