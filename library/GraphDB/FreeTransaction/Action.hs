@@ -24,7 +24,7 @@ data ActionF t u a =
 
 class Tx t where
   type Node t
-  runAction :: Action t u r -> t u r
+  runAction :: (Monad (t u)) => Action t u r -> t u r
   
 makeFree ''ActionF
 

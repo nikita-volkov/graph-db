@@ -40,6 +40,7 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Persistence
     GraphDB.Client
     GraphDB.Session
     GraphDB.Session.TransactionLog

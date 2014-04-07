@@ -15,7 +15,7 @@ class (A.Tx (Tx s)) => Session s where
   type SessionSettings s 
   type Tx s
   runSession :: (Monad m) => SessionSettings s -> s u m r -> m (SessionResult s r)
-  runTx :: (MonadIO m, Applicative m) => Bool -> Tx s u r -> s u m r
+  runTx :: (MonadIO m, Applicative m, U.Serializable IO u) => Bool -> Tx s u r -> s u m r
 
 
 type Node s = A.Node (Tx s)
