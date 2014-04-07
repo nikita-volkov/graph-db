@@ -42,7 +42,7 @@ import Data.Fixed as Exports
 import Data.Ix as Exports
 import Data.Data as Exports
 import Text.Read as Exports (readMaybe, readEither)
-import Control.Exception as Exports hiding (tryJust, try, assert)
+import Control.Exception as Exports hiding (tryJust, assert)
 import Control.Concurrent as Exports hiding (yield)
 import System.Mem.StableName as Exports
 import System.Timeout as Exports
@@ -75,7 +75,7 @@ import Control.Monad.Base as Exports
 import Control.Monad.Trans.Control as Exports
 
 -- free
-import Control.Monad.Free as Exports
+import Control.Monad.Trans.Free as Exports
 import Control.Monad.Free.TH as Exports
 
 -- stm
