@@ -27,7 +27,7 @@ newtype Tx u m r =
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadTrans (Tx u) where 
-  lift = Tx . lift . lift . lift . lift
+  lift = Tx . lift . lift . lift
 
 runTransaction :: (MonadBaseControl IO m, U.Serializable IO u) => Bool -> Tx u m r -> Session u m r
 runTransaction write (Tx tx) = do
