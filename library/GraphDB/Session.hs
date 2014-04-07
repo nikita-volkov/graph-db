@@ -11,15 +11,13 @@ import qualified GraphDB.Util.DIOVector as DIOVector
 
 
 class Session s where
-  type Backend s
   type Settings s 
   type Result s r
-  runAction :: (Monad m) => Bool -> A.Action (Backend s) u r -> s u m r
+  type Node s u
+  runAction :: (Monad m) => Bool -> A.Action (Node s u) u r -> s u m r
   run :: (Monad m) => Settings s -> s u m r -> m (Result s r)
 
 
-
-type instance A.Node (Persistence i) = Int
 
 data Persistence inner = 
   Persistence !inner !(S.Storage inner (TL.Log inner)) !IOQueue.IOQueue
@@ -34,9 +32,9 @@ instance Monad (PersistenceSession i u m) where
      a >>= return . k >>= \(PersistenceSession i) -> i
 
 instance (Session i) => Session (PersistenceSession i) where
-  type Backend (PersistenceSession i) = Persistence (Backend i)
   type Settings (PersistenceSession i) = ()
   type Result (PersistenceSession i) r = r
+  type Node (PersistenceSession i) u = Int
   runAction isWrite = iterM $ \case
     A.NewNode v c -> do
       PersistenceSession $ modify $ (:) $ TL.NewNode v
