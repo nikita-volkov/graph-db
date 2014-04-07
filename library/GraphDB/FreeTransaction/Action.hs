@@ -5,26 +5,22 @@ module GraphDB.FreeTransaction.Action where
 
 import GraphDB.Util.Prelude hiding (Read, Write, read, write)
 import qualified GraphDB.Model.Union as U
-import qualified GraphDB.Model.Edge as E
 
 
-type Action t u = Free (ActionF t u)
+type Action n u = Free (ActionF n u)
 
-data ActionF t u a =
-  NewNode (U.Value u) (Node t -> a) |
-  GetValue (Node t) ((U.Value u) -> a) |
-  SetValue (Node t) (U.Value u) a |
-  GetRoot (Node t -> a) |
-  GetTargetsByType (Node t) (U.Type u) ([Node t] -> a) |
-  GetTargetsByIndex (Node t) (U.Index u) ([Node t] -> a) |
-  AddTarget (Node t) (Node t) (Bool -> a) |
-  RemoveTarget (Node t) (Node t) (Bool -> a) |
+-- TODO: Lose the Union dependency by parameterizing the type
+data ActionF n u a =
+  NewNode (U.Value u) (n -> a) |
+  GetValue n ((U.Value u) -> a) |
+  SetValue n (U.Value u) a |
+  GetRoot (n -> a) |
+  GetTargetsByType n (U.Type u) ([n] -> a) |
+  GetTargetsByIndex n (U.Index u) ([n] -> a) |
+  AddTarget n n (Bool -> a) |
+  RemoveTarget n n (Bool -> a) |
   GetStats ((Int, Int) -> a)
   deriving (Functor)
 
-class Tx t where
-  type Node t
-  runAction :: (Monad (t u)) => Action t u r -> t u r
-  
 makeFree ''ActionF
 

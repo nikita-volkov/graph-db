@@ -40,10 +40,9 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Graph
     GraphDB.Persistence
     GraphDB.Client
-    GraphDB.Session
-    GraphDB.FreeTransaction
     GraphDB.FreeTransaction.Action
     GraphDB.Model.Edge
     GraphDB.Model.Union
