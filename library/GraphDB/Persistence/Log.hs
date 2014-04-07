@@ -36,9 +36,7 @@ type NodeRef = Int
 -- * Action
 -------------------------
 
-type Action u = A.Action NodeRef (U.Value u) (U.Type u) (U.Index u)
-
-toAction :: MonadIO m => Log u -> Action u m ()
+toAction :: MonadIO m => Log u -> A.Action n (U.Value u) (U.Type u) (U.Index u) m ()
 toAction log = do
   refs <- liftIO $ DV.new
   let
