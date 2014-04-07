@@ -43,7 +43,6 @@ library
     GraphDB.Persistence
     GraphDB.Client
     GraphDB.Session
-    GraphDB.Session.TransactionLog
     GraphDB.FreeTransaction
     GraphDB.FreeTransaction.Action
     GraphDB.Model.Edge
