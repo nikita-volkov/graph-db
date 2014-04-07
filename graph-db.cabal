@@ -64,6 +64,7 @@ library
     GraphDB.Util.IOQueue
     GraphDB.Util.Prelude
   exposed-modules:
+    GraphDB
   build-depends:
     -- parsing:
     parsec,

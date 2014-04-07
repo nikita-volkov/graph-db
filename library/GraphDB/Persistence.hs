@@ -19,7 +19,9 @@ import qualified GraphDB.Persistence.Log as L
 type Session u m = ReaderT (Storage u, IOQueue.IOQueue) (G.Session u m)
 type Storage u = S.Storage (G.Node u) (L.Log u)
 
-data Failure = 
+data PersistenceFailure = 
+  -- | 
+  -- Corrupt data during deserialization of the stored data.
   CorruptData Text
 
 type Settings u = (U.Value u, StoragePath, PersistenceBuffering)
@@ -42,7 +44,7 @@ type PersistenceBuffering = Int
 
 runSession :: 
   (MonadIO m, MonadBaseControl IO m, U.Serializable IO u, U.Union u) => 
-  Settings u -> Session u m r -> m (Either Failure r)
+  Settings u -> Session u m r -> m (Either PersistenceFailure r)
 runSession (v, p, buffering) ses = do
   r <- liftBaseWith $ \runInBase -> do
     let
