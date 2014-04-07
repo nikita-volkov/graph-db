@@ -25,6 +25,6 @@ runTransaction write tx = do
     then control $ \runInBase -> L.withWrite l $ runInBase tx
     else control $ \runInBase -> L.withRead l $ runInBase tx
 
-runAction :: (MonadBase IO m, U.Union u) => Action u r -> Session u m r
-runAction = iterM $ \case
+runAction :: (MonadBase IO m, U.Union u) => Action u m r -> Session u m r
+runAction = ((lift . lift) .) $ iterT $ \case
   A.NewNode v c -> N.new v |> liftBase >>= c

@@ -75,7 +75,7 @@ import Control.Monad.Base as Exports
 import Control.Monad.Trans.Control as Exports
 
 -- free
-import Control.Monad.Free as Exports
+import Control.Monad.Trans.Free as Exports
 import Control.Monad.Free.TH as Exports
 
 -- stm

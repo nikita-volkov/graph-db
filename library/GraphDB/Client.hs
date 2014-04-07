@@ -7,6 +7,9 @@ import qualified GraphDB.Model.Union as U
 import qualified Remotion.Client as Remo
 
 
+-- * Session
+-------------------------
+
 newtype Session u m r = 
   Session (Remo.Client (Request u) (Response u) m r)
   deriving (Functor, Applicative, Monad, MonadIO)
@@ -15,8 +18,10 @@ type Request u = P.Request Node (U.Value u) (U.Type u) (U.Index u)
 type Response u = P.Response Node (U.Value u) (U.Type u) (U.Index u)
 type Node = Int
 
-type SessionSettings = Remo.Settings
+instance MonadTrans (Session u) where
+  lift = Session . lift
 
+type SessionSettings = Remo.Settings
 
 runSession :: 
   (U.Serializable IO u, MonadBaseControl IO m, MonadIO m) => 
@@ -24,18 +29,24 @@ runSession ::
 runSession settings (Session ses) = Remo.run settings ses
 
 
-inTransaction :: (MonadIO m, Applicative m, U.Serializable IO u) => Bool -> Session u m r -> Session u m r
-inTransaction write tx = do
+-- * Transaction
+-------------------------
+
+runTransaction :: (MonadIO m, Applicative m, U.Serializable IO u) => Bool -> Session u m r -> Session u m r
+runTransaction write tx = do
   Session $ Remo.request $ P.Request_StartTransaction write
   r <- tx
   Session $ Remo.request $ P.Request_EndTransaction
   return r
 
 
+-- * Action
+-------------------------
+
 type Action u = A.Action Node (U.Value u) (U.Type u) (U.Index u)
 
-interpret :: (MonadIO m, Applicative m, U.Serializable IO u) => Action u r -> Session u m r
-interpret = iterM $ \case
+runAction :: (MonadIO m, Applicative m, U.Serializable IO u) => Action u m r -> Session u m r
+runAction = iterTM $ \case
   A.GetTargetsByType n t c -> do
     r <- 
       Session $ Remo.request $ 

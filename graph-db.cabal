@@ -42,6 +42,7 @@ library
   other-modules:
     GraphDB.Graph
     GraphDB.Persistence
+    GraphDB.Persistence.Log
     GraphDB.Client
     GraphDB.Action
     GraphDB.Model.Edge
@@ -100,7 +101,7 @@ library
     old-locale,
     -- control:
     errors >= 1.4.6 && < 1.5,
-    free == 4.*,
+    free >= 4.6 && < 5,
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,
@@ -208,7 +209,7 @@ test-suite graph-db-htf-test-suite
     old-locale,
     -- control:
     errors >= 1.4.6 && < 1.5,
-    free == 4.*,
+    free >= 4.6 && < 5,
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,

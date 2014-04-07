@@ -6,7 +6,7 @@ module GraphDB.Action where
 import GraphDB.Util.Prelude
 
 
-type Action n v t i = Free (ActionF n v t i)
+type Action n v t i = FreeT (ActionF n v t i)
 
 data ActionF n v t i a =
   NewNode v (n -> a) |
