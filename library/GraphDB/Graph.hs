@@ -9,7 +9,7 @@ import qualified Control.Concurrent.FairRWLock as L
 
 type Session u m = ReaderT (U.Node u) (ReaderT L.RWLock m)
 
-type Action u r = A.Action (U.Node u) u r
+type Action u = A.Action (U.Node u) (U.Value u) (U.Type u) (U.Index u)
 
 type Node u = U.Node u
 

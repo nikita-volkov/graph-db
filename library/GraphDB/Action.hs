@@ -3,20 +3,18 @@
 -- without distinction between write and read.
 module GraphDB.Action where
 
-import GraphDB.Util.Prelude hiding (Read, Write, read, write)
-import qualified GraphDB.Model.Union as U
+import GraphDB.Util.Prelude
 
 
-type Action n u = Free (ActionF n u)
+type Action n v t i = Free (ActionF n v t i)
 
--- TODO: Lose the Union dependency by parameterizing the type
-data ActionF n u a =
-  NewNode (U.Value u) (n -> a) |
-  GetValue n ((U.Value u) -> a) |
-  SetValue n (U.Value u) a |
+data ActionF n v t i a =
+  NewNode v (n -> a) |
+  GetValue n (v -> a) |
+  SetValue n v a |
   GetRoot (n -> a) |
-  GetTargetsByType n (U.Type u) ([n] -> a) |
-  GetTargetsByIndex n (U.Index u) ([n] -> a) |
+  GetTargetsByType n t ([n] -> a) |
+  GetTargetsByIndex n i ([n] -> a) |
   AddTarget n n (Bool -> a) |
   RemoveTarget n n (Bool -> a) |
   GetStats ((Int, Int) -> a)

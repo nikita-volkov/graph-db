@@ -23,6 +23,7 @@ runSession ::
   SessionSettings -> Session u m r -> m (Either Remo.Failure r)
 runSession settings (Session ses) = Remo.run settings ses
 
+
 inTransaction :: (MonadIO m, Applicative m, U.Serializable IO u) => Bool -> Session u m r -> Session u m r
 inTransaction write tx = do
   Session $ Remo.request $ P.Request_StartTransaction write
@@ -30,7 +31,10 @@ inTransaction write tx = do
   Session $ Remo.request $ P.Request_EndTransaction
   return r
 
-interpret :: (MonadIO m, Applicative m, U.Serializable IO u) => A.Action Node u r -> Session u m r
+
+type Action u = A.Action Node (U.Value u) (U.Type u) (U.Index u)
+
+interpret :: (MonadIO m, Applicative m, U.Serializable IO u) => Action u r -> Session u m r
 interpret = iterM $ \case
   A.GetTargetsByType n t c -> do
     r <- 

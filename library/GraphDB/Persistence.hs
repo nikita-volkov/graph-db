@@ -57,7 +57,7 @@ runTransaction write tx = do
 -- * Action
 -------------------------
 
-type Action u r = A.Action NodeRef u r
+type Action u = A.Action NodeRef (U.Value u) (U.Type u) (U.Index u)
 
 runAction :: (MonadBase IO m, U.Union u) => Action u r -> Tx u m r
 runAction = iterM $ \case
