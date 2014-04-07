@@ -3,7 +3,7 @@ module GraphDB.Persistence where
 
 import GraphDB.Util.Prelude
 
-import qualified GraphDB.FreeTransaction.Action as A
+import qualified GraphDB.Action as A
 import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Util.FileSystem as FS
 import qualified GraphDB.Util.IOQueue as Q

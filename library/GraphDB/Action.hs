@@ -1,7 +1,7 @@
 -- |
 -- Provides a low-level transaction over union types 
 -- without distinction between write and read.
-module GraphDB.FreeTransaction.Action where
+module GraphDB.Action where
 
 import GraphDB.Util.Prelude hiding (Read, Write, read, write)
 import qualified GraphDB.Model.Union as U

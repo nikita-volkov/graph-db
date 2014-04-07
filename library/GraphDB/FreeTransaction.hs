@@ -7,7 +7,7 @@ module GraphDB.FreeTransaction where
 import GraphDB.Util.Prelude hiding (Read, Write, read, write)
 import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Model.Edge as E
-import qualified GraphDB.FreeTransaction.Action as A
+import qualified GraphDB.Action as A
 import qualified GraphDB.Session as S
 
 

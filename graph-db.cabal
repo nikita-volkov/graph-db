@@ -43,7 +43,7 @@ library
     GraphDB.Graph
     GraphDB.Persistence
     GraphDB.Client
-    GraphDB.FreeTransaction.Action
+    GraphDB.Action
     GraphDB.Model.Edge
     GraphDB.Model.Union
     GraphDB.Model.Macros

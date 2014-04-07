@@ -1,7 +1,7 @@
 module GraphDB.Graph where
 
 import GraphDB.Util.Prelude
-import qualified GraphDB.FreeTransaction.Action as A
+import qualified GraphDB.Action as A
 import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Graph.Node as N
 import qualified Control.Concurrent.FairRWLock as L

@@ -1,7 +1,7 @@
 module GraphDB.Client where
 
 import GraphDB.Util.Prelude
-import qualified GraphDB.FreeTransaction.Action as A
+import qualified GraphDB.Action as A
 import qualified GraphDB.Service.Protocol as P
 import qualified GraphDB.Model.Union as U
 import qualified Remotion.Client as Remo
