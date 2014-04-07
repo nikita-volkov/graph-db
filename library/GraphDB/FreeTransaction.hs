@@ -8,7 +8,7 @@ import GraphDB.Util.Prelude hiding (Read, Write, read, write)
 import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Model.Edge as E
 import qualified GraphDB.FreeTransaction.Action as A
-import qualified GraphDB.Backend as B
+import qualified GraphDB.Session as S
 
 
 -- | 
@@ -16,16 +16,16 @@ import qualified GraphDB.Backend as B
 -- 
 -- Does not allow concurrency, 
 -- so all concurrent transactions are put on hold for the time of its execution.
-newtype Write backend union stateThread result = 
-  Write (A.Action (B.Node backend) union result) 
+newtype Write session union stateThread result = 
+  Write (S.Action session union result) 
   deriving (Functor, Applicative, Monad)
 
 -- | 
 -- A read-only transaction. 
 -- 
 -- Gets executed concurrently.
-newtype Read backend union stateThread result = 
-  Read (A.Action (B.Node backend) union result) 
+newtype Read session union stateThread result = 
+  Read (S.Action session union result) 
   deriving (Functor, Applicative, Monad)
 
 -- |
@@ -34,7 +34,7 @@ type ReadOrWrite b u s r =
   forall t. (LiftAction t, Monad (t b u s), Applicative (t b u s)) => 
   t b u s r
 
-class LiftAction t where liftAction :: A.Action (B.Node b) u r -> t b u s r
+class LiftAction t where liftAction :: S.Action b u r -> t b u s r
 instance LiftAction Read where liftAction = Read
 instance LiftAction Write where liftAction = Write
 
@@ -45,7 +45,7 @@ instance LiftAction Write where liftAction = Write
 -- which makes it impossible to return a node from transaction,
 -- when it is executed using 'write' or 'read'.
 -- Much inspired by the implementation of 'ST'.
-newtype Node backend stateThread value = Node (B.Node backend)
+newtype Node session stateThread value = Node (S.Node session)
 
 -- |
 -- Create a new node. 

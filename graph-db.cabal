@@ -42,7 +42,6 @@ library
   other-modules:
     GraphDB.Session
     GraphDB.Session.TransactionLog
-    GraphDB.Backend
     GraphDB.FreeTransaction
     GraphDB.FreeTransaction.Action
     GraphDB.Model.Edge
@@ -64,7 +63,6 @@ library
     GraphDB.Util.IOQueue
     GraphDB.Util.Prelude
   exposed-modules:
-    GraphDB
   build-depends:
     -- parsing:
     parsec,

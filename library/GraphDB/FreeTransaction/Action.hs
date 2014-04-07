@@ -8,18 +8,23 @@ import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Model.Edge as E
 
 
-type Action n u = Free (ActionF n u)
+type Action t u = Free (ActionF t u)
 
-data ActionF n u a =
-  NewNode (U.Value u) (n -> a) |
-  GetValue n ((U.Value u) -> a) |
-  SetValue n (U.Value u) a |
-  GetRoot (n -> a) |
-  GetTargetsByType n (U.Type u) ([n] -> a) |
-  GetTargetsByIndex n (U.Index u) ([n] -> a) |
-  AddTarget n n (Bool -> a) |
-  RemoveTarget n n (Bool -> a) |
+data ActionF t u a =
+  NewNode (U.Value u) (Node t -> a) |
+  GetValue (Node t) ((U.Value u) -> a) |
+  SetValue (Node t) (U.Value u) a |
+  GetRoot (Node t -> a) |
+  GetTargetsByType (Node t) (U.Type u) ([Node t] -> a) |
+  GetTargetsByIndex (Node t) (U.Index u) ([Node t] -> a) |
+  AddTarget (Node t) (Node t) (Bool -> a) |
+  RemoveTarget (Node t) (Node t) (Bool -> a) |
   GetStats ((Int, Int) -> a)
   deriving (Functor)
 
+class Tx t where
+  type Node t
+  runAction :: Action t u r -> t u r
+  
 makeFree ''ActionF
+
