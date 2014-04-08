@@ -109,15 +109,16 @@ import qualified Remotion.Server as RemotionServer
 -- |
 -- A monad transformer, 
 -- which can execute transactions and run a server using some engine.
-newtype Session e u m r = Session (EngineSession e u m r)
+newtype Session e u m r = 
+  Session ((Monad (EngineSession e u m)) => EngineSession e u m r)
 
-instance (Monad (EngineSession e u m)) => Monad (Session e u m) where
+instance Monad (Session e u m) where
 instance Functor (Session e u m)
 instance Applicative (Session e u m)
 instance MonadTrans (Session e u)
-instance (Monad (EngineSession e u m)) => MonadIO (Session e u m)
-instance (Monad (EngineSession e u m)) => MonadBase IO (Session e u m)
-instance (Monad (EngineSession e u m)) => MonadBaseControl IO (Session e u m)
+instance MonadIO (Session e u m)
+instance MonadBase IO (Session e u m)
+instance MonadBaseControl IO (Session e u m)
 
 
 type Action e u = 
@@ -424,10 +425,7 @@ data ServerFailure =
 -- |
 -- Run a server on this session.
 serve :: 
-  (
-    MonadIO m, Monad (EngineSession e u m), Engine e, Union.Union u,
-    MonadBaseControl IO m
-  ) => 
+  (MonadIO m, MonadBaseControl IO m, Engine e, Union.Union u) => 
   ServerSettings u -> Session e u m (Either ServerFailure r)
 serve (v, lm, to, mc, log) = do
   transactionsChan <- liftIO $ newChan
