@@ -99,7 +99,7 @@ import qualified Remotion.Client as RemotionClient
 
 -- |
 -- A monad transformer, 
--- which can execute transactions and run a server over some engine.
+-- which can execute transactions and run a server using some engine.
 newtype Session e u m r = Session (EngineSession e u m r)
 
 type Action e u = 
@@ -119,6 +119,8 @@ class Engine e where
 -- 
 -- Does not allow concurrent transactions, 
 -- so all concurrent transactions are put on hold for the time of execution.
+-- 
+-- Concerning the \"forall\" part refer to 'Node'.
 write :: 
   (Engine e, Union.Union u, MonadBaseControl IO m, MonadIO m) => 
   (forall s. Write e u s r) -> Session e u m r
@@ -127,6 +129,8 @@ write (Write a) = runTransaction True a
 -- |
 -- Execute a read-only transaction.
 -- Gets executed concurrently.
+-- 
+-- Concerning the \"forall\" part refer to 'Node'.
 read :: 
   (Engine e, Union.Union u, MonadBaseControl IO m, MonadIO m) => 
   (forall s. Read e u s r) -> Session e u m r
@@ -191,7 +195,7 @@ instance Engine Persistent where
 type PersistentSettings v = (v, Persistence.StoragePath, Persistence.PersistenceBuffering)
 
 -- |
--- Run a persisted session with settings.
+-- Run a persistent session with settings.
 runPersistentSession :: 
   (MonadIO m, MonadBaseControl IO m, Union.PolyValue u v) => 
   PersistentSettings v -> Session Persistent u m r -> m (Either Persistence.PersistenceFailure r)
@@ -239,13 +243,13 @@ data ClientFailure =
   -- a communication timeout has been reached.
   ConnectionFailure |
   -- | 
-  -- Either the graph model does not match the one on server or
+  -- Either the graph model does not match the one on the server or
   -- the server runs an incompatible version of \"graph-db\".
   Incompatible |
   -- | 
   -- The server was unable to deserialize the request.
-  -- This is only expected to happen when the same 'ModelVersion' was specified for
-  -- incompatible models.
+  -- This is only expected to happen when the same 'ClientModelVersion' 
+  -- was used for incompatible models.
   CorruptRequest Text
   deriving (Show, Eq)
 
@@ -304,12 +308,17 @@ instance LiftAction Write where liftAction = Write
 -- | 
 -- A transaction-local reference to an actual node of the graph.
 -- 
--- @s@ is a so called "state thread".
+-- @s@ is the so called \"state thread\".
 -- It is an uninstantiated type-variable,
 -- which makes it impossible to return a node from transaction,
 -- when it is executed using 'write' or 'read'.
 -- Much inspired by the implementation of 'ST'.
 newtype Node e u s v = Node (EngineNode e u)
+
+
+
+-- ** Operations
+-------------------------
 
 -- |
 -- Create a new node. 
@@ -385,8 +394,7 @@ getStats = liftAction $ Action.getStats
 -- |
 -- A monad transformer for running the server.
 -- 
--- Can only be executed inside a engine 'Session' using 'serve',
--- thus serving that particular engine.
+-- Can only be executed inside a 'Session' using 'serve'.
 data Serve engine union (monad :: * -> *) result
 
 -- |
