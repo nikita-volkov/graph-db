@@ -103,7 +103,7 @@ import qualified Remotion.Client as RemotionClient
 newtype Session e u m r = Session (EngineSession e u m r)
 
 type Action e u = 
-  Action.Action (EngineNode e u) (Union.Value u) (Union.Type u) (Union.Index u) Identity
+  Action.Action (EngineNode e u) (Union.Value u) (Union.Type u) (Union.Index u)
 
 -- |
 -- A session engine.
@@ -112,7 +112,7 @@ class Engine e where
   type EngineNode e u
   runTransaction :: 
     (Union.Union u, MonadBaseControl IO m, MonadIO m) => 
-    Bool -> Action e u r -> Session e u m r
+    Bool -> Action e u m r -> Session e u m r
 
 -- |
 -- Execute a writing transaction.
@@ -124,7 +124,7 @@ class Engine e where
 write :: 
   (Engine e, Union.Union u, MonadBaseControl IO m, MonadIO m) => 
   (forall s. Write e u s r) -> Session e u m r
-write (Write a) = runTransaction True a
+write (Write a) = runTransaction True $ hoistFreeT (return . runIdentity) $ a
 
 -- |
 -- Execute a read-only transaction.
@@ -134,7 +134,7 @@ write (Write a) = runTransaction True a
 read :: 
   (Engine e, Union.Union u, MonadBaseControl IO m, MonadIO m) => 
   (forall s. Read e u s r) -> Session e u m r
-read (Read a) = runTransaction False a
+read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
 
 -- -- |
 -- -- Run a server on this session.
@@ -159,8 +159,7 @@ instance Engine Nonpersistent where
   type EngineSession Nonpersistent u m r = Graph.Session u m r
   type EngineNode Nonpersistent u = Graph.Node u
   runTransaction w a = 
-    Session $ Graph.runTransaction w $ Graph.runAction $ 
-    hoistFreeT (return . runIdentity) $ a
+    Session $ Graph.runTransaction w $ Graph.runAction $ a
 
 -- |
 -- Run a nonpersistent session, 
@@ -183,8 +182,7 @@ instance Engine Persistent where
   type EngineSession Persistent u m r = Persistence.Session u m r
   type EngineNode Persistent u = Int
   runTransaction w a =
-    Session $ Persistence.runTransaction w $ Persistence.runAction $ 
-    hoistFreeT (return . runIdentity) $ a
+    Session $ Persistence.runTransaction w $ Persistence.runAction $ a
 
 -- |
 -- Settings of a persistent session.
@@ -215,8 +213,7 @@ instance Engine Client where
   type EngineSession Client u m r = Client.Session u m r
   type EngineNode Client u = Client.Node
   runTransaction w a =
-    Session $ Client.runTransaction w $ Client.runAction $ 
-    hoistFreeT (return . runIdentity) $ a
+    Session $ Client.runTransaction w $ Client.runAction $ a
 
 -- | 
 -- Settings of a client session.
@@ -282,7 +279,7 @@ runClientSession (v, url) (Session ses) =
 -- 
 -- Gets executed concurrently.
 newtype Read e u s r = 
-  Read (Action e u r) 
+  Read (Action e u Identity r)
   deriving (Functor, Applicative, Monad)
 
 -- | 
@@ -291,7 +288,7 @@ newtype Read e u s r =
 -- Does not allow concurrency, 
 -- so all concurrent transactions are put on hold for the time of its execution.
 newtype Write e u s r = 
-  Write (Action e u r) 
+  Write (Action e u Identity r)
   deriving (Functor, Applicative, Monad)
 
 -- |
@@ -301,7 +298,7 @@ type ReadOrWrite e u s r =
   t e u s r
 
 class LiftAction t where 
-  liftAction :: Action e u r -> t e u s r
+  liftAction :: Action e u Identity r -> t e u s r
 instance LiftAction Read where liftAction = Read
 instance LiftAction Write where liftAction = Write
 
