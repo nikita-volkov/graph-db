@@ -49,10 +49,10 @@ module GraphDB
   -- ** Client
   Client,
   ClientSettings,
-  RemotionClient.UserProtocolSignature,
+  ClientModelVersion,
   RemotionClient.URL(..),
   RemotionClient.Credentials,
-  RemotionClient.Failure(..),
+  ClientFailure(..),
   runClientSession,
   -- * Transactions
   Read,
@@ -216,14 +216,57 @@ instance Engine Client where
 
 -- | 
 -- Settings of a client session.
-type ClientSettings = (RemotionClient.UserProtocolSignature, RemotionClient.URL)
+type ClientSettings = (ClientModelVersion, RemotionClient.URL)
+
+-- |
+-- Version of the graph model, 
+-- which is used to check the client and server compatibility during handshake.
+type ClientModelVersion = Int
+
+data ClientFailure =
+  -- |
+  -- Unable to connect to the provided url.
+  UnreachableURL |
+  -- |
+  -- The server has too many connections already.
+  -- It's suggested to retry later.
+  ServerIsBusy |
+  -- |
+  -- Incorrect credentials.
+  Unauthenticated |
+  -- |
+  -- Either the connection got interrupted for some reason or
+  -- a communication timeout has been reached.
+  ConnectionFailure |
+  -- | 
+  -- Either the graph model does not match the one on server or
+  -- the server runs an incompatible version of \"graph-db\".
+  Incompatible |
+  -- | 
+  -- The server was unable to deserialize the request.
+  -- This is only expected to happen when the same 'ModelVersion' was specified for
+  -- incompatible models.
+  CorruptRequest Text
+  deriving (Show, Eq)
 
 -- |
 -- Run a client session with settings.
 runClientSession :: 
   (MonadIO m, MonadBaseControl IO m, Union.Union u) =>
-  ClientSettings -> Session Client u m r -> m (Either RemotionClient.Failure r)
-runClientSession s (Session ses) = Client.runSession s ses
+  ClientSettings -> Session Client u m r -> m (Either ClientFailure r)
+runClientSession (v, url) (Session ses) = 
+  fmap (fmapL adaptRemotionFailure) $ Client.runSession (rv, url) $ ses
+  where
+    adaptRemotionFailure = \case
+      RemotionClient.UnreachableURL -> UnreachableURL
+      RemotionClient.ServerIsBusy -> ServerIsBusy
+      RemotionClient.ProtocolVersionMismatch _ _ -> Incompatible
+      RemotionClient.UserProtocolSignatureMismatch _ _ -> Incompatible
+      RemotionClient.Unauthenticated -> Unauthenticated
+      RemotionClient.ConnectionInterrupted -> ConnectionFailure
+      RemotionClient.TimeoutReached _ -> ConnectionFailure
+      RemotionClient.CorruptRequest t -> CorruptRequest t
+    rv = fromString $ show $ v
 
 
 
