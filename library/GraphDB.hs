@@ -33,8 +33,6 @@ module GraphDB
 (
   -- * Session
   Session,
-  read,
-  write,
   Engine,
   -- * Engines
   -- ** Nonpersistent
@@ -60,6 +58,8 @@ module GraphDB
   Write,
   ReadOrWrite,
   Node,
+  read,
+  write,
   -- ** Operations
   newNode,
   getValue,
