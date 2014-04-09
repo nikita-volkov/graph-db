@@ -11,11 +11,31 @@ import qualified Remotion.Client as R
 -------------------------
 
 newtype Session u m r = 
-  Session (R.Client (P.Request u) (P.Response u) m r)
+  Session (Client u m r)
   deriving (Functor, Applicative, Monad, MonadIO)
+
+type Client u = R.Client (P.Request u) (P.Response u)
 
 instance MonadTrans (Session u) where
   lift = Session . lift
+
+instance MonadTransControl (Session u) where
+  newtype StT (Session u) r = SessionStT (StT (Client u) r)
+  liftWith runInInner =
+    Session $ liftWith $ \runClient -> runInInner $ \(Session s) ->
+    liftM SessionStT $ runClient $ s
+  restoreT inner = do
+    Session $ do
+      SessionStT r <- lift $ inner
+      restoreT $ return $ r
+
+instance (MonadBase IO m) => MonadBase IO (Session u m) where
+  liftBase = Session . liftBase
+
+instance (MonadBaseControl IO m) => MonadBaseControl IO (Session u m) where
+  newtype StM (Session u m) a = SessionStM { unSessionStM :: ComposeSt (Session u) m a }
+  liftBaseWith = defaultLiftBaseWith SessionStM
+  restoreM = defaultRestoreM unSessionStM
 
 type SessionSettings = R.Settings
 
