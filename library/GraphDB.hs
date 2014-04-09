@@ -132,7 +132,7 @@ runNonpersistentSession v s = do
 -------------------------
 
 instance Session Persistent.PersistentSession where
-  type SessionNode Persistent.PersistentSession u = Int
+  type SessionNode Persistent.PersistentSession u = Persistent.Node u
   runTransaction w a = Persistent.runTransaction w $ Persistent.runAction $ a
 
 -- |

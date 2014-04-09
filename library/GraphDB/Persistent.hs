@@ -120,14 +120,48 @@ runTransaction write (Tx tx) = PersistentSession $ do
 -- * Action
 -------------------------
 
-type Action u = A.Action L.NodeRef (U.Value u) (U.Type u) (U.Index u)
+type Action u = A.Action (Node u) (U.Value u) (U.Type u) (U.Index u)
+type Node u = (U.Node u, Int)
 
 runAction :: (MonadBase IO m, U.Union u) => Action u m r -> Tx u m r
 runAction = iterTM $ \case
   A.NewNode v c -> do
     record $ L.NewNode v
-    ir <- Tx $ lift $ lift $ NP.runAction $ A.newNode v
-    r <- newRef ir
+    n <- runInner $ A.newNode v
+    r <- newRef n
+    c (n, r)
+  A.GetValue (n, r) c -> do
+    v <- runInner $ A.getValue n
+    c v    
+  A.SetValue (n, r) v c -> do
+    record $ L.SetValue r v
+    runInner $ A.setValue n v
+    c
+  A.GetRoot c -> do
+    record $ L.GetRoot
+    n <- runInner $ A.getRoot
+    r <- newRef n
+    c (n, r)
+  A.GetTargetsByType (n, r) t c -> do
+    record $ L.GetTargetsByType r t
+    rns <- runInner $ A.getTargetsByType n t
+    r <- forM rns $ \n -> (n,) <$> newRef n
+    c r
+  A.GetTargetsByIndex (n, r) i c -> do
+    record $ L.GetTargetsByIndex r i
+    rns <- runInner $ A.getTargetsByIndex n i
+    r <- forM rns $ \n -> (n,) <$> newRef n
+    c r
+  A.AddTarget (sn, sr) (tn, tr) c -> do
+    record $ L.AddTarget sr tr
+    r <- runInner $ A.addTarget sn tn
+    c r
+  A.RemoveTarget (sn, sr) (tn, tr) c -> do
+    record $ L.RemoveTarget sr tr
+    r <- runInner $ A.removeTarget sn tn
+    c r
+  A.GetStats c -> do
+    r <- runInner $ A.getStats
     c r
   where
     record e = Tx $ modify $ (:) e
@@ -135,4 +169,5 @@ runAction = iterTM $ \case
       index <- get
       modify succ
       return $ index
+    runInner = Tx . lift . lift . NP.runAction
 
