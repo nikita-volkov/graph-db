@@ -1,34 +1,27 @@
-{-# LANGUAGE UndecidableInstances #-}
 -- |
--- The API is based on several layers of monads and monad transformers:
+-- The API is based on multiple monads and monad transformers:
 -- 
 -- * 'Session'. 
--- The main monad transformer.
--- It executes transactions and runs the server.
+-- A class of monad transformers, 
+-- which execute transactions and runs the server.
 -- 
 -- * 'Read' and 'Write' transactions.
 -- Monads,
 -- which execute granular updates or reads on the database with ACID guarantees.
 -- 
--- * 'Serve'.
--- A monad transformer for running a server.
--- It can only be executed inside a session,
--- thus serving the engine of that session.
+-- The library provides three types of sessions:
 -- 
--- Sessions are parameterized by types with an instance of the 'Engine' class. 
--- Essentially those are what defines the behaviour of session.
--- The library provides three types of those:
+-- * A 'Nonpersistent.NonpersistentSession' over an in-memory data structure.
 -- 
--- * An in-memory 'Nonpersistent' data structure.
+-- * A 'Persistent.PersistentSession' over an in-memory data structure. 
 -- 
--- * A 'Persistent' version of an in-memory data structure. 
--- 
--- * A 'Client', the networking interface for communication with server.
+-- * A 'Client.ClientSession', 
+-- which is a networking interface for communication with server.
 -- 
 -- The API of this library is free of exceptions and resource management.
 -- This is achieved using monad transformers.
 -- All the IO failures are encoded in the results of monad transformers.
--- All the resources are properly released.
+-- All the resources are acquired and released automatically.
 module GraphDB
 (
   -- * Sessions
