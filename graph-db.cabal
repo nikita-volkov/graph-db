@@ -41,9 +41,9 @@ library
     library
   other-modules:
     GraphDB.Server
-    GraphDB.Graph
-    GraphDB.Persistence
-    GraphDB.Persistence.Log
+    GraphDB.Nonpersistent
+    GraphDB.Persistent
+    GraphDB.Persistent.Log
     GraphDB.Client
     GraphDB.Action
     GraphDB.Model.Edge

@@ -1,4 +1,4 @@
-module GraphDB.Persistence where
+module GraphDB.Persistent where
 
 import GraphDB.Util.Prelude
 
@@ -7,10 +7,10 @@ import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Util.FileSystem as FS
 import qualified GraphDB.Util.IOQueue as IOQueue
 import qualified GraphDB.Storage as S
-import qualified GraphDB.Graph as G
+import qualified GraphDB.Nonpersistent as G
 import qualified GraphDB.Graph.Node as Node
 import qualified GraphDB.Util.DIOVector as DV
-import qualified GraphDB.Persistence.Log as L
+import qualified GraphDB.Persistent.Log as L
 
 
 -- * Session

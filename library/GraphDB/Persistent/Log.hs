@@ -1,5 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
-module GraphDB.Persistence.Log where
+module GraphDB.Persistent.Log where
 
 import GraphDB.Util.Prelude
 

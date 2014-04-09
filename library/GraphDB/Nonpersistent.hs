@@ -1,4 +1,4 @@
-module GraphDB.Graph where
+module GraphDB.Nonpersistent where
 
 import GraphDB.Util.Prelude
 import qualified GraphDB.Action as A

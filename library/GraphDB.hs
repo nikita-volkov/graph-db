@@ -41,9 +41,9 @@ module GraphDB
   -- ** Persistent
   Persistent,
   PersistentSettings,
-  Persistence.StoragePath,
-  Persistence.PersistenceBuffering,
-  Persistence.PersistenceFailure(..),
+  Persistent.StoragePath,
+  Persistent.PersistenceBuffering,
+  Persistent.PersistenceFailure(..),
   runPersistentSession,
   -- ** Client
   Client,
@@ -93,10 +93,10 @@ import qualified GraphDB.Model.Union as Union
 import qualified GraphDB.Model.Edge as Edge
 import qualified GraphDB.Model.Macros as Macros
 import qualified GraphDB.Action as Action
-import qualified GraphDB.Graph as Graph
+import qualified GraphDB.Nonpersistent as Nonpersistent
 import qualified GraphDB.Graph.Node as Node
 import qualified GraphDB.Client as Client
-import qualified GraphDB.Persistence as Persistence
+import qualified GraphDB.Persistent as Persistent
 import qualified GraphDB.Server as Server
 import qualified Remotion.Client as RemotionClient
 import qualified Remotion.Server as RemotionServer
@@ -170,10 +170,10 @@ read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
 data Nonpersistent
 
 instance Engine Nonpersistent where
-  type EngineSession Nonpersistent u m = Graph.Session u m
-  type EngineNode Nonpersistent u = Graph.Node u
+  type EngineSession Nonpersistent u m = Nonpersistent.Session u m
+  type EngineNode Nonpersistent u = Nonpersistent.Node u
   runTransaction w a = 
-    Session $ Graph.runTransaction w $ Graph.runAction $ a
+    Session $ Nonpersistent.runTransaction w $ Nonpersistent.runAction $ a
 
 -- |
 -- Run a nonpersistent session, 
@@ -181,7 +181,7 @@ instance Engine Nonpersistent where
 runNonpersistentSession :: (Union.PolyValue u v, MonadIO m) => v -> Session Nonpersistent u m r -> m r
 runNonpersistentSession v (Session s) = do
   n <- liftIO $ Node.new $ snd $ Union.packValue $ v
-  Graph.runSession n s
+  Nonpersistent.runSession n s
 
 
 
@@ -193,10 +193,10 @@ runNonpersistentSession v (Session s) = do
 data Persistent
 
 instance Engine Persistent where
-  type EngineSession Persistent u m = Persistence.Session u m
+  type EngineSession Persistent u m = Persistent.Session u m
   type EngineNode Persistent u = Int
   runTransaction w a =
-    Session $ Persistence.runTransaction w $ Persistence.runAction $ a
+    Session $ Persistent.runTransaction w $ Persistent.runAction $ a
 
 -- |
 -- Settings of a persistent session.
@@ -204,15 +204,15 @@ instance Engine Persistent where
 -- The first parameter is an initial value for the root node.
 -- It will only be used if the graph has not been previously persisted,
 -- i.e. on the first run of the DB.
-type PersistentSettings v = (v, Persistence.StoragePath, Persistence.PersistenceBuffering)
+type PersistentSettings v = (v, Persistent.StoragePath, Persistent.PersistenceBuffering)
 
 -- |
 -- Run a persistent session with settings.
 runPersistentSession :: 
   (MonadIO m, MonadBaseControl IO m, Union.PolyValue u v) => 
-  PersistentSettings v -> Session Persistent u m r -> m (Either Persistence.PersistenceFailure r)
+  PersistentSettings v -> Session Persistent u m r -> m (Either Persistent.PersistenceFailure r)
 runPersistentSession (v, p, e) (Session s) = do
-  Persistence.runSession (snd $ Union.packValue $ v, p, e) s
+  Persistent.runSession (snd $ Union.packValue $ v, p, e) s
 
 
 
