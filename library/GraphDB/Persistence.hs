@@ -16,7 +16,33 @@ import qualified GraphDB.Persistence.Log as L
 -- * Session
 -------------------------
 
-type Session u m = ReaderT (Storage u, IOQueue.IOQueue) (G.Session u m)
+newtype Session u m r = 
+  Session { unSession :: ReaderT (Storage u, IOQueue.IOQueue) (G.Session u m) r }
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance MonadTrans (Session u) where 
+  lift = Session . lift . lift
+
+instance MonadTransControl (Session u) where
+  newtype StT (Session u) r = SessionStT (StT (G.Session u) r)
+  liftWith runInInner = do
+    env <- Session $ ask
+    Session $ lift $ liftWith $ \runGraphSession -> runInInner $ 
+      liftM SessionStT . runGraphSession . flip runReaderT env . unSession
+
+  restoreT inner = do
+    Session $ lift $ do
+      SessionStT r <- lift inner
+      restoreT $ return $ r
+
+instance (MonadBase IO m) => MonadBase IO (Session u m) where
+  liftBase = Session . liftBase
+
+instance (MonadBaseControl IO m) => MonadBaseControl IO (Session u m) where
+  newtype StM (Session u m) a = SessionStM { unSessionStM :: ComposeSt (Session u) m a }
+  liftBaseWith = defaultLiftBaseWith SessionStM
+  restoreM = defaultRestoreM unSessionStM
+
 type Storage u = S.Storage (G.Node u) (L.Log u)
 
 data PersistenceFailure = 
@@ -45,7 +71,7 @@ type PersistenceBuffering = Int
 runSession :: 
   (MonadIO m, MonadBaseControl IO m, U.Serializable IO u, U.Union u) => 
   Settings u -> Session u m r -> m (Either PersistenceFailure r)
-runSession (v, p, buffering) ses = do
+runSession (v, p, buffering) (Session ses) = do
   r <- liftBaseWith $ \runInBase -> do
     let
       acquire = do
@@ -80,7 +106,7 @@ instance MonadTrans (Tx u) where
   lift = Tx . lift . lift . lift
 
 runTransaction :: (MonadBaseControl IO m, U.Serializable IO u) => Bool -> Tx u m r -> Session u m r
-runTransaction write (Tx tx) = do
+runTransaction write (Tx tx) = Session $ do
   (r, log) <- 
     lift $ G.runTransaction write $ flip evalStateT 0 $ flip runStateT [] $ tx
   when write $ do
