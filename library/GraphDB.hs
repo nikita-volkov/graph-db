@@ -31,22 +31,20 @@
 -- All the resources are properly released.
 module GraphDB
 (
-  -- * Session
+  -- * Sessions
   Session,
-  Engine,
-  -- * Engines
   -- ** Nonpersistent
-  Nonpersistent,
+  NonpersistentSession,
   runNonpersistentSession,
   -- ** Persistent
-  Persistent,
+  PersistentSession,
   PersistentSettings,
   Persistent.StoragePath,
   Persistent.PersistenceBuffering,
   Persistent.PersistenceFailure(..),
   runPersistentSession,
   -- ** Client
-  Client,
+  ClientSession,
   ClientSettings,
   ClientModelVersion,
   RemotionClient.URL(..),
@@ -93,72 +91,30 @@ import qualified GraphDB.Model.Union as Union
 import qualified GraphDB.Model.Edge as Edge
 import qualified GraphDB.Model.Macros as Macros
 import qualified GraphDB.Action as Action
-import qualified GraphDB.Nonpersistent as Nonpersistent
 import qualified GraphDB.Graph as Graph
 import qualified GraphDB.Client as Client
 import qualified GraphDB.Persistent as Persistent
+import qualified GraphDB.Nonpersistent as Nonpersistent
 import qualified GraphDB.Server as Server
 import qualified Remotion.Client as RemotionClient
 import qualified Remotion.Server as RemotionServer
 
 
 
--- * Session
+-- * Sessions
 -------------------------
 
 -- |
--- A monad transformer, 
--- which can execute transactions and run a server using some engine.
-newtype Session e u m r = 
-  Session ((Monad (EngineSession e u m)) => EngineSession e u m r)
-
-instance Monad (Session e u m) where
-instance Functor (Session e u m)
-instance Applicative (Session e u m)
-instance MonadTrans (Session e u)
-instance MonadIO (Session e u m)
-instance MonadBase IO (Session e u m)
-instance MonadBaseControl IO (Session e u m)
-
-
-type Action e u = 
-  Action.Action (EngineNode e u) (Union.Value u) (Union.Type u) (Union.Index u)
-
--- |
--- A session engine.
-class Engine e where
-  type EngineSession e u m
-  type EngineNode e u
+-- A class of monad transformers, 
+-- which can execute transactions and run a server.
+class Session s where
+  type SessionNode s u
   runTransaction :: 
-    (Union.Union u, MonadBaseControl IO m, MonadIO m) => 
-    Bool -> Action e u m r -> Session e u m r
+    (MonadIO m, MonadBaseControl IO m, Union.Union u) => 
+    Bool -> SessionAction s u m r -> s u m r
 
--- |
--- Execute a writing transaction.
--- 
--- Does not allow concurrent transactions, 
--- so all concurrent transactions are put on hold for the time of execution.
--- 
--- Concerning the \"forall\" part refer to 'Node'.
-write :: 
-  (Engine e, Union.Union u, MonadBaseControl IO m, MonadIO m) => 
-  (forall s. Write e u s r) -> Session e u m r
-write (Write a) = runTransaction True $ hoistFreeT (return . runIdentity) $ a
-
--- |
--- Execute a read-only transaction.
--- Gets executed concurrently.
--- 
--- Concerning the \"forall\" part refer to 'Node'.
-read :: 
-  (Engine e, Union.Union u, MonadBaseControl IO m, MonadIO m) => 
-  (forall s. Read e u s r) -> Session e u m r
-read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
-
-
-
--- * Engines
--------------------------
+type Action n u = Action.Action n (Union.Value u) (Union.Type u) (Union.Index u)
+type SessionAction s u = Action (SessionNode s u) u
 
 
 
@@ -166,20 +122,18 @@ read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
 -------------------------
 
 -- |
--- An in-memory graph datastructure with no persistence.
-data Nonpersistent
+-- A session of an in-memory graph datastructure with no persistence.
+type NonpersistentSession = Nonpersistent.Session
 
-instance Engine Nonpersistent where
-  type EngineSession Nonpersistent u m = Nonpersistent.Session u m
-  type EngineNode Nonpersistent u = Nonpersistent.Node u
-  runTransaction w a = 
-    Session $ Nonpersistent.runTransaction w $ Nonpersistent.runAction $ a
+instance Session NonpersistentSession where
+  type SessionNode NonpersistentSession u = Nonpersistent.Node u
+  runTransaction w a = Nonpersistent.runTransaction w $ Nonpersistent.runAction $ a
 
 -- |
 -- Run a nonpersistent session, 
 -- while providing an initial value for the root node.
-runNonpersistentSession :: (Union.PolyValue u v, MonadIO m) => v -> Session Nonpersistent u m r -> m r
-runNonpersistentSession v (Session s) = do
+runNonpersistentSession :: (Union.PolyValue u v, MonadIO m) => v -> NonpersistentSession u m r -> m r
+runNonpersistentSession v s = do
   n <- liftIO $ Graph.new $ snd $ Union.packValue $ v
   Nonpersistent.runSession n s
 
@@ -189,14 +143,12 @@ runNonpersistentSession v (Session s) = do
 -------------------------
 
 -- |
--- An in-memory graph datastructure with persistence.
-data Persistent
+-- A session of an in-memory graph datastructure with persistence.
+type PersistentSession = Persistent.Session
 
-instance Engine Persistent where
-  type EngineSession Persistent u m = Persistent.Session u m
-  type EngineNode Persistent u = Int
-  runTransaction w a =
-    Session $ Persistent.runTransaction w $ Persistent.runAction $ a
+instance Session PersistentSession where
+  type SessionNode PersistentSession u = Int
+  runTransaction w a = Persistent.runTransaction w $ Persistent.runAction $ a
 
 -- |
 -- Settings of a persistent session.
@@ -210,8 +162,8 @@ type PersistentSettings v = (v, Persistent.StoragePath, Persistent.PersistenceBu
 -- Run a persistent session with settings.
 runPersistentSession :: 
   (MonadIO m, MonadBaseControl IO m, Union.PolyValue u v) => 
-  PersistentSettings v -> Session Persistent u m r -> m (Either Persistent.PersistenceFailure r)
-runPersistentSession (v, p, e) (Session s) = do
+  PersistentSettings v -> PersistentSession u m r -> m (Either Persistent.PersistenceFailure r)
+runPersistentSession (v, p, e) s = do
   Persistent.runSession (snd $ Union.packValue $ v, p, e) s
 
 
@@ -220,14 +172,12 @@ runPersistentSession (v, p, e) (Session s) = do
 -------------------------
 
 -- | 
--- A networking interface for communication with server.
-data Client
+-- A session of a networking interface for communication with server.
+type ClientSession = Client.Session
 
-instance Engine Client where
-  type EngineSession Client u m = Client.Session u m
-  type EngineNode Client u = Int
-  runTransaction w a =
-    Session $ Client.runTransaction w $ Client.runAction $ a
+instance Session ClientSession where
+  type SessionNode ClientSession u = Int
+  runTransaction w a = Client.runTransaction w $ Client.runAction $ a
 
 -- | 
 -- Settings of a client session.
@@ -268,8 +218,8 @@ data ClientFailure =
 -- Run a client session with settings.
 runClientSession :: 
   (MonadIO m, MonadBaseControl IO m, Union.Union u) =>
-  ClientSettings -> Session Client u m r -> m (Either ClientFailure r)
-runClientSession (v, url) (Session ses) = 
+  ClientSettings -> ClientSession u m r -> m (Either ClientFailure r)
+runClientSession (v, url) (ses) = 
   fmap (fmapL adaptRemotionFailure) $ Client.runSession (rv, url) $ ses
   where
     adaptRemotionFailure = \case
@@ -292,8 +242,8 @@ runClientSession (v, url) (Session ses) =
 -- A read-only transaction. 
 -- 
 -- Gets executed concurrently.
-newtype Read e u s r = 
-  Read (Action e u Identity r)
+newtype Read s u t r = 
+  Read (SessionAction s u Identity r)
   deriving (Functor, Applicative, Monad)
 
 -- | 
@@ -301,30 +251,48 @@ newtype Read e u s r =
 -- 
 -- Does not allow concurrency, 
 -- so all concurrent transactions are put on hold for the time of its execution.
-newtype Write e u s r = 
-  Write (Action e u Identity r)
+newtype Write s u t r = 
+  Write (SessionAction s u Identity r)
   deriving (Functor, Applicative, Monad)
 
 -- |
 -- Transactions of this type can be composed with both 'Read' and 'Write'.
-type ReadOrWrite e u s r = 
-  forall t. (LiftAction t, Monad (t e u s), Applicative (t e u s)) => 
-  t e u s r
+type ReadOrWrite s u t r = 
+  forall tr. (Transaction tr, Monad (tr s u t), Applicative (tr s u t)) => 
+  tr s u t r
 
-class LiftAction t where 
-  liftAction :: Action e u Identity r -> t e u s r
-instance LiftAction Read where liftAction = Read
-instance LiftAction Write where liftAction = Write
+class Transaction tr where 
+  liftAction :: SessionAction s u Identity r -> tr s u t r
+instance Transaction Read where liftAction = Read
+instance Transaction Write where liftAction = Write
 
 -- | 
 -- A transaction-local reference to an actual node of the graph.
 -- 
--- @s@ is the so called \"state thread\".
+-- @t@ is the so called \"state thread\".
 -- It is an uninstantiated type-variable,
 -- which makes it impossible to return a node from transaction,
 -- when it is executed using 'write' or 'read'.
 -- Much inspired by the implementation of 'ST'.
-newtype Node e u s v = Node (EngineNode e u)
+newtype Node s u t v = Node (SessionNode s u)
+
+-- |
+-- Execute a read-only transaction.
+-- Gets executed concurrently.
+-- 
+-- Concerning the \"forall\" part refer to 'Node'.
+read :: (Union.Union u, Session s, MonadBaseControl IO m, MonadIO m) => (forall st. Read s u t r) -> s u m r
+read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
+
+-- |
+-- Execute a writing transaction.
+-- 
+-- Does not allow concurrent transactions, 
+-- so all concurrent transactions are put on hold for the time of execution.
+-- 
+-- Concerning the \"forall\" part refer to 'Node'.
+write :: (Union.Union u, Session s, MonadBaseControl IO m, MonadIO m) => (forall st. Write s u t r) -> s u m r
+write (Write a) = runTransaction True $ hoistFreeT (return . runIdentity) $ a
 
 
 
@@ -336,24 +304,24 @@ newtype Node e u s v = Node (EngineNode e u)
 -- 
 -- This node won't get stored if you don't insert at least a single edge 
 -- from another stored node to it.
-newNode :: (Union.PolyValue u v) => v -> Write e u s (Node e u s v)
+newNode :: (Union.PolyValue u v) => v -> Write s u t (Node s u t v)
 newNode v = fmap Node $ liftAction $ Action.newNode $ snd $ Union.packValue v
 
 -- | 
 -- Get a value of the node.
-getValue :: (Union.PolyValue u v) => Node e u s v -> ReadOrWrite e u s v
+getValue :: (Union.PolyValue u v) => Node s u t v -> ReadOrWrite s u t v
 getValue (Node n) = 
   fmap (fromMaybe ($bug "Unexpected packed value") . Union.unpackValue) $ 
   liftAction $ Action.getValue n
 
 -- | 
 -- Replace the value of the specified node.
-setValue :: (Union.PolyValue u v) => Node e u s v -> v -> Write e u s ()
+setValue :: (Union.PolyValue u v) => Node s u t v -> v -> Write s u t ()
 setValue (Node n) v = Write $ Action.setValue n (snd $ Union.packValue v)
 
 -- |
 -- Get the root node.
-getRoot :: ReadOrWrite e u s (Node e u s u)
+getRoot :: ReadOrWrite s u t (Node s u t u)
 getRoot = fmap Node $ liftAction $ Action.getRoot
 
 -- |
@@ -362,13 +330,13 @@ getRoot = fmap Node $ liftAction $ Action.getRoot
 -- 
 -- > getTargetsByType node (undefined :: Artist)
 -- 
-getTargetsByType :: (Union.PolyValue u v') => Node e u s v -> v' -> ReadOrWrite e u s [Node e u s v']
+getTargetsByType :: (Union.PolyValue u v') => Node s u t v -> v' -> ReadOrWrite s u t [Node s u t v']
 getTargetsByType (Node n) v =
   fmap (map Node) $ liftAction $ Action.getTargetsByType n $ fst $ Union.packValue v
 
 -- |
 -- Get target nodes reachable by the provided index.
-getTargetsByIndex :: (Union.PolyIndex u i) => Node e u s v -> i -> ReadOrWrite e u s [Node e u s v']
+getTargetsByIndex :: (Union.PolyIndex u i) => Node s u t v -> i -> ReadOrWrite s u t [Node s u t v']
 getTargetsByIndex (Node n) i = 
   fmap (map Node) $ liftAction $ Action.getTargetsByIndex n $ Union.packIndex i
 
@@ -378,7 +346,7 @@ getTargetsByIndex (Node n) i =
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node is already there it will return 'False'.
-addTarget :: (Edge.Edge v v') => Node e u s v -> Node e u s v' -> Write e u s Bool
+addTarget :: (Edge.Edge v v') => Node s u t v -> Node s u t v' -> Write s u t Bool
 addTarget (Node s) (Node t) = Write $ Action.addTarget s t
 
 -- |
@@ -386,14 +354,14 @@ addTarget (Node s) (Node t) = Write $ Action.addTarget s t
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node is not found it will return 'False'.
-removeTarget :: (Edge.Edge v v') => Node e u s v -> Node e u s v' -> Write e u s Bool
+removeTarget :: (Edge.Edge v v') => Node s u t v -> Node s u t v' -> Write s u t Bool
 removeTarget (Node s) (Node t) = Write $ Action.removeTarget s t
 
 -- |
 -- Count the total amounts of distinct nodes and edges in the graph.
 -- 
 -- Requires a traversal of the whole graph, so beware.
-getStats :: ReadOrWrite e u s (Int, Int)
+getStats :: ReadOrWrite s u t (Int, Int)
 getStats = liftAction $ Action.getStats
 
 
@@ -403,7 +371,7 @@ getStats = liftAction $ Action.getStats
 
 -- |
 -- Settings of server.
-type ServerSettings u = 
+type ServerSettings = 
   (
     ServerModelVersion, 
     RemotionServer.ListeningMode, 
@@ -425,8 +393,9 @@ data ServerFailure =
 -- |
 -- Run a server on this session.
 serve :: 
-  (MonadIO m, MonadBaseControl IO m, Engine e, Union.Union u) => 
-  ServerSettings u -> Session e u m (Either ServerFailure r)
+  (Session s, MonadIO (s u m), MonadBaseControl IO (s u m), 
+   MonadBaseControl IO m, MonadIO m, Union.Union u) => 
+  ServerSettings -> s u m (Either ServerFailure r)
 serve (v, lm, to, mc, log) = do
   transactionsChan <- liftIO $ newChan
   let
@@ -441,5 +410,5 @@ serve (v, lm, to, mc, log) = do
   where
     adaptRemotionFailure = \case
       RemotionServer.ListeningSocketIsBusy -> ListeningSocketIsBusy
-
+ 
 
