@@ -40,6 +40,7 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Server
     GraphDB.Graph
     GraphDB.Persistence
     GraphDB.Persistence.Log
@@ -87,6 +88,7 @@ library
     system-filepath == 0.4.*,
     system-fileio == 0.3.*,
     -- concurrency:
+    lifted-async == 0.1.*,
     stm,
     SafeSemaphore == 0.9.*,
     monad-stm,
@@ -195,6 +197,7 @@ test-suite graph-db-htf-test-suite
     system-filepath == 0.4.*,
     system-fileio == 0.3.*,
     -- concurrency:
+    lifted-async == 0.1.*,
     stm,
     SafeSemaphore == 0.9.*,
     monad-stm,

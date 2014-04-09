@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- The API is based on several layers of monads and monad transformers:
 -- 
@@ -32,8 +33,6 @@ module GraphDB
 (
   -- * Session
   Session,
-  read,
-  write,
   Engine,
   -- * Engines
   -- ** Nonpersistent
@@ -59,6 +58,8 @@ module GraphDB
   Write,
   ReadOrWrite,
   Node,
+  read,
+  write,
   -- ** Operations
   newNode,
   getValue,
@@ -76,8 +77,14 @@ module GraphDB
   Edge.Edge(..),
   Macros.generateUnion,
   -- * Server
-  Serve,
-  block,
+  ServerSettings,
+  ServerModelVersion,
+  RemotionServer.ListeningMode,
+  RemotionServer.Timeout,
+  RemotionServer.MaxClients,
+  RemotionServer.Log,
+  ServerFailure(..),
+  serve,
 )
 where
 
@@ -90,7 +97,9 @@ import qualified GraphDB.Graph as Graph
 import qualified GraphDB.Graph.Node as Node
 import qualified GraphDB.Client as Client
 import qualified GraphDB.Persistence as Persistence
+import qualified GraphDB.Server as Server
 import qualified Remotion.Client as RemotionClient
+import qualified Remotion.Server as RemotionServer
 
 
 
@@ -100,19 +109,29 @@ import qualified Remotion.Client as RemotionClient
 -- |
 -- A monad transformer, 
 -- which can execute transactions and run a server using some engine.
-newtype Session e u m r = Session (EngineSession e u m r)
+newtype Session e u m r = 
+  Session ((Monad (EngineSession e u m)) => EngineSession e u m r)
+
+instance Monad (Session e u m) where
+instance Functor (Session e u m)
+instance Applicative (Session e u m)
+instance MonadTrans (Session e u)
+instance MonadIO (Session e u m)
+instance MonadBase IO (Session e u m)
+instance MonadBaseControl IO (Session e u m)
+
 
 type Action e u = 
-  Action.Action (EngineNode e u) (Union.Value u) (Union.Type u) (Union.Index u) Identity
+  Action.Action (EngineNode e u) (Union.Value u) (Union.Type u) (Union.Index u)
 
 -- |
 -- A session engine.
 class Engine e where
-  type EngineSession e u m r
+  type EngineSession e u m
   type EngineNode e u
   runTransaction :: 
     (Union.Union u, MonadBaseControl IO m, MonadIO m) => 
-    Bool -> Action e u r -> Session e u m r
+    Bool -> Action e u m r -> Session e u m r
 
 -- |
 -- Execute a writing transaction.
@@ -124,7 +143,7 @@ class Engine e where
 write :: 
   (Engine e, Union.Union u, MonadBaseControl IO m, MonadIO m) => 
   (forall s. Write e u s r) -> Session e u m r
-write (Write a) = runTransaction True a
+write (Write a) = runTransaction True $ hoistFreeT (return . runIdentity) $ a
 
 -- |
 -- Execute a read-only transaction.
@@ -134,12 +153,7 @@ write (Write a) = runTransaction True a
 read :: 
   (Engine e, Union.Union u, MonadBaseControl IO m, MonadIO m) => 
   (forall s. Read e u s r) -> Session e u m r
-read (Read a) = runTransaction False a
-
--- -- |
--- -- Run a server on this session.
--- serve :: Serve e u m r -> Session e u m r
--- serve = $notImplemented
+read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
 
 
 
@@ -156,11 +170,10 @@ read (Read a) = runTransaction False a
 data Nonpersistent
 
 instance Engine Nonpersistent where
-  type EngineSession Nonpersistent u m r = Graph.Session u m r
+  type EngineSession Nonpersistent u m = Graph.Session u m
   type EngineNode Nonpersistent u = Graph.Node u
   runTransaction w a = 
-    Session $ Graph.runTransaction w $ Graph.runAction $ 
-    hoistFreeT (return . runIdentity) $ a
+    Session $ Graph.runTransaction w $ Graph.runAction $ a
 
 -- |
 -- Run a nonpersistent session, 
@@ -180,11 +193,10 @@ runNonpersistentSession v (Session s) = do
 data Persistent
 
 instance Engine Persistent where
-  type EngineSession Persistent u m r = Persistence.Session u m r
+  type EngineSession Persistent u m = Persistence.Session u m
   type EngineNode Persistent u = Int
   runTransaction w a =
-    Session $ Persistence.runTransaction w $ Persistence.runAction $ 
-    hoistFreeT (return . runIdentity) $ a
+    Session $ Persistence.runTransaction w $ Persistence.runAction $ a
 
 -- |
 -- Settings of a persistent session.
@@ -212,11 +224,10 @@ runPersistentSession (v, p, e) (Session s) = do
 data Client
 
 instance Engine Client where
-  type EngineSession Client u m r = Client.Session u m r
-  type EngineNode Client u = Client.Node
+  type EngineSession Client u m = Client.Session u m
+  type EngineNode Client u = Int
   runTransaction w a =
-    Session $ Client.runTransaction w $ Client.runAction $ 
-    hoistFreeT (return . runIdentity) $ a
+    Session $ Client.runTransaction w $ Client.runAction $ a
 
 -- | 
 -- Settings of a client session.
@@ -282,7 +293,7 @@ runClientSession (v, url) (Session ses) =
 -- 
 -- Gets executed concurrently.
 newtype Read e u s r = 
-  Read (Action e u r) 
+  Read (Action e u Identity r)
   deriving (Functor, Applicative, Monad)
 
 -- | 
@@ -291,7 +302,7 @@ newtype Read e u s r =
 -- Does not allow concurrency, 
 -- so all concurrent transactions are put on hold for the time of its execution.
 newtype Write e u s r = 
-  Write (Action e u r) 
+  Write (Action e u Identity r)
   deriving (Functor, Applicative, Monad)
 
 -- |
@@ -301,7 +312,7 @@ type ReadOrWrite e u s r =
   t e u s r
 
 class LiftAction t where 
-  liftAction :: Action e u r -> t e u s r
+  liftAction :: Action e u Identity r -> t e u s r
 instance LiftAction Read where liftAction = Read
 instance LiftAction Write where liftAction = Write
 
@@ -387,18 +398,48 @@ getStats = liftAction $ Action.getStats
 
 
 
-
 -- * Server
 -------------------------
 
 -- |
--- A monad transformer for running the server.
--- 
--- Can only be executed inside a 'Session' using 'serve'.
-data Serve engine union (monad :: * -> *) result
+-- Settings of server.
+type ServerSettings u = 
+  (
+    ServerModelVersion, 
+    RemotionServer.ListeningMode, 
+    RemotionServer.Timeout,
+    RemotionServer.MaxClients,
+    RemotionServer.Log
+  )
 
 -- |
--- Block the calling thread until the server stops (which should never happen).
-block :: Serve e u m ()
-block = $notImplemented
+-- Version of the graph model, 
+-- which is used to check the client and server compatibility during handshake.
+type ServerModelVersion = Int
+
+-- | 
+-- A server failure.
+data ServerFailure =
+  ListeningSocketIsBusy
+
+-- |
+-- Run a server on this session.
+serve :: 
+  (MonadIO m, MonadBaseControl IO m, Engine e, Union.Union u) => 
+  ServerSettings u -> Session e u m (Either ServerFailure r)
+serve (v, lm, to, mc, log) = do
+  transactionsChan <- liftIO $ newChan
+  let
+    ups = fromString $ show $ v
+    pur = Server.processRequest transactionsChan
+    settings = (ups, lm, to, mc, log, pur)
+  r <- RemotionServer.run settings $ liftWith $ \restore -> do
+    forever $ do
+      (w, comm) <- liftIO $ readChan transactionsChan
+      async $ runTransaction w $ Server.runCommandProcessor comm
+  return $ fmapL adaptRemotionFailure $ r
+  where
+    adaptRemotionFailure = \case
+      RemotionServer.ListeningSocketIsBusy -> ListeningSocketIsBusy
+
 
