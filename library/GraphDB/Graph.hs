@@ -1,4 +1,4 @@
-module GraphDB.Graph.Node where
+module GraphDB.Graph where
 
 import GraphDB.Util.Prelude hiding (Any, traverse)
 import GHC.Exts (Any)
@@ -86,7 +86,7 @@ setValue node@(Node t refs@(Refs valueRef _ _ sourcesByType)) newValue =
       writeIORef valueRef newValueAny
   where
     (newValueType, newValueAny) = decomposeValue newValue
-    _error = error . ("GraphDB.Graph.Node.setValue: " ++)
+    _error = error . ("GraphDB.Graph.setValue: " ++)
 
 getSourcesByType :: Type t => Node t -> t -> IO [Node t]
 getSourcesByType (Node _ (Refs _ _ _ sourceRefsTable)) t =
@@ -106,7 +106,7 @@ addTarget source target = do
     False -> return False
     True -> updateSource >> return True
   where
-    _error = error . ("GraphDB.Graph.Node.addTarget: " ++)
+    _error = error . ("GraphDB.Graph.addTarget: " ++)
     updateSource = do
       targetIndexes <- indexes <$> getValue target <*> pure (valueType source)
       forM_ targetIndexes $ \i -> 
@@ -128,7 +128,7 @@ removeTarget source target = do
       maintain target
       return True
   where
-    _error = error . ("GraphDB.Graph.Node.removeTarget: " ++)
+    _error = error . ("GraphDB.Graph.removeTarget: " ++)
     updateTarget = MT.delete (sourcesByType target) (valueType source, refs source)
     updateSource = do
       indexes <- indexes <$> getValue target <*> pure (valueType source)
@@ -154,7 +154,7 @@ maintain node = do
       True -> return ()
       False -> _error "Target removal failed"
   where
-    _error = error . ("GraphDB.Graph.Node.maintain: " ++)
+    _error = error . ("GraphDB.Graph.maintain: " ++)
 
 foldTargets :: Node t -> z -> (z -> Node t -> IO z) -> IO z
 foldTargets node z f = MT.foldM (targetsByType node) z $ \z t refs -> f z (Node t refs)

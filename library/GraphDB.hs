@@ -94,7 +94,7 @@ import qualified GraphDB.Model.Edge as Edge
 import qualified GraphDB.Model.Macros as Macros
 import qualified GraphDB.Action as Action
 import qualified GraphDB.Nonpersistent as Nonpersistent
-import qualified GraphDB.Graph.Node as Node
+import qualified GraphDB.Graph as Graph
 import qualified GraphDB.Client as Client
 import qualified GraphDB.Persistent as Persistent
 import qualified GraphDB.Server as Server
@@ -180,7 +180,7 @@ instance Engine Nonpersistent where
 -- while providing an initial value for the root node.
 runNonpersistentSession :: (Union.PolyValue u v, MonadIO m) => v -> Session Nonpersistent u m r -> m r
 runNonpersistentSession v (Session s) = do
-  n <- liftIO $ Node.new $ snd $ Union.packValue $ v
+  n <- liftIO $ Graph.new $ snd $ Union.packValue $ v
   Nonpersistent.runSession n s
 
 

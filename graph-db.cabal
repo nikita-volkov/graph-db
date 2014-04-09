@@ -52,7 +52,7 @@ library
     GraphDB.Service.Protocol
     GraphDB.Storage
     GraphDB.Storage.Rules
-    GraphDB.Graph.Node
+    GraphDB.Graph
     GraphDB.Util.TH
     GraphDB.Util.TH.Q
     GraphDB.Util.TH.Type

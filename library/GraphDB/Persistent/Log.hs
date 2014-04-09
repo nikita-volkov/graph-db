@@ -6,7 +6,6 @@ import GraphDB.Util.Prelude
 import qualified GraphDB.Action as A
 import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Util.FileSystem
-import qualified GraphDB.Graph.Node as N
 import qualified GraphDB.Util.DIOVector as DV
 
 

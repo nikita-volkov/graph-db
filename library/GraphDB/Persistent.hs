@@ -7,8 +7,8 @@ import qualified GraphDB.Model.Union as U
 import qualified GraphDB.Util.FileSystem as FS
 import qualified GraphDB.Util.IOQueue as IOQueue
 import qualified GraphDB.Storage as S
-import qualified GraphDB.Nonpersistent as G
-import qualified GraphDB.Graph.Node as Node
+import qualified GraphDB.Nonpersistent as NP
+import qualified GraphDB.Graph as Graph
 import qualified GraphDB.Util.DIOVector as DV
 import qualified GraphDB.Persistent.Log as L
 
@@ -17,14 +17,14 @@ import qualified GraphDB.Persistent.Log as L
 -------------------------
 
 newtype Session u m r = 
-  Session { unSession :: ReaderT (Storage u, IOQueue.IOQueue) (G.Session u m) r }
+  Session { unSession :: ReaderT (Storage u, IOQueue.IOQueue) (NP.Session u m) r }
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadTrans (Session u) where 
   lift = Session . lift . lift
 
 instance MonadTransControl (Session u) where
-  newtype StT (Session u) r = SessionStT (StT (G.Session u) r)
+  newtype StT (Session u) r = SessionStT (StT (NP.Session u) r)
   liftWith runInInner = do
     env <- Session $ ask
     Session $ lift $ liftWith $ \runGraphSession -> runInInner $ 
@@ -43,7 +43,7 @@ instance (MonadBaseControl IO m) => MonadBaseControl IO (Session u m) where
   liftBaseWith = defaultLiftBaseWith SessionStM
   restoreM = defaultRestoreM unSessionStM
 
-type Storage u = S.Storage (G.Node u) (L.Log u)
+type Storage u = S.Storage (NP.Node u) (L.Log u)
 
 data PersistenceFailure = 
   -- | 
@@ -80,15 +80,15 @@ runSession (v, p, buffering) (Session ses) = do
         queue <- IOQueue.start buffering
         return (storage, queue, graph)
         where
-          initGraph = Node.new v
+          initGraph = Graph.new v
           applyLog graph log = do
-            void $ runInBase $ G.runSession graph $ G.runAction $ L.toAction log
+            void $ runInBase $ NP.runSession graph $ NP.runAction $ L.toAction log
       release (storage, queue, graph) = do
         IOQueue.shutdown queue
         S.checkpoint storage graph
         S.release storage
     try $ bracket acquire release $ \(s, q, g) -> 
-      runInBase $ G.runSession g $ flip runReaderT (s, q) $ ses
+      runInBase $ NP.runSession g $ flip runReaderT (s, q) $ ses
   either (return . Left . adaptStorageException) (fmap Right . restoreM) r
   where
     adaptStorageException = \case
@@ -99,7 +99,7 @@ runSession (v, p, buffering) (Session ses) = do
 -------------------------
 
 newtype Tx u m r = 
-  Tx (StateT (L.Log u) (StateT Int (G.Session u m)) r)
+  Tx (StateT (L.Log u) (StateT Int (NP.Session u m)) r)
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadTrans (Tx u) where 
@@ -108,7 +108,7 @@ instance MonadTrans (Tx u) where
 runTransaction :: (MonadBaseControl IO m, U.Serializable IO u) => Bool -> Tx u m r -> Session u m r
 runTransaction write (Tx tx) = Session $ do
   (r, log) <- 
-    lift $ G.runTransaction write $ flip evalStateT 0 $ flip runStateT [] $ tx
+    lift $ NP.runTransaction write $ flip evalStateT 0 $ flip runStateT [] $ tx
   when write $ do
     (storage, ioq) <- ask
     liftBase $ IOQueue.enqueue ioq $ S.persistEvent storage $ reverse log
@@ -124,7 +124,7 @@ runAction :: (MonadBase IO m, U.Union u) => Action u m r -> Tx u m r
 runAction = iterTM $ \case
   A.NewNode v c -> do
     record $ L.NewNode v
-    ir <- Tx $ lift $ lift $ G.runAction $ A.newNode v
+    ir <- Tx $ lift $ lift $ NP.runAction $ A.newNode v
     r <- newRef ir
     c r
   where

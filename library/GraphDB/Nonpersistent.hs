@@ -3,7 +3,7 @@ module GraphDB.Nonpersistent where
 import GraphDB.Util.Prelude
 import qualified GraphDB.Action as A
 import qualified GraphDB.Model.Union as U
-import qualified GraphDB.Graph.Node as N
+import qualified GraphDB.Graph as G
 import qualified Control.Concurrent.FairRWLock as L
 
 
@@ -62,12 +62,12 @@ type Action u = A.Action (U.Node u) (U.Value u) (U.Type u) (U.Index u)
 
 runAction :: (MonadBase IO m, U.Union u) => Action u m r -> Session u m r
 runAction = iterTM $ \case
-  A.NewNode v c -> liftBase (N.new v) >>= c
-  A.GetValue n c -> liftBase (N.getValue n) >>= c
-  A.SetValue n v c -> liftBase (N.setValue n v) >> c
+  A.NewNode v c -> liftBase (G.new v) >>= c
+  A.GetValue n c -> liftBase (G.getValue n) >>= c
+  A.SetValue n v c -> liftBase (G.setValue n v) >> c
   A.GetRoot c -> Session ask >>= c
-  A.GetTargetsByType n t c -> liftBase (N.getTargetsByType n t) >>= c
-  A.GetTargetsByIndex n i c -> liftBase (N.getTargetsByIndex n i) >>= c
-  A.AddTarget s t c -> liftBase (N.addTarget s t) >>= c
-  A.RemoveTarget s t c -> liftBase (N.removeTarget s t) >>= c
-  A.GetStats c -> Session ask >>= liftBase . N.getStats >>= c
+  A.GetTargetsByType n t c -> liftBase (G.getTargetsByType n t) >>= c
+  A.GetTargetsByIndex n i c -> liftBase (G.getTargetsByIndex n i) >>= c
+  A.AddTarget s t c -> liftBase (G.addTarget s t) >>= c
+  A.RemoveTarget s t c -> liftBase (G.removeTarget s t) >>= c
+  A.GetStats c -> Session ask >>= liftBase . G.getStats >>= c
