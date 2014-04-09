@@ -62,10 +62,10 @@ module GraphDB
   removeTarget,
   getStats,
   -- * Modeling
+  Edge.Edge(..),
   Union.Union,
   Union.PolyValue,
   Union.PolyIndex,
-  Edge.Edge(..),
   Macros.generateUnion,
   -- * Server
   ServerSettings,
