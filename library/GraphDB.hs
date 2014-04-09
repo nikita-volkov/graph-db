@@ -66,7 +66,7 @@ module GraphDB
   Union.Union,
   Union.PolyValue,
   Union.PolyIndex,
-  Macros.generateUnion,
+  Macros.deriveUnion,
   -- * Server
   ServerSettings,
   ServerModelVersion,
