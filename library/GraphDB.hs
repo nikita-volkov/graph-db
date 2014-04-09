@@ -34,17 +34,17 @@ module GraphDB
   -- * Sessions
   Session,
   -- ** Nonpersistent
-  NonpersistentSession,
+  Nonpersistent.NonpersistentSession,
   runNonpersistentSession,
   -- ** Persistent
-  PersistentSession,
+  Persistent.PersistentSession,
   PersistentSettings,
   Persistent.StoragePath,
   Persistent.PersistenceBuffering,
   Persistent.PersistenceFailure(..),
   runPersistentSession,
   -- ** Client
-  ClientSession,
+  Client.ClientSession,
   ClientSettings,
   ClientModelVersion,
   RemotionClient.URL(..),
@@ -121,18 +121,14 @@ type SessionAction s u = Action (SessionNode s u) u
 -- ** Nonpersistent
 -------------------------
 
--- |
--- A session of an in-memory graph datastructure with no persistence.
-type NonpersistentSession = Nonpersistent.Session
-
-instance Session NonpersistentSession where
-  type SessionNode NonpersistentSession u = Nonpersistent.Node u
+instance Session Nonpersistent.NonpersistentSession where
+  type SessionNode Nonpersistent.NonpersistentSession u = Nonpersistent.Node u
   runTransaction w a = Nonpersistent.runTransaction w $ Nonpersistent.runAction $ a
 
 -- |
 -- Run a nonpersistent session, 
 -- while providing an initial value for the root node.
-runNonpersistentSession :: (Union.PolyValue u v, MonadIO m) => v -> NonpersistentSession u m r -> m r
+runNonpersistentSession :: (Union.PolyValue u v, MonadIO m) => v -> Nonpersistent.NonpersistentSession u m r -> m r
 runNonpersistentSession v s = do
   n <- liftIO $ Graph.new $ snd $ Union.packValue $ v
   Nonpersistent.runSession n s
@@ -142,12 +138,8 @@ runNonpersistentSession v s = do
 -- ** Persistent
 -------------------------
 
--- |
--- A session of an in-memory graph datastructure with persistence.
-type PersistentSession = Persistent.Session
-
-instance Session PersistentSession where
-  type SessionNode PersistentSession u = Int
+instance Session Persistent.PersistentSession where
+  type SessionNode Persistent.PersistentSession u = Int
   runTransaction w a = Persistent.runTransaction w $ Persistent.runAction $ a
 
 -- |
@@ -162,7 +154,7 @@ type PersistentSettings v = (v, Persistent.StoragePath, Persistent.PersistenceBu
 -- Run a persistent session with settings.
 runPersistentSession :: 
   (MonadIO m, MonadBaseControl IO m, Union.PolyValue u v) => 
-  PersistentSettings v -> PersistentSession u m r -> m (Either Persistent.PersistenceFailure r)
+  PersistentSettings v -> Persistent.PersistentSession u m r -> m (Either Persistent.PersistenceFailure r)
 runPersistentSession (v, p, e) s = do
   Persistent.runSession (snd $ Union.packValue $ v, p, e) s
 
@@ -171,12 +163,8 @@ runPersistentSession (v, p, e) s = do
 -- ** Client
 -------------------------
 
--- | 
--- A session of a networking interface for communication with server.
-type ClientSession = Client.Session
-
-instance Session ClientSession where
-  type SessionNode ClientSession u = Int
+instance Session Client.ClientSession where
+  type SessionNode Client.ClientSession u = Int
   runTransaction w a = Client.runTransaction w $ Client.runAction $ a
 
 -- | 
@@ -218,7 +206,7 @@ data ClientFailure =
 -- Run a client session with settings.
 runClientSession :: 
   (MonadIO m, MonadBaseControl IO m, Union.Union u) =>
-  ClientSettings -> ClientSession u m r -> m (Either ClientFailure r)
+  ClientSettings -> Client.ClientSession u m r -> m (Either ClientFailure r)
 runClientSession (v, url) (ses) = 
   fmap (fmapL adaptRemotionFailure) $ Client.runSession (rv, url) $ ses
   where

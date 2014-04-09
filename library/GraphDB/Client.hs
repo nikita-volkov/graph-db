@@ -10,29 +10,33 @@ import qualified Remotion.Client as R
 -- * Session
 -------------------------
 
-newtype Session u m r = 
-  Session (R.Client (P.Request u) (P.Response u) m r)
+-- | 
+-- A session of communication with server.
+newtype ClientSession u m r = 
+  ClientSession (R.Client (P.Request u) (P.Response u) m r)
   deriving (Functor, Applicative, Monad, MonadIO)
 
-instance MonadTrans (Session u) where
-  lift = Session . lift
+instance MonadTrans (ClientSession u) where
+  lift = ClientSession . lift
 
-type SessionSettings = R.Settings
+type ClientSessionSettings = R.Settings
 
 runSession :: 
   (U.Serializable IO u, MonadBaseControl IO m, MonadIO m) => 
-  SessionSettings -> Session u m r -> m (Either R.Failure r)
-runSession settings (Session ses) = R.run settings ses
+  ClientSessionSettings -> ClientSession u m r -> m (Either R.Failure r)
+runSession settings (ClientSession ses) = R.run settings ses
 
 
 -- * Transaction
 -------------------------
 
-runTransaction :: (MonadIO m, Applicative m, U.Serializable IO u) => Bool -> Session u m r -> Session u m r
+runTransaction :: 
+  (MonadIO m, Applicative m, U.Serializable IO u) => 
+  Bool -> ClientSession u m r -> ClientSession u m r
 runTransaction write tx = do
-  Session $ R.request $ P.Start write
+  ClientSession $ R.request $ P.Start write
   r <- tx
-  Session $ R.request $ P.Finish
+  ClientSession $ R.request $ P.Finish
   return r
 
 
@@ -41,10 +45,12 @@ runTransaction write tx = do
 
 type Action u = A.Action Int (U.Value u) (U.Type u) (U.Index u)
 
-runAction :: (MonadIO m, Applicative m, U.Serializable IO u) => Action u m r -> Session u m r
+runAction :: 
+  (MonadIO m, Applicative m, U.Serializable IO u) => 
+  Action u m r -> ClientSession u m r
 runAction = iterTM $ \case
   A.GetTargetsByType n t c -> do
-    r <- Session $ R.request $ P.Action $ P.GetTargetsByType n t
+    r <- ClientSession $ R.request $ P.Action $ P.GetTargetsByType n t
     case r of
       P.NodeList nl -> c nl
       _ -> $bug "Unexpected response"

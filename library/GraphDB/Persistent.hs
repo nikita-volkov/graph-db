@@ -16,30 +16,32 @@ import qualified GraphDB.Persistent.Log as L
 -- * Session
 -------------------------
 
-newtype Session u m r = 
-  Session { unSession :: ReaderT (Storage u, IOQueue.IOQueue) (NP.Session u m) r }
+-- |
+-- A session of an in-memory graph datastructure with persistence.
+newtype PersistentSession u m r = 
+  PersistentSession (ReaderT (Storage u, IOQueue.IOQueue) (NP.NonpersistentSession u m) r)
   deriving (Functor, Applicative, Monad, MonadIO)
 
-instance MonadTrans (Session u) where 
-  lift = Session . lift . lift
+instance MonadTrans (PersistentSession u) where 
+  lift = PersistentSession . lift . lift
 
-instance MonadTransControl (Session u) where
-  newtype StT (Session u) r = SessionStT (StT (NP.Session u) r)
+instance MonadTransControl (PersistentSession u) where
+  newtype StT (PersistentSession u) r = SessionStT (StT (NP.NonpersistentSession u) r)
   liftWith runInInner = do
-    env <- Session $ ask
-    Session $ lift $ liftWith $ \runGraphSession -> runInInner $ 
-      liftM SessionStT . runGraphSession . flip runReaderT env . unSession
+    env <- PersistentSession $ ask
+    PersistentSession $ lift $ liftWith $ \runGraphSession -> runInInner $ \(PersistentSession s) ->
+      liftM SessionStT . runGraphSession . flip runReaderT env $ s
 
   restoreT inner = do
-    Session $ lift $ do
+    PersistentSession $ lift $ do
       SessionStT r <- lift inner
       restoreT $ return $ r
 
-instance (MonadBase IO m) => MonadBase IO (Session u m) where
-  liftBase = Session . liftBase
+instance (MonadBase IO m) => MonadBase IO (PersistentSession u m) where
+  liftBase = PersistentSession . liftBase
 
-instance (MonadBaseControl IO m) => MonadBaseControl IO (Session u m) where
-  newtype StM (Session u m) a = SessionStM { unSessionStM :: ComposeSt (Session u) m a }
+instance (MonadBaseControl IO m) => MonadBaseControl IO (PersistentSession u m) where
+  newtype StM (PersistentSession u m) a = SessionStM { unSessionStM :: ComposeSt (PersistentSession u) m a }
   liftBaseWith = defaultLiftBaseWith SessionStM
   restoreM = defaultRestoreM unSessionStM
 
@@ -70,8 +72,8 @@ type PersistenceBuffering = Int
 
 runSession :: 
   (MonadIO m, MonadBaseControl IO m, U.Serializable IO u, U.Union u) => 
-  Settings u -> Session u m r -> m (Either PersistenceFailure r)
-runSession (v, p, buffering) (Session ses) = do
+  Settings u -> PersistentSession u m r -> m (Either PersistenceFailure r)
+runSession (v, p, buffering) (PersistentSession ses) = do
   r <- liftBaseWith $ \runInBase -> do
     let
       acquire = do
@@ -99,14 +101,14 @@ runSession (v, p, buffering) (Session ses) = do
 -------------------------
 
 newtype Tx u m r = 
-  Tx (StateT (L.Log u) (StateT Int (NP.Session u m)) r)
+  Tx (StateT (L.Log u) (StateT Int (NP.NonpersistentSession u m)) r)
   deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadTrans (Tx u) where 
   lift = Tx . lift . lift . lift
 
-runTransaction :: (MonadBaseControl IO m, U.Serializable IO u) => Bool -> Tx u m r -> Session u m r
-runTransaction write (Tx tx) = Session $ do
+runTransaction :: (MonadBaseControl IO m, U.Serializable IO u) => Bool -> Tx u m r -> PersistentSession u m r
+runTransaction write (Tx tx) = PersistentSession $ do
   (r, log) <- 
     lift $ NP.runTransaction write $ flip evalStateT 0 $ flip runStateT [] $ tx
   when write $ do
