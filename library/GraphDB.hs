@@ -126,7 +126,7 @@ instance Session Nonpersistent.NonpersistentSession where
 -- |
 -- Run a nonpersistent session, 
 -- while providing an initial value for the root node.
-runNonpersistentSession :: (Union.PolyValue u v, MonadIO m) => v -> Nonpersistent.NonpersistentSession u m r -> m r
+runNonpersistentSession :: (Union.PolyValue u u, MonadIO m) => u -> Nonpersistent.NonpersistentSession u m r -> m r
 runNonpersistentSession v s = do
   n <- liftIO $ Graph.new $ snd $ Union.packValue $ v
   Nonpersistent.runSession n s
@@ -151,8 +151,8 @@ type PersistentSettings v = (v, Persistent.StoragePath, Persistent.PersistenceBu
 -- |
 -- Run a persistent session with settings.
 runPersistentSession :: 
-  (MonadIO m, MonadBaseControl IO m, Union.PolyValue u v) => 
-  PersistentSettings v -> Persistent.PersistentSession u m r -> m (Either Persistent.PersistenceFailure r)
+  (MonadIO m, MonadBaseControl IO m, Union.PolyValue u u) => 
+  PersistentSettings u -> Persistent.PersistentSession u m r -> m (Either Persistent.PersistenceFailure r)
 runPersistentSession (v, p, e) s = do
   Persistent.runSession (snd $ Union.packValue $ v, p, e) s
 
