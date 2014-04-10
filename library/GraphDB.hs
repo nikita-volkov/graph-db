@@ -3,7 +3,7 @@
 -- 
 -- * 'Session'. 
 -- A class of monad transformers, 
--- which execute transactions and runs the server.
+-- which execute transactions and run the server.
 -- 
 -- * 'Read' and 'Write' transactions.
 -- Monads,
