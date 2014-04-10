@@ -40,7 +40,7 @@ module GraphDB
   Client.ClientSession,
   ClientSettings,
   ClientModelVersion,
-  RemotionClient.URL(..),
+  URL(..),
   RemotionClient.Credentials,
   ClientFailure(..),
   runClientSession,
@@ -70,7 +70,8 @@ module GraphDB
   -- * Server
   ServerSettings,
   ServerModelVersion,
-  RemotionServer.ListeningMode,
+  ListeningMode(..),
+  RemotionServer.Authenticate,
   RemotionServer.Timeout,
   RemotionServer.MaxClients,
   RemotionServer.Log,
@@ -162,12 +163,20 @@ instance Session Client.ClientSession where
 
 -- | 
 -- Settings of a client session.
-type ClientSettings = (ClientModelVersion, RemotionClient.URL)
+type ClientSettings = (ClientModelVersion, URL)
 
 -- |
 -- Version of the graph model, 
 -- which is used to check the client and server compatibility during handshake.
 type ClientModelVersion = Int
+
+-- |
+-- Location of the server.
+data URL =
+  -- | Path to the socket-file.
+  URL_Socket FilePath |
+  -- | Host name, port and credentials.
+  URL_Host Text Int RemotionClient.Credentials
 
 data ClientFailure =
   -- |
@@ -201,7 +210,7 @@ runClientSession ::
   (MonadIO m, MonadBaseControl IO m, Union.Union u) =>
   ClientSettings -> Client.ClientSession u m r -> m (Either ClientFailure r)
 runClientSession (v, url) (ses) = 
-  fmap (fmapL adaptRemotionFailure) $ Client.runSession (rv, url) $ ses
+  fmap (fmapL adaptRemotionFailure) $ Client.runSession (rv, rurl) $ ses
   where
     adaptRemotionFailure = \case
       RemotionClient.UnreachableURL -> UnreachableURL
@@ -213,8 +222,9 @@ runClientSession (v, url) (ses) =
       RemotionClient.TimeoutReached _ -> ConnectionFailure
       RemotionClient.CorruptRequest t -> CorruptRequest t
     rv = fromString $ show $ v
-
-
+    rurl = case url of
+      URL_Socket f -> RemotionClient.Socket f
+      URL_Host n p c -> RemotionClient.Host n p c
 
 -- * Transactions
 -------------------------
@@ -355,7 +365,7 @@ getStats = liftAction $ Action.getStats
 type ServerSettings = 
   (
     ServerModelVersion, 
-    RemotionServer.ListeningMode, 
+    ListeningMode, 
     RemotionServer.Timeout,
     RemotionServer.MaxClients,
     RemotionServer.Log
@@ -365,6 +375,17 @@ type ServerSettings =
 -- Version of the graph model, 
 -- which is used to check the client and server compatibility during handshake.
 type ServerModelVersion = Int
+
+-- | Defines how to listen for connections.
+data ListeningMode =
+  -- | 
+  -- Listen on a port with an authentication function.
+  ListeningMode_Host Int RemotionServer.Authenticate |
+  -- | 
+  -- Listen on a socket file.
+  -- Since sockets are local no authentication is needed.
+  -- Works only on UNIX systems.
+  ListeningMode_Socket FilePath
 
 -- | 
 -- A server failure.
@@ -382,7 +403,7 @@ serve (v, lm, to, mc, log) = do
   let
     ups = fromString $ show $ v
     pur = Server.processRequest transactionsChan
-    settings = (ups, lm, to, mc, log, pur)
+    settings = (ups, convertListeningMode lm, to, mc, log, pur)
   r <- RemotionServer.run settings $ liftWith $ \restore -> do
     forever $ do
       (w, comm) <- liftIO $ readChan transactionsChan
@@ -391,5 +412,8 @@ serve (v, lm, to, mc, log) = do
   where
     adaptRemotionFailure = \case
       RemotionServer.ListeningSocketIsBusy -> ListeningSocketIsBusy
+    convertListeningMode = \case
+      ListeningMode_Host p a -> RemotionServer.Host p a
+      ListeningMode_Socket f -> RemotionServer.Socket f
  
 
