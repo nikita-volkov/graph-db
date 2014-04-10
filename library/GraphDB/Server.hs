@@ -61,3 +61,36 @@ processRequest transactionsChan stateRef req = do
         Just (commandsChan, responseVar) -> do
           writeChan commandsChan $ Just act
           takeMVar responseVar
+ 
+-- * Serve
+-------------------------
+
+-- |
+-- A monad transformer for running the server.
+-- 
+-- Can only be executed inside a 'Session' using 'serve'.
+newtype Serve m r = 
+  Serve (R.Server m r)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
+
+instance MonadTransControl Serve where
+  newtype StT Serve r = ServeStT (StT R.Server r)
+  liftWith runInInner = do
+    Serve $ liftWith $ \runServer -> runInInner $ \(Serve s) -> liftM ServeStT $ runServer s
+  restoreT inner = do
+    Serve $ do
+      ServeStT r <- lift $ inner
+      restoreT $ return $ r
+
+instance (MonadBase IO m) => MonadBase IO (Serve m) where
+  liftBase = Serve . liftBase
+
+instance (MonadBaseControl IO m) => MonadBaseControl IO (Serve m) where
+  newtype StM (Serve m) a = ServeStM { unServeStM :: ComposeSt Serve m a }
+  liftBaseWith = defaultLiftBaseWith ServeStM
+  restoreM = defaultRestoreM unServeStM
+
+-- |
+-- Block the calling thread until the server stops (which should never happen).
+block :: MonadIO m => Serve m ()
+block = Serve $ R.wait

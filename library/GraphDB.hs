@@ -77,6 +77,10 @@ module GraphDB
   RemotionServer.Log,
   ServerFailure(..),
   serve,
+  -- ** Monad-transformer
+  Server.Serve,
+  Server.block,
+
 )
 where
 
@@ -395,19 +399,24 @@ data ServerFailure =
 -- |
 -- Run a server on this session.
 serve :: 
-  (Session s, MonadIO (s u m), MonadBaseControl IO (s u m), 
+  (Session s, MonadIO (s u m), MonadBaseControl IO (s u m), MonadTrans (s u),
    MonadBaseControl IO m, MonadIO m, Union.Union u) => 
-  ServerSettings -> s u m (Either ServerFailure r)
-serve (v, lm, to, mc, log) = do
+  ServerSettings -> Server.Serve m r -> s u m (Either ServerFailure r)
+serve (v, lm, to, mc, log) (Server.Serve rs) = do
   transactionsChan <- liftIO $ newChan
   let
     ups = fromString $ show $ v
     pur = Server.processRequest transactionsChan
     settings = (ups, convertListeningMode lm, to, mc, log, pur)
-  r <- RemotionServer.run settings $ liftWith $ \restore -> do
-    forever $ do
-      (w, comm) <- liftIO $ readChan transactionsChan
-      async $ runTransaction w $ Server.runCommandProcessor comm
+  r <- RemotionServer.run settings $ do
+    r <- liftWith $ \runRS -> do
+      worker <- async $ forever $ do
+        (w, comm) <- liftIO $ readChan transactionsChan
+        async $ runTransaction w $ Server.runCommandProcessor comm
+      r <- lift $ runRS $ rs
+      cancel worker
+      return r
+    restoreT $ return r
   return $ fmapL adaptRemotionFailure $ r
   where
     adaptRemotionFailure = \case
@@ -415,5 +424,3 @@ serve (v, lm, to, mc, log) = do
     convertListeningMode = \case
       ListeningMode_Host p a -> RemotionServer.Host p a
       ListeningMode_Socket f -> RemotionServer.Socket f
- 
-
