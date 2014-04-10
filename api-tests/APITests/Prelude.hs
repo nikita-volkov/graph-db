@@ -1,4 +1,4 @@
-module GraphDB.Util.Prelude 
+module APITests.Prelude 
   ( 
     module Exports,
 
@@ -17,7 +17,6 @@ module GraphDB.Util.Prelude
     bracketME,
     finallyME,
     tracingExceptions,
-    asyncRethrowing,
   )
   where
 
@@ -75,16 +74,6 @@ import Control.Monad.Base as Exports
 -- monad-control
 import Control.Monad.Trans.Control as Exports
 
--- free
-import Control.Monad.Trans.Free as Exports
-import Control.Monad.Free.TH as Exports
-
--- stm
-import Control.Concurrent.STM as Exports
-
--- monad-stm
-import Control.Monad.STM.Class as Exports
-
 -- lifted-async
 import Control.Concurrent.Async.Lifted as Exports
 
@@ -102,23 +91,17 @@ import Data.IntSet as Exports (IntSet)
 import Data.Sequence as Exports (Seq)
 import Data.Tree as Exports (Tree)
 
--- system-filepath
-import Filesystem.Path as Exports (FilePath)
-
 -- hashable
 import Data.Hashable as Exports (Hashable(..), hash)
 
 -- time
 import Data.Time.Clock as Exports
 
--- pipes
-import Pipes as Exports
+-- cereal-plus
+import CerealPlus.Serializable as Exports
 
--- pipes-cereal-plus
-import PipesCerealPlus as Exports
-
--- either
-import Control.Error as Exports
+-- system-filepath
+import Filesystem.Path as Exports (FilePath)
 
 -- placeholders
 import Development.Placeholders as Exports
@@ -131,7 +114,7 @@ import qualified Prelude
 import qualified Debug.Trace
 import qualified System.Locale
 import qualified Data.Time
-import qualified Control.Concurrent.Async
+
 
 type LazyByteString = Data.ByteString.Lazy.ByteString
 type LazyText = Data.Text.Lazy.Text
@@ -203,16 +186,3 @@ tracingExceptions m =
       "   Package: " ++ tyConPackage tyCon
     liftBase $ throwIO $ e
 
-
--- Async
--------------------------
-
-asyncRethrowing :: MonadBaseControl IO m => m a -> m (Async (StM m a))
-asyncRethrowing m = 
-  liftBaseWith $ \runInIO -> do
-    parentTID <- myThreadId
-    Control.Concurrent.Async.async $ do
-      catch (runInIO m) $ \case
-        se -> if
-          | Just ThreadKilled <- fromException se -> liftBase $ throwIO ThreadKilled
-          | otherwise -> throwTo parentTID se >> return undefined

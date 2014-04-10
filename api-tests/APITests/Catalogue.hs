@@ -1,9 +1,10 @@
+module APITests.Catalogue where
 
-import BasicPrelude
-import GHC.Generics
-import CerealPlus.Serializable
+
+import APITests.Prelude
 import qualified GraphDB as G
 import qualified Data.Text
+import qualified Data.Text.IO
 import qualified Data.Time
 import qualified System.Locale
 import qualified GHC.DataSize
@@ -129,6 +130,7 @@ instance G.Edge TitleArtist Artist where
 textToSearchTerms :: Text -> [Text]
 textToSearchTerms = nub . map Data.Text.toCaseFold . Data.Text.words
 
+
 -----------
 -- Boilerplate.
 -----------
@@ -146,6 +148,7 @@ instance Serializable m RecordingType
 -- Missing instances for 'Data.Time.Day'.
 deriving instance Generic Data.Time.Day
 instance Hashable Data.Time.Day
+
 
 -----------
 -- Transactions.
@@ -237,37 +240,4 @@ getRecordingsByArtistUID uid =
 measureMemoryFootprint :: G.ReadOrWrite s Catalogue t Int
 measureMemoryFootprint =
   G.getRoot >>= return . System.IO.Unsafe.unsafePerformIO . GHC.DataSize.recursiveSize
-
----------
-
-main = do
-  runSession $ do
-    G.write populate
-    liftIO $ putStrLn "Search for term 'It':"
-    liftIO . print =<< G.read (search "It")
-    liftIO $ putStrLn "Search for term 'metallica':"
-    liftIO . print =<< G.read (search "metallica")
-    liftIO $ putStrLn "Search for term 'load':"
-    liftIO . print =<< G.read (search "load")
-    liftIO $ putStrLn "All recordings of artists findable by term 'metallica':"
-    -- Composing transactions:
-    liftIO . print =<< do
-      G.read $
-        search "metallica" >>=
-        return . catMaybes . map (\case Left (Artist uid _) -> Just uid; _ -> Nothing) >>=
-        mapM getRecordingsByArtistUID >>=
-        return . concat
-    liftIO $ putStrLn "Memory footprint (bytes):"
-    liftIO . print =<< G.read measureMemoryFootprint
-    liftIO $ putStrLn "Total amounts of nodes and edges in the graph:"
-    liftIO . print =<< G.read G.getStats
-  where
-    runSession = G.runPersistentSession (initRoot, paths, buffering) where
-      initRoot = Catalogue 0
-      paths = "./dist/demo/db"
-      buffering = 100
-
-
-
-
 

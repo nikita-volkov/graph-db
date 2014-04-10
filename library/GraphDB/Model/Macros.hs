@@ -111,8 +111,8 @@ instances (unionType, polyIndexes, polyValues) =
 -- 
 -- This function resolves all related types from the 'Edge.Edge' instances
 -- declared in the module it is being called in.
-generateUnion :: TH.Name -> TH.Q [TH.Dec]
-generateUnion name = do
+deriveUnion :: TH.Name -> TH.Q [TH.Dec]
+deriveUnion name = do
   localInstances <- THU.reifyLocalInstances
   let edgePairs = do
         (cn, [a, b]) <- localInstances
