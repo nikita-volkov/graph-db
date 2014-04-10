@@ -26,7 +26,7 @@ traceIOWithTime = if debugging
 -- Tests
 -------------------------
 
-test_clientServerInterop = do
+test_clientServerNoDeadlocks = do
   runNonpersistentSession $ do
     traceIOWithTime "Populating"
     G.write populate
@@ -35,7 +35,7 @@ test_clientServerInterop = do
       traceIOWithTime "Running a client"
       runClientSession $ do
         traceIOWithTime "Testing"
-        liftIO . assertNotEmpty =<< G.read (search "It")
+        liftIO . assertEqual (18, 33) =<< G.read (G.getStats :: G.Read s Catalogue t (Int, Int))
   return () :: IO ()
   where
     runNonpersistentSession = G.runNonpersistentSession initRoot where
