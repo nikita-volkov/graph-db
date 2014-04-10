@@ -25,16 +25,48 @@ runCommandProcessor (commandsChan, responseVar) = do
       com <- liftIO $ readChan commandsChan
       case com of
         Nothing -> return ()
-        Just ra -> case ra of
-          P.NewNode v -> do
-            n <- A.newNode v
-            r <- newRef n
-            respond $ P.Node r
-          P.GetValue sr -> do
-            sn <- resolveRef sr
-            r <- A.getValue sn
-            respond $ P.Value r
-          _ -> $notImplemented
+        Just ra -> do
+          case ra of
+            P.NewNode v -> do
+              n <- A.newNode v
+              r <- newRef n
+              respond $ P.Node r
+            P.GetValue sr -> do
+              sn <- resolveRef sr
+              r <- A.getValue sn
+              respond $ P.Value r
+            P.SetValue r v -> do
+              n <- resolveRef r
+              A.setValue n v
+              respond $ P.Unit
+            P.GetRoot -> do
+              n <- A.getRoot
+              r <- newRef n
+              respond $ P.Node r
+            P.GetTargetsByType r t -> do
+              n <- resolveRef r
+              nl <- A.getTargetsByType n t
+              rl <- mapM newRef nl
+              respond $ P.NodeList rl
+            P.GetTargetsByIndex r i -> do
+              n <- resolveRef r
+              nl <- A.getTargetsByIndex n i
+              rl <- mapM newRef nl
+              respond $ P.NodeList rl
+            P.AddTarget s t -> do
+              sn <- resolveRef s
+              tn <- resolveRef t
+              r <- A.addTarget sn tn
+              respond $ P.Bool r
+            P.RemoveTarget s t -> do
+              sn <- resolveRef s
+              tn <- resolveRef t
+              r <- A.removeTarget sn tn
+              respond $ P.Bool r
+            P.GetStats -> do
+              r <- A.getStats
+              respond $ P.IntPair r
+          loop
     in loop
 
 processRequest :: Chan (Bool, Comm u) -> IORef (Maybe (Comm u)) -> P.Request u -> IO (P.Response u)
