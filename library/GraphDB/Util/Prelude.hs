@@ -17,6 +17,7 @@ module GraphDB.Util.Prelude
     bracketME,
     finallyME,
     tracingExceptions,
+    asyncRethrowing,
   )
   where
 
@@ -130,7 +131,7 @@ import qualified Prelude
 import qualified Debug.Trace
 import qualified System.Locale
 import qualified Data.Time
-
+import qualified Control.Concurrent.Async
 
 type LazyByteString = Data.ByteString.Lazy.ByteString
 type LazyText = Data.Text.Lazy.Text
@@ -202,3 +203,16 @@ tracingExceptions m =
       "   Package: " ++ tyConPackage tyCon
     liftBase $ throwIO $ e
 
+
+-- Async
+-------------------------
+
+asyncRethrowing :: MonadBaseControl IO m => m a -> m (Async (StM m a))
+asyncRethrowing m = 
+  liftBaseWith $ \runInIO -> do
+    parentTID <- myThreadId
+    Control.Concurrent.Async.async $ do
+      catch (runInIO m) $ \case
+        se -> if
+          | Just ThreadKilled <- fromException se -> liftBase $ throwIO ThreadKilled
+          | otherwise -> throwTo parentTID se >> return undefined

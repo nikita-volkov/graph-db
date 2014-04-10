@@ -410,9 +410,9 @@ serve (v, lm, to, mc, log) (Server.Serve rs) = do
     settings = (ups, convertListeningMode lm, to, mc, log, pur)
   r <- RemotionServer.run settings $ do
     r <- liftWith $ \runRS -> do
-      worker <- async $ forever $ do
+      worker <- asyncRethrowing $ forever $ do
         (w, comm) <- liftIO $ readChan transactionsChan
-        async $ runTransaction w $ Server.runCommandProcessor comm
+        asyncRethrowing $ runTransaction w $ Server.runCommandProcessor comm
       r <- lift $ runRS $ rs
       cancel worker
       return r
