@@ -26,16 +26,10 @@ traceIOWithTime = if debugging
 -- Tests
 -------------------------
 
-test_clientServerNoDeadlocks = do
-  runNonpersistentSession $ do
-    traceIOWithTime "Populating"
+test_clientServer = do
+  runNonpersistentSession $ serve $ runClientSession $ do
     G.write populate
-    traceIOWithTime "Serving"    
-    serve $ do
-      traceIOWithTime "Running a client"
-      runClientSession $ do
-        traceIOWithTime "Testing"
-        liftIO . assertEqual (18, 33) =<< G.read (G.getStats :: G.Read s Catalogue t (Int, Int))
+    liftIO . assertEqual (18, 33) =<< G.read (G.getStats :: G.Read s Catalogue t (Int, Int))
   return () :: IO ()
   where
     runNonpersistentSession = G.runNonpersistentSession initRoot where
@@ -48,5 +42,4 @@ test_clientServerNoDeadlocks = do
       log = traceIOWithTime . ("Server: " <>) . unpackText
     runClientSession = G.runClientSession (1, url) where
       url = G.URL_Host "127.0.0.1" 54699 Nothing
-
 
