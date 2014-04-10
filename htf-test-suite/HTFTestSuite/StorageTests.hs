@@ -9,7 +9,7 @@ import qualified HTFTestSuite.A as A
 
 
 
-dir = "./dist/test/acid"
+dir = "./dist/test/storage"
 
 withStorage :: ((Storage.Storage A.A A.Event, A.A) -> IO a) -> IO a
 withStorage = bracket acquire release 
