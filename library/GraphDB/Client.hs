@@ -69,8 +69,51 @@ runAction ::
   (MonadIO m, Applicative m, U.Serializable IO u) => 
   Action u m r -> ClientSession u m r
 runAction = iterTM $ \case
+  A.NewNode v c -> do
+    r <- req $ P.NewNode v
+    case r of
+      P.Node n -> c n
+      _ -> $bug "Unexpected response"
+  A.GetValue n c -> do
+    r <- req $ P.GetValue n
+    case r of
+      P.Value v -> c v
+      _ -> $bug "Unexpected response"
+  A.SetValue n v c -> do
+    r <- req $ P.SetValue n v
+    case r of
+      P.Unit -> c
+      _ -> $bug "Unexpected response"
+  A.GetRoot c -> do
+    r <- req $ P.GetRoot
+    case r of
+      P.Node n -> c n
+      _ -> $bug "Unexpected response"
   A.GetTargetsByType n t c -> do
-    r <- ClientSession $ R.request $ P.Action $ P.GetTargetsByType n t
+    r <- req $ P.GetTargetsByType n t
     case r of
       P.NodeList nl -> c nl
       _ -> $bug "Unexpected response"
+  A.GetTargetsByIndex n i c -> do
+    r <- req $ P.GetTargetsByIndex n i
+    case r of
+      P.NodeList nl -> c nl
+      _ -> $bug "Unexpected response"
+  A.AddTarget s t c -> do
+    r <- req $ P.AddTarget s t
+    case r of
+      P.Bool r -> c r
+      _ -> $bug "Unexpected response"
+  A.RemoveTarget s t c -> do
+    r <- req $ P.RemoveTarget s t
+    case r of
+      P.Bool r -> c r
+      _ -> $bug "Unexpected response"
+  A.GetStats c -> do
+    r <- req $ P.GetStats
+    case r of
+      P.IntPair r -> c r
+      _ -> $bug "Unexpected response"
+  where
+    req = ClientSession . R.request . P.Action
+
