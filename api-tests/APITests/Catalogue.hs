@@ -1,7 +1,7 @@
-module HTFTestSuite.Catalogue where
+module APITests.Catalogue where
 
 
-import GraphDB.Util.Prelude
+import APITests.Prelude
 import qualified GraphDB as G
 import qualified Data.Text
 import qualified Data.Text.IO
@@ -130,6 +130,26 @@ instance G.Edge TitleArtist Artist where
 textToSearchTerms :: Text -> [Text]
 textToSearchTerms = nub . map Data.Text.toCaseFold . Data.Text.words
 
+
+-----------
+-- Boilerplate.
+-----------
+
+-- Generate all boilerplate instances for nodes and edges, 
+-- treating 'Catalogue' as a type of a root node's value. 
+G.deriveUnion ''Catalogue
+
+-- A boilerplate for types not used as nodes.
+instance Hashable ReleaseType
+instance Hashable RecordingType
+instance Serializable m ReleaseType
+instance Serializable m RecordingType
+
+-- Missing instances for 'Data.Time.Day'.
+deriving instance Generic Data.Time.Day
+instance Hashable Data.Time.Day
+
+
 -----------
 -- Transactions.
 -----------
@@ -220,22 +240,4 @@ getRecordingsByArtistUID uid =
 measureMemoryFootprint :: G.ReadOrWrite s Catalogue t Int
 measureMemoryFootprint =
   G.getRoot >>= return . System.IO.Unsafe.unsafePerformIO . GHC.DataSize.recursiveSize
-
------------
--- Boilerplate.
------------
-
--- Generate all boilerplate instances for nodes and edges, 
--- treating 'Catalogue' as a type of a root node's value. 
-G.deriveUnion ''Catalogue
-
--- A boilerplate for types not used as nodes.
-instance Hashable ReleaseType
-instance Hashable RecordingType
-instance Serializable m ReleaseType
-instance Serializable m RecordingType
-
--- Missing instances for 'Data.Time.Day'.
-deriving instance Generic Data.Time.Day
-instance Hashable Data.Time.Day
 

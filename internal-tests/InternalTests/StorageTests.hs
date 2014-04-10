@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
-module HTFTestSuite.StorageTests where
+module InternalTests.StorageTests where
 
 import Test.Framework
 import GraphDB.Util.Prelude
