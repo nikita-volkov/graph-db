@@ -325,13 +325,17 @@ getRoot = fmap Node $ liftAction $ Action.getRoot
 -- 
 -- > getTargetsByType node (undefined :: Artist)
 -- 
-getTargetsByType :: (Union.PolyValue u v') => Node s u t v -> v' -> ReadOrWrite s u t [Node s u t v']
+getTargetsByType :: 
+  (Union.PolyValue u v') => 
+  Node s u t v -> v' -> ReadOrWrite s u t [Node s u t v']
 getTargetsByType (Node n) v =
   fmap (map Node) $ liftAction $ Action.getTargetsByType n $ fst $ Union.packValue v
 
 -- |
 -- Get target nodes reachable by the provided index.
-getTargetsByIndex :: (Union.PolyIndex u i) => Node s u t v -> i -> ReadOrWrite s u t [Node s u t v']
+getTargetsByIndex :: 
+  (Union.PolyIndex u i, i ~ Edge.Index v v') => 
+  Node s u t v -> i -> ReadOrWrite s u t [Node s u t v']
 getTargetsByIndex (Node n) i = 
   fmap (map Node) $ liftAction $ Action.getTargetsByIndex n $ Union.packIndex i
 
