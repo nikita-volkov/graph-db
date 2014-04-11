@@ -17,5 +17,8 @@ caseFunDec name matches =
   where
     argName = mkName "_0"
 
-reifyLocalInstances :: Q [P.Instance]
-reifyLocalInstances = P.runParse P.instances
+reifyLocalInstances :: Q [(Name, [Type])]
+reifyLocalInstances = do
+  loc <- location
+  text <- runIO $ readFile $ loc_filename loc
+  P.runParse text P.instances
