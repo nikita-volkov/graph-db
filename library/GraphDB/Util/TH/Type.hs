@@ -51,3 +51,10 @@ fromDataInstanceDec dec = case dec of
 
 tuple :: [Type] -> Type
 tuple ts = foldl' AppT (TupleT (length ts)) ts
+
+-- |
+-- Extract all applied types from a signature.
+monoTypes :: Type -> [Type]
+monoTypes = \case
+  AppT a b -> b : monoTypes a ++ monoTypes b
+  _ -> []

@@ -4,6 +4,7 @@ import GraphDB.Util.Prelude
 import qualified Language.Haskell.TH as TH
 import qualified GraphDB.Util.TH as THU
 import qualified GraphDB.Util.TH.Q as Q
+import qualified GraphDB.Util.TH.Type as T
 import qualified GraphDB.Model.Union as Union
 import qualified GraphDB.Model.Edge as Edge
 
@@ -58,10 +59,10 @@ instances (unionType, polyIndexes, polyValues) =
                 _ -> $bug $ "Unexpected type of index"
               sourceTypeCN = lookup sourceT polyValueToValueToTypeList |> \case
                 Just (_, cn) -> cn
-                _ -> $bug $ "Poly value type not found"
+                _ -> $bug $ "Poly value type not found: " <> show sourceT
               targetValueCN = lookup targetT polyValueToValueToTypeList |> \case
                 Just (cn, _) -> cn
-                _ -> $bug $ "Poly value type not found"
+                _ -> $bug $ "Poly value type not found: " <> show targetT
               var = TH.mkName "_0"
               exp = Q.purify [e| map Union.packIndex (Edge.indexes $(TH.varE var) :: [$(pure pit)]) |]
         indexTargetTypeFD = TH.FunD 'Union.indexTargetType clauses where
@@ -120,12 +121,14 @@ deriveUnion name = do
         return (a, b)
       indexes = edgePairs |> map (\(s, t) -> TH.ConT ''Edge.Index `TH.AppT` s `TH.AppT` t)
       values = unzip edgePairs |> uncurry (++) |> nub
+      leafValues = values |> map T.monoTypes |> concat
       unionType = TH.ConT name
   stdInstances <- 
-    (indexes ++ values) |> 
+    (indexes ++ values ++ leafValues) |> 
     (TH.ConT ''Union.Index `TH.AppT` unionType :) |>
     (TH.ConT ''Union.Value `TH.AppT` unionType :) |>
     (TH.ConT ''Union.Type `TH.AppT` unionType :) |>
+    nub |>
     mapM generateStdInstances |> 
     fmap join
   return $ stdInstances ++ instances (unionType, indexes, values)
