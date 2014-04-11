@@ -409,6 +409,8 @@ benchmark benchmarks
     "-with-rtsopts=-N"
   build-depends:
     graph-db,
+    mwc-random == 0.13.*,
+    lens == 4.*,
     -- criterion:
     criterion == 0.6.*,
     statistics == 0.10.3.*,
@@ -416,7 +418,9 @@ benchmark benchmarks
     -- concurrency:
     lifted-async,
     -- file-system:
-    system-filepath,
+    directory == 1.2.*,
+    system-filepath == 0.4.*,
+    system-fileio == 0.3.*,
     -- data:
     cereal-plus,
     hashable,
