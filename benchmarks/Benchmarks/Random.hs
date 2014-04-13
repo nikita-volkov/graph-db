@@ -7,10 +7,11 @@ import qualified Data.Char as Char
 type Gen = MWC.Gen RealWorld
 type GenT = ReaderT Gen
 
-runGenT :: MonadIO m => GenT m r -> m r
-runGenT t = do
-  gen <- liftIO $ MWC.create
-  runReaderT t gen
+newGen :: IO Gen
+newGen = MWC.create
+
+runGenT :: MonadIO m => Gen -> GenT m r -> m r
+runGenT gen t = runReaderT t gen
 
 generateName :: MonadIO m => GenT m Text
 generateName = do

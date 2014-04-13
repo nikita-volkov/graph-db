@@ -396,13 +396,13 @@ test-suite api-tests
     Haskell2010
 
 
-benchmark benchmarks
+benchmark competition
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
     benchmarks
   main-is:      
-    Benchmarks.hs
+    Competition.hs
   ghc-options:
     -threaded
     "-with-rtsopts=-N"
