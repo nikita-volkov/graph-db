@@ -149,7 +149,8 @@ runClientSession socket = G.runClientSession (1, url) where
 
 initDir :: IO ()
 initDir = do
-  FS.remove dir
+  FS.removeIfExists dir
+  FS.createTree dir
 
 socketPath = dir <> ".socket"
 dir = "./dist/benchmarks/db"

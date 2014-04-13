@@ -14,10 +14,14 @@ main = defaultMain
           GraphDBNonpersistentSessionBenchmark graphDBPopulatingSession,
         bench "GraphDB, Persistent" $ 
           GraphDBPersistentSessionBenchmark graphDBPopulatingSession,
-        bench "GraphDB, Client, Socket" $ 
-          GraphDBClientSessionBenchmark True graphDBPopulatingSession,
-        bench "GraphDB, Client, Host" $ 
-          GraphDBClientSessionBenchmark False graphDBPopulatingSession
+        bench "GraphDB, Client, Nonpersistent, Socket" $ 
+          GraphDBClientSessionBenchmark False True graphDBPopulatingSession,
+        bench "GraphDB, Client, Nonpersistent, Host" $ 
+          GraphDBClientSessionBenchmark False False graphDBPopulatingSession,
+        bench "GraphDB, Client, Persistent, Socket" $ 
+          GraphDBClientSessionBenchmark True True graphDBPopulatingSession,
+        bench "GraphDB, Client, Persistent, Host" $ 
+          GraphDBClientSessionBenchmark True False graphDBPopulatingSession
       ]
   ]
 
@@ -29,33 +33,38 @@ type GraphDBSession =
   forall s u m.
   (G.Session s, u ~ BG.Catalogue,
    Monad (s u (R.GenT m)), MonadTrans (s u),
-   MonadIO m, MonadBaseControl IO m) => 
+   MonadIO m, MonadBaseControl IO m, 
+   MonadIO (s BG.Catalogue (R.GenT m))) => 
   s u (R.GenT m) ()
 
 graphDBPopulatingSession :: GraphDBSession
 graphDBPopulatingSession = do
   -- Insert genres:
-  replicateM_ 20 $ do
+  replicateM_ genresNum $ do
     name <- lift $ R.generateName
     G.write $ BG.insertGenre $ BG.Genre name
   -- Insert artists:
-  replicateM_ 1000 $ do
+  replicateM_ artistsNum $ do
     name <- lift $ R.generateName
     G.write $ BG.insertArtist $ BG.Artist name
   -- Insert songs:
-  replicateM_ 10000 $ do
+  replicateM_ songsNum $ do
     name <- lift $ R.generateName
     genres <- do
       length <- lift $ R.generateVariate (1, 5)
       replicateM length $ do
-        n <- lift $ R.generateVariate (1, 20)
+        n <- lift $ R.generateVariate (1, genresNum)
         return $ BG.UID n
     artists <- do
       length <- lift $ R.generateVariate (1, 5)
       replicateM length $ do
-        n <- lift $ R.generateVariate (1, 1000)
+        n <- lift $ R.generateVariate (1, artistsNum)
         return $ BG.UID n
     G.write $ BG.insertSong (BG.Song name) genres artists
+  where
+    genresNum = 20
+    artistsNum = 400
+    songsNum = 3000
 
 
 newtype GraphDBNonpersistentSessionBenchmark = GraphDBNonpersistentSessionBenchmark GraphDBSession
@@ -75,17 +84,19 @@ instance Benchmarkable GraphDBPersistentSessionBenchmark where
         liftIO $ BG.initDir
         BG.runPersistentSession $ a
 
-data GraphDBClientSessionBenchmark = GraphDBClientSessionBenchmark Bool GraphDBSession
+data GraphDBClientSessionBenchmark = GraphDBClientSessionBenchmark Bool Bool GraphDBSession
 
 instance Benchmarkable GraphDBClientSessionBenchmark where
-  run (GraphDBClientSessionBenchmark socket a) n = do
+  run (GraphDBClientSessionBenchmark persistent socket a) n = do
     R.runGenT $ do
       gen <- ask
       replicateM_ n $ do
         liftIO $ BG.initDir
-        BG.runPersistentSession $ do
-          BG.serve socket $ do
-            lift $ flip runReaderT gen $ BG.runClientSession socket $ a
+        if persistent
+          then void $ BG.runPersistentSession $
+            BG.serve socket $ lift $ flip runReaderT gen $ BG.runClientSession socket $ a
+          else void $ BG.runNonpersistentSession $
+            BG.serve socket $ lift $ flip runReaderT gen $ BG.runClientSession socket $ a
 
 
 
