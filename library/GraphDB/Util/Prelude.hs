@@ -193,15 +193,15 @@ traceIOWithTime s = do
 
 tracingExceptions :: (MonadBaseControl IO m) => m a -> m a
 tracingExceptions m = 
-  control $ \runInIO -> catch (runInIO m) $ \(SomeException e) -> runInIO $ do
+  control $ \runInIO -> catch (runInIO m) $ \(SomeException e) -> do
     let rep = typeOf e
         tyCon = typeRepTyCon rep
-    traceM $ 
-      "## Uncaught exception: " ++ show e ++ "\n" ++
-      "   Type: " ++ show rep ++ "\n" ++
-      "   Module: " ++ tyConModule tyCon ++ "\n" ++
-      "   Package: " ++ tyConPackage tyCon
-    liftBase $ throwIO $ e
+    traceIOWithTime $ 
+      "Uncaught exception: " ++ show e ++ "\n" ++
+      "                 Type: " ++ show rep ++ "\n" ++
+      "                 Module: " ++ tyConModule tyCon ++ "\n" ++
+      "                 Package: " ++ tyConPackage tyCon
+    throwIO $ e
 
 
 -- Async
