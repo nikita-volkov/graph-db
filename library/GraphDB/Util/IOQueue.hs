@@ -2,49 +2,47 @@ module GraphDB.Util.IOQueue
   (
     IOQueue, 
     start, 
-    shutdown,
-    interrupt,
-    enqueue,
+    perform,
+    performAsync,
+    finish,
   )
   where
 
 import GraphDB.Util.Prelude
-
+import qualified Control.Concurrent.Async as Async
 
 data IOQueue = IOQueue {
-  shutdown :: IO (),
-  interrupt :: IO (),
-  enqueue :: IO () -> IO ()
+  perform :: forall r. IO r -> IO r,
+  performAsync :: IO () -> IO (),
+  finish :: IO ()
 }
 
 start :: Int -> IO IOQueue
-start bufferSize = do
-  tasksQueue <- atomically $ newTBQueue bufferSize
-  activeVar <- atomically $ newTVar True
-  loopThread <- forkIO $ loop tasksQueue activeVar
-  return $ IOQueue (shutdown tasksQueue activeVar)
-                   (interrupt loopThread)
-                   (enqueue tasksQueue activeVar)
-  where
-    loop tasksQueue activeVar = 
-      fetchTask >>= traverse_ (\t -> t >> loop tasksQueue activeVar)
-      where
-        fetchTask = atomically $ do
-          active <- readTVar activeVar
-          if active
-            then Just <$> readTBQueue tasksQueue
-            else tryReadTBQueue tasksQueue
-    shutdown tasksQueue activeVar = do
-      atomically $ writeTVar activeVar False
-      atomically $ isEmptyTBQueue tasksQueue >>= \r -> when (not r) retry
-    interrupt loopThread = do
-      killThread loopThread
-    enqueue tasksQueue activeVar action = do
-      thread <- myThreadId
-      atomically $ do
-        active <- readTVar activeVar
-        when active $ do
-          writeTBQueue tasksQueue $ handle (handler thread) action
-      where
-        handler thread e = throwTo thread (e :: SomeException)
-
+start size = do
+  (tasksVar, activeVar) <- atomically $ (,) <$> newTBQueue size <*> newTVar True
+  let loop = do
+        task <- atomically $ do
+          tryReadTBQueue tasksVar >>= \case
+            Nothing -> readTVar activeVar >>= \case
+              True -> retry
+              False -> return Nothing
+            Just task -> return $ Just task
+        traverse_ (\t -> t >> loop) task
+  loopAsync <- Async.async $ loop
+  let performAsync task = do
+        atomically $ do
+          readTVar activeVar >>= \case
+            True -> writeTBQueue tasksVar task
+            False -> return ()
+      perform :: IO r -> IO r
+      perform task = do
+        resultVar <- newEmptyMVar
+        performAsync $ do
+          result <- task
+          putMVar resultVar result
+        takeMVar resultVar
+      finish = do
+        atomically $ writeTVar activeVar False
+        Async.wait loopAsync
+        return ()
+  return $ IOQueue perform performAsync finish
