@@ -58,9 +58,6 @@ library
     GraphDB.Util.TH.Type
     GraphDB.Util.TH.Parsers
     GraphDB.Util.FileSystem
-    GraphDB.Util.SNMultiTable
-    GraphDB.Util.IOTable
-    GraphDB.Util.IOStableNameSet
     GraphDB.Util.DIOVector
     GraphDB.Util.IOQueue
     GraphDB.Util.Prelude
@@ -94,6 +91,7 @@ library
     SafeSemaphore == 0.9.*,
     monad-stm,
     -- data:
+    hashtables-plus == 0.1.*,
     hashable == 1.2.*,
     bytestring,
     text,
@@ -258,6 +256,7 @@ test-suite internal-tests
     SafeSemaphore == 0.9.*,
     monad-stm,
     -- data:
+    hashtables-plus == 0.1.*,
     hashable == 1.2.*,
     bytestring,
     text,

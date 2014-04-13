@@ -43,3 +43,13 @@ test_clientServer = do
     runClientSession = G.runClientSession (1, url) where
       url = G.URL_Host "127.0.0.1" 54699 Nothing
 
+test_addingANodeTwiceThrowsNoError = do
+  G.runNonpersistentSession (Catalogue 0) $ do
+    G.write $ do
+      uid <- generateNewUID
+      node <- G.newNode $ Artist uid "A"
+      root <- G.getRoot
+      G.addTarget root node
+      G.addTarget root node
+  return () :: IO ()
+

@@ -2,49 +2,48 @@ module GraphDB.Graph where
 
 import GraphDB.Util.Prelude hiding (Any, traverse)
 import GHC.Exts (Any)
-import qualified GraphDB.Util.SNMultiTable as MT
 import qualified GraphDB.Util.DIOVector as DIOVector; import GraphDB.Util.DIOVector (DIOVector)
-import qualified GraphDB.Util.IOStableNameSet as IOStableNameSet; import GraphDB.Util.IOStableNameSet (IOStableNameSet)
-import qualified Data.HashTable.IO as HashTables
+import qualified HashtablesPlus as HP
+import qualified HashtablesPlus.HashRef as HashRef
 
 
-type MT = MT.SNMultiTable
+type MT k v = HP.MultiTable HP.Linear k (HP.HashRefSet HP.Linear v)
+type SizedMT k v = HP.Sized (MT k v)
 
 -- |
 -- A public representation which all functions revolve around.
 -- 
-data Node t =
-  Node
-    !t
-    !(Refs t)
+data Node t = 
+  Node {
+    nodeValueType :: !t,
+    nodeRefs :: {-# UNPACK #-} !(HashRef.HashRef (Refs t))
+  }
 
 -- |
 -- An internally used data structure for memory-efficient storage.
 data Refs t =
-  Refs
-    {-# UNPACK #-} !(IORef Any)
+  Refs {
+    refsValueRef :: {-# UNPACK #-} !(IORef Any),
     -- Targets by type.
-    {-# UNPACK #-} !(MT t (Refs t))
+    refsTargetsByType :: {-# UNPACK #-} !(MT t (Refs t)),
     -- Targets by index.
-    {-# UNPACK #-} !(MT (Index t) (Refs t))
+    refsTargetsByIndex :: {-# UNPACK #-} !(MT (Index t) (Refs t)),
     -- Source refs.
-    {-# UNPACK #-} !(MT t (Refs t))
+    refsSourcesByType :: {-# UNPACK #-} !(SizedMT t (Refs t))
+  }
 
--------------
--- Accessors.
--------------
+-- Accessors
+-------------------------
 
-valueType (Node z _) = z
-refs (Node _ z) = z
-valueRef (Node _ (Refs z _ _ _)) = z
-targetsByType (Node _ (Refs _ z _ _)) = z
-targetsByIndex (Node _ (Refs _ _ z _)) = z
-sourcesByType (Node _ (Refs _ _ _ z)) = z
+nodeValueRef = refsValueRef . HashRef.value . nodeRefs
+nodeTargetsByType = refsTargetsByType . HashRef.value . nodeRefs
+nodeTargetsByIndex = refsTargetsByIndex . HashRef.value . nodeRefs
+nodeSourcesByType = refsSourcesByType . HashRef.value . nodeRefs
 
 -------------
 
 class 
-  (MT.Key (Index t), MT.Key t, Serializable IO (Value t)) => 
+  (HP.Key (Index t), HP.Key t, Serializable IO (Value t)) => 
   Type t 
   where
     type Index t
@@ -57,48 +56,56 @@ class
 -------------
 
 new :: Type t => Value t -> IO (Node t)
-new uv = Node <$> pure t <*> (Refs <$> newIORef v <*> MT.new <*> MT.new <*> MT.new)
+new uv = do
+  refs <- Refs <$> newIORef v <*> HP.new <*> HP.new <*> HP.new
+  refsHR <- HashRef.new refs
+  return $ Node t refsHR
   where
     (t, v) = decomposeValue uv
 
 getValue :: Type t => Node t -> IO (Value t)
-getValue (Node t (Refs ref _ _ _)) = composeValue <$> pure t <*> readIORef ref
+getValue n = 
+  composeValue <$> 
+    pure (nodeValueType n) 
+      <*> 
+    readIORef (nodeValueRef n)
 
 setValue :: Type t => Node t -> Value t -> IO ()
-setValue node@(Node t refs@(Refs valueRef _ _ sourcesByType)) newValue = 
-  if newValueType /= t 
+setValue node newValue = 
+  if newValueType /= nodeValueType node 
     then error "Attempt to set a value of a wrong type"
     else do
       oldValue <- getValue node
-      MT.traverse sourcesByType $ \sourceType ->
+      HP.forM_ (nodeSourcesByType node) $ \(sourceType, targetRefsHR) ->
         let
           oldIndexes = indexes oldValue sourceType
           newIndexes = indexes newValue sourceType
-          in \targetRefs@(Refs _ _ targetTargetsByIndex _) -> do
+          targetRefs = HashRef.value targetRefsHR
+          targetTargetsByIndex = refsTargetsByIndex targetRefs
+          in do
             forM_ oldIndexes $ \i -> 
-              MT.delete targetTargetsByIndex (i, refs) >>= \case
+              HP.delete targetTargetsByIndex (i, (nodeRefs node)) >>= \case
                 True -> return ()
-                False -> _error "Old index not found"
+                False -> $bug "Old index not found"
             forM_ newIndexes $ \i -> 
-              MT.insert targetTargetsByIndex (i, refs) >>= \case
+              HP.insert targetTargetsByIndex (i, (nodeRefs node)) >>= \case
                 True -> return ()
-                False -> _error "New index collision"
-      writeIORef valueRef newValueAny
+                False -> $bug "New index collision"
+      writeIORef (nodeValueRef node) newValueAny
   where
     (newValueType, newValueAny) = decomposeValue newValue
-    _error = error . ("GraphDB.Graph.setValue: " ++)
 
 getSourcesByType :: Type t => Node t -> t -> IO [Node t]
-getSourcesByType (Node _ (Refs _ _ _ sourceRefsTable)) t =
-  map (Node t) <$> MT.lookupByKey sourceRefsTable t
+getSourcesByType (Node _ (HashRef.HashRef _ (Refs _ _ _ sourceRefsTable))) t =
+  map (Node t) <$> HP.lookupMulti sourceRefsTable t
 
 getTargetsByType :: Type t => Node t -> t -> IO [Node t]
-getTargetsByType (Node _ (Refs _ table _ _)) t =
-  map (Node t) <$> MT.lookupByKey table t
+getTargetsByType (Node _ (HashRef.HashRef _ (Refs _ table _ _))) t =
+  map (Node t) <$> HP.lookupMulti table t
 
 getTargetsByIndex :: Type t => Node t -> Index t -> IO [Node t]
-getTargetsByIndex (Node _ (Refs _ _ table _)) index =
-  map (Node (targetType index)) <$> MT.lookupByKey table index
+getTargetsByIndex (Node _ (HashRef.HashRef _ (Refs _ _ table _))) index =
+  map (Node (targetType index)) <$> HP.lookupMulti table index
 
 addTarget :: Type t => Node t -> Node t -> IO Bool
 addTarget source target = do
@@ -106,18 +113,17 @@ addTarget source target = do
     False -> return False
     True -> updateSource >> return True
   where
-    _error = error . ("GraphDB.Graph.addTarget: " ++)
     updateSource = do
-      targetIndexes <- indexes <$> getValue target <*> pure (valueType source)
+      targetIndexes <- indexes <$> getValue target <*> pure (nodeValueType source)
       forM_ targetIndexes $ \i -> 
-        MT.insert (targetsByIndex source) (i, refs target) >>= \case
+        HP.insert (nodeTargetsByIndex source) (i, nodeRefs target) >>= \case
           True -> return ()
-          False -> _error "Node already exists under provided index"
-      MT.insert (targetsByType source) (valueType target, refs target) >>= \case
+          False -> $bug "Node already exists under provided index"
+      HP.insert (nodeTargetsByType source) (nodeValueType target, nodeRefs target) >>= \case
         True -> return True
-        False -> _error "Node already exists under provided type"
+        False -> $bug "Node already exists under provided type"
     updateTarget = do
-      MT.insert (sourcesByType target) (valueType source, refs source)
+      HP.insert (nodeSourcesByType target) (nodeValueType source, nodeRefs source)
 
 removeTarget :: Type t => Node t -> Node t -> IO Bool
 removeTarget source target = do
@@ -128,17 +134,16 @@ removeTarget source target = do
       maintain target
       return True
   where
-    _error = error . ("GraphDB.Graph.removeTarget: " ++)
-    updateTarget = MT.delete (sourcesByType target) (valueType source, refs source)
+    updateTarget = HP.delete (nodeSourcesByType target) (nodeValueType source, nodeRefs source)
     updateSource = do
-      indexes <- indexes <$> getValue target <*> pure (valueType source)
+      indexes <- indexes <$> getValue target <*> pure (nodeValueType source)
       forM_ indexes $ \i ->
-        MT.delete (targetsByIndex source) (i, refs target) >>= \case
+        HP.delete (nodeTargetsByIndex source) (i, nodeRefs target) >>= \case
           True -> return ()
-          False -> _error "Target not found by index"
-      MT.delete (targetsByType source) (valueType target, refs target) >>= \case
+          False -> $bug "Target not found by index"
+      HP.delete (nodeTargetsByType source) (nodeValueType target, nodeRefs target) >>= \case
         True -> return ()
-        False -> _error "Target not found by type"
+        False -> $bug "Target not found by type"
 
 -- |
 -- If after being removed the target node has no edges to it left, 
@@ -148,30 +153,27 @@ removeTarget source target = do
 -- That's why in this case we must delete all outgoing edges from it manually.
 maintain :: Type t => Node t -> IO ()
 maintain node = do
-  MT.getNull (sourcesByType node) >>= \case
+  HP.null (nodeSourcesByType node) >>= \case
     True -> return ()
     False -> traverseTargets node $ removeTarget node >=> \case
       True -> return ()
-      False -> _error "Target removal failed"
-  where
-    _error = error . ("GraphDB.Graph.maintain: " ++)
+      False -> $bug "Target removal failed"
 
-foldTargets :: Node t -> z -> (z -> Node t -> IO z) -> IO z
-foldTargets node z f = MT.foldM (targetsByType node) z $ \z t refs -> f z (Node t refs)
+foldTargets :: (HP.Key t) => Node t -> z -> (z -> Node t -> IO z) -> IO z
+foldTargets node z f = HP.foldM (nodeTargetsByType node) z $ \z (t, refs) -> f z (Node t refs)
 
-traverseTargets :: Node t -> (Node t -> IO ()) -> IO ()
+traverseTargets :: (HP.Key t) => Node t -> (Node t -> IO ()) -> IO ()
 traverseTargets node action = foldTargets node () $ \() -> action
 
-foldSources :: Node t -> z -> (z -> Node t -> IO z) -> IO z
-foldSources node z f = MT.foldM (sourcesByType node) z $ \z t refs -> f z (Node t refs)
+foldSources :: (HP.Key t) => Node t -> z -> (z -> Node t -> IO z) -> IO z
+foldSources node z f = HP.foldM (nodeSourcesByType node) z $ \z (t, refs) -> f z (Node t refs)
 
-traverseSources :: Node t -> (Node t -> IO ()) -> IO ()
+traverseSources :: (HP.Key t) => Node t -> (Node t -> IO ()) -> IO ()
 traverseSources node action = foldSources node () $ \() -> action
 
-traverse :: Node t -> (Node t -> IO (Node t -> IO ())) -> IO ()
+traverse :: (HP.Key t) => Node t -> (Node t -> IO (Node t -> IO ())) -> IO ()
 traverse root f = do
-  knownRefs <- HashTables.new 
-            :: IO (HashTables.BasicHashTable (StableName (Refs t)) ())
+  knownRefs :: HP.HashRefSet HP.Cuckoo (Refs t) <- HP.new
   unvisitedNodes <- newIORef []
   let
     dequeue =
@@ -180,12 +182,11 @@ traverse root f = do
           writeIORef unvisitedNodes tail
           return $ Just head
         [] -> return Nothing
-    enqueue node@(Node _ refs) = do
-      sn <- makeStableName refs
-      HashTables.lookup knownRefs sn >>= \case
-        Just () -> return ()
-        Nothing -> do
-          HashTables.insert knownRefs sn ()
+    enqueue node@(Node _ refsHR) = do
+      HP.elem knownRefs refsHR >>= \case
+        True -> return ()
+        False -> do
+          HP.insert knownRefs refsHR
           modifyIORef unvisitedNodes (node:)
     loop =
       dequeue >>= \case
@@ -199,7 +200,7 @@ traverse root f = do
   enqueue root
   loop
 
-getStats :: Node t -> IO (Int, Int)
+getStats :: (HP.Key t) => Node t -> IO (Int, Int)
 getStats root = do
   nodesCounter <- newIORef 0
   edgesCounter <- newIORef 0
@@ -212,18 +213,18 @@ getStats root = do
 -------------
 
 instance Eq (Node t) where
-  n == n' = valueRef n == valueRef n'
+  n == n' = nodeValueRef n == nodeValueRef n'
 
 instance (Type t) => Serializable IO (Node t) where
 
   serialize root = do
     knownRefs
-      :: HashTables.BasicHashTable (StableName (Refs t)) ()
-      <- liftIO $ HashTables.new
+      :: HP.HashRefSet HP.Cuckoo (Refs t)
+      <- liftIO $ HP.new
     unvisitedNodes <- liftIO $ newIORef []
     indexTable 
-      :: HashTables.BasicHashTable (StableName (Refs t)) Int
-      <- liftIO $ HashTables.new
+      :: HP.Table HP.Cuckoo (HashRef.HashRef (Refs t)) Int
+      <- liftIO $ HP.new
     indexCounter <- liftIO $ newIORef 0
 
     let
@@ -233,12 +234,11 @@ instance (Type t) => Serializable IO (Node t) where
             writeIORef unvisitedNodes tail
             return $ Just head
           [] -> return Nothing
-      enqueueNode node@(Node _ refs) = do
-        sn <- makeStableName refs
-        HashTables.lookup knownRefs sn >>= \case
-          Just () -> return ()
-          Nothing -> do
-            HashTables.insert knownRefs sn ()
+      enqueueNode node@(Node _ refsHR) = do
+        HP.elem knownRefs refsHR >>= \case
+          True -> return ()
+          False -> do
+            HP.insert knownRefs refsHR
             modifyIORef unvisitedNodes (node:)
       loop = do
         liftIO dequeueNode >>= \case
@@ -256,9 +256,8 @@ instance (Type t) => Serializable IO (Node t) where
             serialize count
             serializeTargets
             loop
-      serializeNodeRef node@(Node _ refs) = do
-        sn <- liftIO $ makeStableName refs
-        (liftIO $ HashTables.lookup indexTable sn) >>= \case
+      serializeNodeRef node@(Node _ refsHR) = do
+        (liftIO $ HP.lookup indexTable refsHR) >>= \case
           Just i -> do
             serialize True
             serialize i
@@ -267,7 +266,7 @@ instance (Type t) => Serializable IO (Node t) where
             serialize False
             serialize =<< (liftIO $ getValue node)
             i <- liftIO $ readIORef indexCounter
-            liftIO $ HashTables.insert indexTable sn i
+            liftIO $ HP.insert indexTable (refsHR, i)
             liftIO $ writeIORef indexCounter (succ i)
             return i
 
