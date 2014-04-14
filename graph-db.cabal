@@ -410,6 +410,9 @@ benchmark competition
     graph-db,
     mwc-random == 0.13.*,
     lens == 4.*,
+    -- postgres:
+    postgresql-simple == 0.4.*,
+    ex-pool == 0.1.*,
     -- criterion:
     criterion == 0.6.*,
     statistics == 0.10.3.*,
