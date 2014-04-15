@@ -86,10 +86,10 @@ runSession (v, p, buffering) (PersistentSession ses) = do
           applyLog graph log = do
             void $ runInBase $ NP.runSession graph $ NP.runAction $ L.toAction log
       release (storage, queue, graph) = do
-        IOQueue.shutdown queue
+        IOQueue.finish queue
         S.checkpoint storage graph
         S.release storage
-    try $ bracket acquire release $ \(s, q, g) -> 
+    try $ bracket acquire release $ \(s, q, g) -> do
       runInBase $ NP.runSession g $ flip runReaderT (s, q) $ ses
   either (return . Left . adaptStorageException) (fmap Right . restoreM) r
   where
@@ -113,7 +113,7 @@ runTransaction write (Tx tx) = PersistentSession $ do
     lift $ NP.runTransaction write $ flip evalStateT 0 $ flip runStateT [] $ tx
   when write $ do
     (storage, ioq) <- ask
-    liftBase $ IOQueue.enqueue ioq $ S.persistEvent storage $ reverse log
+    liftBase $ IOQueue.performAsync ioq $ S.persistEvent storage $ reverse log
   return r
 
 

@@ -160,7 +160,6 @@ executable graph-db-demo
     "-with-rtsopts=-N"
   build-depends:
     cereal-plus,
-    ghc-datasize,
     old-locale,
     time,
     text,
@@ -218,7 +217,6 @@ test-suite internal-tests
   build-depends:
     -- testing:
     async,
-    ghc-datasize,
     directory,
     system-fileio,
     old-locale,
@@ -315,7 +313,6 @@ test-suite internal-tests
     Haskell2010
 
 
-
 test-suite api-tests
   type:             
     exitcode-stdio-1.0
@@ -329,7 +326,6 @@ test-suite api-tests
   build-depends:
     -- testing:
     graph-db,
-    ghc-datasize,
     old-locale,
     time,
     cereal-plus,
@@ -351,6 +347,92 @@ test-suite api-tests
     time,
     old-locale,
     -- control:
+    monad-control == 0.3.*,
+    transformers-base == 0.4.*,
+    transformers,
+    mtl,
+    -- debugging:
+    loch-th == 0.2.*,
+    placeholders == 0.1.*,
+    -- 
+    base >= 4.5 && < 5
+  default-extensions:
+    Arrows
+    BangPatterns
+    ConstraintKinds
+    DataKinds
+    DefaultSignatures
+    DeriveDataTypeable
+    DeriveFunctor
+    DeriveGeneric
+    EmptyDataDecls
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    ImpredicativeTypes
+    LambdaCase
+    LiberalTypeSynonyms
+    MultiParamTypeClasses
+    MultiWayIf
+    NoImplicitPrelude
+    NoMonomorphismRestriction
+    OverloadedStrings
+    PatternGuards
+    QuasiQuotes
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    TemplateHaskell
+    TupleSections
+    TypeFamilies
+    TypeOperators
+  default-language:
+    Haskell2010
+
+
+benchmark competition
+  type:             
+    exitcode-stdio-1.0
+  hs-source-dirs:   
+    benchmarks
+  main-is:      
+    Competition.hs
+  ghc-options:
+    -threaded
+    "-with-rtsopts=-N"
+  build-depends:
+    graph-db,
+    mwc-random == 0.13.*,
+    lens == 4.*,
+    -- acid-state:
+    acid-state == 0.12.*,
+    ixset == 1.0.*,
+    safecopy == 0.8.*,
+    -- postgres:
+    postgresql-simple == 0.4.*,
+    ex-pool == 0.1.*,
+    -- criterion:
+    criterion == 0.8.*,
+    -- concurrency:
+    lifted-async,
+    -- file-system:
+    directory == 1.2.*,
+    system-filepath == 0.4.*,
+    system-fileio == 0.3.*,
+    -- data:
+    cereal-plus,
+    hashable,
+    containers,
+    bytestring,
+    text,
+    time,
+    old-locale,
+    -- control:
+    lifted-base == 0.2.*,
+    free >= 4.6 && < 5,
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,
