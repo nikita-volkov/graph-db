@@ -6,7 +6,6 @@ import qualified GraphDB as G
 import qualified Data.Text
 import qualified Data.Time
 import qualified System.Locale
-import qualified GHC.DataSize
 import qualified System.IO.Unsafe
 
 
@@ -234,10 +233,6 @@ getRecordingsByArtistUID uid =
   return . concat >>=
   mapM G.getValue
 
-measureMemoryFootprint :: G.ReadOrWrite s Catalogue t Int
-measureMemoryFootprint =
-  G.getRoot >>= return . System.IO.Unsafe.unsafePerformIO . GHC.DataSize.recursiveSize
-
 ---------
 
 main = do
@@ -257,8 +252,6 @@ main = do
         return . catMaybes . map (\case Left (Artist uid _) -> Just uid; _ -> Nothing) >>=
         mapM getRecordingsByArtistUID >>=
         return . concat
-    liftIO $ putStrLn "Memory footprint (bytes):"
-    liftIO . print =<< G.read measureMemoryFootprint
     liftIO $ putStrLn "Total amounts of nodes and edges in the graph:"
     liftIO . print =<< G.read G.getStats
   where

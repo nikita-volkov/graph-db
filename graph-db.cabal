@@ -160,7 +160,6 @@ executable graph-db-demo
     "-with-rtsopts=-N"
   build-depends:
     cereal-plus,
-    ghc-datasize,
     old-locale,
     time,
     text,
@@ -218,7 +217,6 @@ test-suite internal-tests
   build-depends:
     -- testing:
     async,
-    ghc-datasize,
     directory,
     system-fileio,
     old-locale,
@@ -328,7 +326,6 @@ test-suite api-tests
   build-depends:
     -- testing:
     graph-db,
-    ghc-datasize,
     old-locale,
     time,
     cereal-plus,
@@ -418,9 +415,7 @@ benchmark competition
     postgresql-simple == 0.4.*,
     ex-pool == 0.1.*,
     -- criterion:
-    criterion == 0.6.*,
-    statistics == 0.10.3.*,
-    hastache == 0.5.*,
+    criterion == 0.8.*,
     -- concurrency:
     lifted-async,
     -- file-system:
