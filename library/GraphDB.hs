@@ -277,7 +277,7 @@ newtype Node s u t v = Node (SessionNode s u)
 -- Gets executed concurrently.
 -- 
 -- Concerning the \"forall\" part refer to 'Node'.
-read :: (Union.Union u, Session s, MonadBaseControl IO m, MonadIO m) => (forall st. Read s u t r) -> s u m r
+read :: (Union.Union u, Session s, MonadBaseControl IO m, MonadIO m) => (forall t. Read s u t r) -> s u m r
 read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
 
 -- |
@@ -287,7 +287,7 @@ read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
 -- so all concurrent transactions are put on hold for the time of execution.
 -- 
 -- Concerning the \"forall\" part refer to 'Node'.
-write :: (Union.Union u, Session s, MonadBaseControl IO m, MonadIO m) => (forall st. Write s u t r) -> s u m r
+write :: (Union.Union u, Session s, MonadBaseControl IO m, MonadIO m) => (forall t. Write s u t r) -> s u m r
 write (Write a) = runTransaction True $ hoistFreeT (return . runIdentity) $ a
 
 
