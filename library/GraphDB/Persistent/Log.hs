@@ -24,6 +24,7 @@ data Entry u =
   GetTargetsByIndex NodeRef (U.Index u) |
   AddTarget NodeRef NodeRef |
   RemoveTarget NodeRef NodeRef |
+  Remove NodeRef |
   SetValue NodeRef (U.Value u)
   deriving (Generic)
 
@@ -48,5 +49,6 @@ toAction log = do
       GetTargetsByIndex r i -> resolveRef r >>= flip A.getTargetsByIndex i >>= mapM_ appendRef
       AddTarget s t -> void $ join $ A.addTarget <$> resolveRef s <*> resolveRef t
       RemoveTarget s t -> void $ join $ A.removeTarget <$> resolveRef s <*> resolveRef t
+      Remove r -> A.remove =<< resolveRef r
       SetValue r v -> void $ join $ A.setValue <$> resolveRef r <*> pure v
   mapM_ applyEntry log

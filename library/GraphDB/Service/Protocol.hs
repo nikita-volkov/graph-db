@@ -24,6 +24,7 @@ data Action u =
   GetTargetsByIndex Node (U.Index u) |
   AddTarget Node Node |
   RemoveTarget Node Node |
+  Remove Node |
   GetStats
   deriving (Generic)
 

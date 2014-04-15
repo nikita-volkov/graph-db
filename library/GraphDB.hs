@@ -60,6 +60,7 @@ module GraphDB
   getTargetsByIndex,
   addTarget,
   removeTarget,
+  remove,
   getStats,
   -- * Modeling
   Edge.Edge(..),
@@ -355,6 +356,11 @@ addTarget (Node s) (Node t) = Write $ Action.addTarget s t
 -- If the node is not found it will return 'False'.
 removeTarget :: (Edge.Edge v v') => Node s u t v -> Node s u t v' -> Write s u t Bool
 removeTarget (Node s) (Node t) = Write $ Action.removeTarget s t
+
+-- |
+-- Remove a node and all edges to it from other nodes.
+remove :: Node s u t v -> Write s u t ()
+remove (Node n) = Write $ Action.remove n
 
 -- |
 -- Count the total amounts of distinct nodes and edges in the graph.

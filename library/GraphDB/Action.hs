@@ -17,6 +17,7 @@ data ActionF n v t i a =
   GetTargetsByIndex n i ([n] -> a) |
   AddTarget n n (Bool -> a) |
   RemoveTarget n n (Bool -> a) |
+  Remove n a |
   GetStats ((Int, Int) -> a)
   deriving (Functor)
 

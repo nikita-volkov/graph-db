@@ -160,6 +160,10 @@ runAction = iterTM $ \case
     record $ L.RemoveTarget sr tr
     r <- runInner $ A.removeTarget sn tn
     c r
+  A.Remove (n, r) c -> do
+    record $ L.Remove r
+    runInner $ A.remove n
+    c
   A.GetStats c -> do
     r <- runInner $ A.getStats
     c r

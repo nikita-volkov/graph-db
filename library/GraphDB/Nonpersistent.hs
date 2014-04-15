@@ -72,4 +72,5 @@ runAction = iterTM $ \case
   A.GetTargetsByIndex n i c -> liftBase (G.getTargetsByIndex n i) >>= c
   A.AddTarget s t c -> liftBase (G.addTarget s t) >>= c
   A.RemoveTarget s t c -> liftBase (G.removeTarget s t) >>= c
+  A.Remove n c -> liftBase (G.remove n) >> c
   A.GetStats c -> NonpersistentSession ask >>= liftBase . G.getStats >>= c

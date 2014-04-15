@@ -55,3 +55,15 @@ test_addingANodeTwiceThrowsNoError = do
       G.addTarget root node
   return () :: IO ()
 
+test_removingANodeAffectsStats = do
+  G.runNonpersistentSession initRoot $ do
+    liftIO . assertEqual (1, 0) =<< G.read G.getStats
+    uid <- G.write $ insertArtist $ Artist "A"
+    liftIO . assertEqual (2, 1) =<< G.read G.getStats
+    G.write $ do
+      root <- G.getRoot
+      nodes <- G.getTargetsByIndex root (Catalogue_Artist_UID uid)
+      mapM_ G.remove nodes
+    liftIO . assertEqual (1, 0) =<< G.read G.getStats
+  return () :: IO ()
+

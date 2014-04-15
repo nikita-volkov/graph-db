@@ -63,6 +63,10 @@ runCommandProcessor (commandsChan, responseVar) = do
               tn <- resolveRef t
               r <- A.removeTarget sn tn
               respond $ P.Bool r
+            P.Remove r -> do
+              n <- resolveRef r
+              A.remove n
+              respond $ P.Unit
             P.GetStats -> do
               r <- A.getStats
               respond $ P.IntPair r

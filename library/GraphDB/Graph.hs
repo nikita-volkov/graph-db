@@ -155,9 +155,11 @@ maintain :: Type t => Node t -> IO ()
 maintain node = do
   HP.null (nodeSourcesByType node) >>= \case
     True -> return ()
-    False -> traverseTargets node $ removeTarget node >=> \case
-      True -> return ()
-      False -> $bug "Target removal failed"
+    False -> traverseTargets node $ void . removeTarget node
+
+remove :: Type t => Node t -> IO ()
+remove node = do
+  traverseSources node $ \s -> void $ removeTarget s node
 
 foldTargets :: (HP.Key t) => Node t -> z -> (z -> Node t -> IO z) -> IO z
 foldTargets node z f = HP.foldM (nodeTargetsByType node) z $ \z (t, refs) -> f z (Node t refs)

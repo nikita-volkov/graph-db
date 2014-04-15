@@ -109,6 +109,10 @@ runAction = iterTM $ \case
     case r of
       P.Bool r -> c r
       _ -> $bug "Unexpected response"
+  A.Remove n c -> do
+    (req $ P.Remove n) >>= \case
+      P.Unit -> c
+      _ -> $bug "Unexpected response"
   A.GetStats c -> do
     r <- req $ P.GetStats
     case r of
