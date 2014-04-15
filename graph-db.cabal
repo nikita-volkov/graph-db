@@ -330,7 +330,7 @@ test-suite api-tests
     time,
     cereal-plus,
     quickcheck-instances,
-    QuickCheck-GenT == 0.1.*,
+    QuickCheck-GenT >= 0.1.2 && < 0.2,
     QuickCheck,
     HUnit,
     HTF == 0.11.*,
@@ -347,6 +347,7 @@ test-suite api-tests
     time,
     old-locale,
     -- control:
+    lens == 4.*,
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,

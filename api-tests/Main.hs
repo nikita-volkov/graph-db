@@ -27,13 +27,16 @@ traceIOWithTime = if debugging
 -------------------------
 
 test_clientServer = do
-  runNonpersistentSession $ serve $ runClientSession $ do
-    G.write populate
-    liftIO . assertEqual (18, 33) =<< G.read (G.getStats :: G.Read s Catalogue t (Int, Int))
-  return () :: IO ()
+  assertEqual [Identified (fromIntegral 1) (Artist "The Beatles")] =<< do
+    runNonpersistentSession $ do
+      serve $ runClientSession $ do
+        G.write $ insertArtist $ Artist "The Beatles"
+      G.read $ 
+        G.getRoot >>= 
+        flip G.getTargetsByIndex (Catalogue_Artist_Name "The Beatles") >>=
+        mapM G.getValue
   where
-    runNonpersistentSession = G.runNonpersistentSession initRoot where
-      initRoot = Catalogue 0
+    runNonpersistentSession = G.runNonpersistentSession initRoot
     serve = G.serve (1, lm, to, mc, log) where
       lm = G.ListeningMode_Host 54699 auth where
         auth = const $ return True
@@ -44,10 +47,9 @@ test_clientServer = do
       url = G.URL_Host "127.0.0.1" 54699 Nothing
 
 test_addingANodeTwiceThrowsNoError = do
-  G.runNonpersistentSession (Catalogue 0) $ do
+  G.runNonpersistentSession initRoot $ do
     G.write $ do
-      uid <- generateNewUID
-      node <- G.newNode $ Artist uid "A"
+      node <- G.newNode $ Identified (UID 1) (Artist "A")
       root <- G.getRoot
       G.addTarget root node
       G.addTarget root node
