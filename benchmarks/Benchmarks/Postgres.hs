@@ -7,18 +7,15 @@ module Benchmarks.Postgres where
 
 import Benchmarks.Prelude
 import Control.Lens
+import Benchmarks.Model
 import qualified Benchmarks.Postgres.PostgreSQLSimplePlus as P
 
 
 -- * Model
 -------------------------
 
-newtype UID a = UID Int deriving (Show, Eq, Generic, Ord, Enum, Num, Real, Integral, P.FromField, P.ToField)
-data Artist = Artist Name deriving (Show, Eq, Generic)
-data Genre = Genre Name deriving (Show, Eq, Generic)
-data Song = Song Name deriving (Show, Eq, Generic)
-type Name = Text
-data Identified a = Identified {-# UNPACK #-} !(UID a) !a
+deriving instance P.FromField (UID a)
+deriving instance P.ToField (UID a)
 
 instance P.FromRow Artist where 
   fromRow = Artist <$> P.field
@@ -41,39 +38,67 @@ instance P.ToRow a => P.ToRow (Identified a) where
 -- * Transactions
 -------------------------
 
-insertArtist :: Artist -> P.Action (UID Artist)
-insertArtist artist = 
-  fmap (P.fromOnly . head) $ 
-  P.query "INSERT INTO artist (name) VALUES (?) RETURNING id" artist
-
-insertGenre :: Genre -> P.Action (UID Genre)
-insertGenre genre = 
-  fmap (P.fromOnly . head) $ 
-  P.query "INSERT INTO genre (name) VALUES (?) RETURNING id" genre
-
-insertSong :: Song -> [UID Genre] -> [UID Artist] -> P.Action (UID Song)
-insertSong song genreUIDs artistUIDs = do
-  songUID <-
+interpretSession :: (MonadIO m) => Session m a -> P.Session m a
+interpretSession = iterTM $ \case
+  InsertArtist artist continue ->
+    (>>= continue) $
+    P.runAction False $
     fmap (P.fromOnly . head) $ 
-    P.query "INSERT INTO song (name) VALUES (?) RETURNING id" song
+    P.query "INSERT INTO artist (name) VALUES (?) RETURNING id" artist
+  InsertGenre genre continue -> 
+    (>>= continue) $
+    P.runAction False $
+    fmap (P.fromOnly . head) $ 
+    P.query "INSERT INTO genre (name) VALUES (?) RETURNING id" genre
+  InsertSong song genreUIDs artistUIDs continue -> 
+    (>>= continue) $ 
+    P.runAction True $ do
+      songUID <-
+        fmap (P.fromOnly . head) $ 
+        P.query "INSERT INTO song (name) VALUES (?) RETURNING id" song
 
-  mapM_ (P.execute "INSERT INTO song_genre (id1, id2) VALUES (?, ?)") $
-    zip (repeat songUID) genreUIDs
+      mapM_ (P.execute "INSERT INTO song_genre (id1, id2) VALUES (?, ?)") $
+        zip (repeat songUID) genreUIDs
 
-  mapM_ (P.execute "INSERT INTO song_artist (id1, id2) VALUES (?, ?)") $
-    zip (repeat songUID) artistUIDs
+      mapM_ (P.execute "INSERT INTO song_artist (id1, id2) VALUES (?, ?)") $
+        zip (repeat songUID) artistUIDs
 
-  return songUID
+      return songUID
+  LookupArtistByUID uid continue ->
+    P.runAction False (fmap listToMaybe $ P.query sql (P.Only uid)) >>= continue
+    where
+      sql = "SELECT * FROM artist WHERE id = ?"
+  LookupArtistsByName name continue ->
+    P.runAction False (P.query sql (P.Only name)) >>= continue
+    where
+      sql = "SELECT * FROM artist WHERE name = ?"
+  LookupArtistsBySongGenreName name continue -> 
+    P.runAction False (P.query sql (P.Only name)) >>= continue
+    where
+      sql = 
+        [P.sql|
+          SELECT *
+            FROM artist
+              LEFT JOIN song_artist ON song_artist.id2 = artist.id
+              LEFT JOIN song_genre ON song_genre.id1 = song_artist.id1
+              LEFT JOIN genre ON genre.id = song_genre.id2
+            WHERE 
+              genre.name = ?
+        |]
 
 
 -- * Setup
 -------------------------
 
-init :: P.Action ()
-init = do
-  cleanUp
-  P.execute_
+init :: (MonadIO m) => P.Session m ()
+init = 
+  P.runAction True $ P.execute_
     [P.sql|
+      DROP TABLE IF EXISTS "song_artist";
+      DROP TABLE IF EXISTS "song_genre";
+      DROP TABLE IF EXISTS "song";
+      DROP TABLE IF EXISTS "genre";
+      DROP TABLE IF EXISTS "artist";
       CREATE TABLE "artist" (
         "id" BIGSERIAL,
         "name" varchar NOT NULL,
@@ -106,14 +131,14 @@ init = do
       );
     |]
 
-cleanUp :: P.Action ()
-cleanUp = do
-  P.execute_
-    [P.sql|
-      DROP TABLE IF EXISTS "song_artist";
-      DROP TABLE IF EXISTS "song_genre";
-      DROP TABLE IF EXISTS "song";
-      DROP TABLE IF EXISTS "genre";
-      DROP TABLE IF EXISTS "artist";
-    |]
+runSession :: (MonadIO m) => P.PoolSize -> P.Session m r -> m r
+runSession poolSize sess = do
+  P.runSession (host, port, user, pw, db, poolSize) $ sess
+  where
+    host = "localhost"
+    port = 5432
+    user = "postgres"
+    pw = ""
+    db = "test"
+
 

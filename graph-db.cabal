@@ -432,6 +432,7 @@ benchmark competition
     time,
     old-locale,
     -- control:
+    free >= 4.6 && < 5,
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,
