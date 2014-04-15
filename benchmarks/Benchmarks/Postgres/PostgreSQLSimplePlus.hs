@@ -49,6 +49,7 @@ import qualified Data.Pool as Poo
 newtype Session m r = Session (ReaderT (Poo.Pool Pos.Connection) m r)
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
+-- FIXME: introduce bracketing if to be used anywhere seriously.
 runSession :: MonadIO m => Settings -> Session m r -> m r
 runSession (host, port, user, pw, db, poolSize) (Session m) = do
   pool <- liftIO $ Poo.createPool connect disconnect stripe timeout poolSize

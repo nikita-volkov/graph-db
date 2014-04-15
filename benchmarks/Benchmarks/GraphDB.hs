@@ -160,5 +160,5 @@ initDir = do
   FS.createTree dir
 
 socketPath = dir <> ".socket"
-dir = "./dist/benchmarks/db"
+dir = "./dist/benchmarks/graph-db"
 initialRoot = (UID 0, UID 0, UID 0)

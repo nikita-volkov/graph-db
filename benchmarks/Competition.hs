@@ -1,34 +1,41 @@
 
 import Benchmarks.Prelude
 import Criterion.Main
-import qualified GraphDB as G
-import qualified Benchmarks.GraphDB as BG
-import qualified Benchmarks.Random as R
-import qualified Benchmarks.Postgres as P
+import qualified Benchmarks.GraphDB as Gra
+import qualified Benchmarks.Random as Ran
+import qualified Benchmarks.Postgres as Pos
 import qualified Benchmarks.Model as Mod
+import qualified Benchmarks.AcidState as Aci
 
 
 main = do
-  gen <- R.newGen
+  gen <- Ran.newGen
   defaultMain
     [
       bgroup "Inserting" $ let 
-        session = populationSession (20, 100, 1000-100-20)
+        session = populationSession 10000
         in 
           [
+            bgroup "AcidState" $ 
+              [
+                benchIO "Local" $ do
+                  Aci.initDir
+                  Ran.runGenT gen $ Aci.runSession Aci.Local $ session
+              ]
+            ,
             benchIO "Postgres" $ do
-              R.runGenT gen $ P.runSession 1 $ do
-                P.init
-                P.interpretSession session
+              Ran.runGenT gen $ Pos.runSession 1 $ do
+                Pos.init
+                Pos.interpretSession session
             ,
             bgroup "GraphDB" $ 
               [
                 benchIO "Persistent" $ do
-                  BG.initDir
-                  R.runGenT gen $ BG.runPersistentSession $ BG.interpretSession session
+                  Gra.initDir
+                  Ran.runGenT gen $ Gra.runPersistentSession $ Gra.interpretSession session
                 ,
                 benchIO "Nonpersistent" $ do
-                  R.runGenT gen $ BG.runNonpersistentSession $ BG.interpretSession session
+                  Ran.runGenT gen $ Gra.runNonpersistentSession $ Gra.interpretSession session
               ]
           ]
     ]
@@ -40,30 +47,11 @@ benchIO = bench
 -- * Population
 -------------------------
 
-type PopulationSettings = (GenresNum, ArtistsNum, SongsNum)
-type GenresNum = Int
-type ArtistsNum = Int
-type SongsNum = Int
-
-populationSession :: (MonadIO m) => PopulationSettings -> Mod.Session (R.GenT m) ()
-populationSession (genresNum, artistsNum, songsNum) = do
-  replicateM_ genresNum $ do
-    name <- lift $ R.generateName
-    Mod.insertGenre $ Mod.Genre name
-  replicateM_ artistsNum $ do
-    name <- lift $ R.generateName
+-- |
+-- We insert only artists, 
+-- so that results don't get skewed by lookups in some databases.
+populationSession :: (MonadIO m) => Int -> Mod.Session (Ran.GenT m) ()
+populationSession num = do
+  replicateM_ num $ do
+    name <- lift $ Ran.generateName
     Mod.insertArtist $ Mod.Artist name
-  replicateM_ songsNum $ do
-    name <- lift $ R.generateName
-    genres <- do
-      length <- lift $ R.generateVariate (1, 5)
-      replicateM length $ do
-        n <- lift $ R.generateVariate (1, genresNum)
-        return $ Mod.UID n
-    artists <- do
-      length <- lift $ R.generateVariate (1, 2)
-      replicateM length $ do
-        n <- lift $ R.generateVariate (1, artistsNum)
-        return $ Mod.UID n
-    Mod.insertSong (Mod.Song name) genres artists
-

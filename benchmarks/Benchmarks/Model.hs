@@ -16,6 +16,9 @@ data Song = Song Name deriving (Show, Eq, Ord, Generic, Data, Typeable)
 type Name = Text
 data Identified a = Identified {-# UNPACK #-} !(UID a) !a deriving (Show, Eq, Ord, Generic, Data, Typeable)
 
+instance Functor Identified where
+  fmap f (Identified (UID n) a) = Identified (UID n) (f a)
+
 
 -- * Session
 -------------------------

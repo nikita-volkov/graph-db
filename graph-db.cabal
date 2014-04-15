@@ -410,6 +410,10 @@ benchmark competition
     graph-db,
     mwc-random == 0.13.*,
     lens == 4.*,
+    -- acid-state:
+    acid-state == 0.12.*,
+    ixset == 1.0.*,
+    safecopy == 0.8.*,
     -- postgres:
     postgresql-simple == 0.4.*,
     ex-pool == 0.1.*,
@@ -432,6 +436,7 @@ benchmark competition
     time,
     old-locale,
     -- control:
+    lifted-base == 0.2.*,
     free >= 4.6 && < 5,
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
