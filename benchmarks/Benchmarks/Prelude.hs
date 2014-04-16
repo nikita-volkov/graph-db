@@ -57,7 +57,7 @@ import GHC.IO.Exception as Exports
 import Data.IORef as Exports
 import Data.STRef as Exports
 import Control.Monad.ST as Exports
-import Debug.Trace as Exports hiding (traceIO)
+import Debug.Trace as Exports hiding (traceIO, traceM)
 
 -- mtl
 import Control.Monad.Identity as Exports hiding (mapM_, sequence_, forM_, msum, mapM, sequence, forM)
