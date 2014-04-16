@@ -337,8 +337,11 @@ test-suite api-tests
     -- concurrency:
     lifted-async,
     -- file-system:
-    system-filepath,
+    directory == 1.2.*,
+    system-filepath == 0.4.*,
+    system-fileio == 0.3.*,
     -- data:
+    vector,
     cereal-plus,
     hashable,
     containers,

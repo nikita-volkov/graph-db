@@ -51,6 +51,7 @@ data PersistenceFailure =
   -- | 
   -- Corrupt data during deserialization of the stored data.
   CorruptData Text
+  deriving (Show)
 
 type Settings u = (U.Value u, StoragePath, PersistenceBuffering)
 -- |
