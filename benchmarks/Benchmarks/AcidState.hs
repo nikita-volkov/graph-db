@@ -145,11 +145,13 @@ interpretSession = iterTM $ \case
 
 
 data Settings =
-  Local
+  LocalPersistent |
+  LocalNonpersistent
 
 runSession :: (MonadIO m, MonadBaseControl IO m) => Settings -> Session m r -> m r
 runSession = \case
-  Local -> Aci.runLocalSession dir initValue . interpretSession
+  LocalPersistent -> Aci.runLocalPersistentSession dir initValue . interpretSession
+  LocalNonpersistent -> Aci.runLocalNonpersistentSession dir initValue . interpretSession
 
 dir = "./dist/benchmarks/acid-state"
 initValue = ((UID 1, Ixs.empty), (UID 1, Ixs.empty), (UID 1, Ixs.empty))

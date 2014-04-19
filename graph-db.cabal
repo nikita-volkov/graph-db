@@ -418,8 +418,8 @@ benchmark competition
     -- postgres:
     postgresql-simple == 0.4.*,
     ex-pool == 0.1.*,
-    -- criterion:
-    criterion == 0.8.*,
+    -- benchmarking:
+    criterion-plus == 0.1.*,
     -- concurrency:
     lifted-async,
     -- file-system:

@@ -1,7 +1,8 @@
 module Benchmarks.AcidState.AcidStatePlus
 (
   Session,
-  runLocalSession,
+  runLocalPersistentSession,
+  runLocalNonpersistentSession,
   runRemoteSession,
   Aci.Update,
   Aci.Query,
@@ -13,6 +14,7 @@ where
 
 import Benchmarks.Prelude
 import qualified Data.Acid as Aci
+import qualified Data.Acid.Memory as Aci
 import qualified Benchmarks.Util.FileSystem as Fil
 import qualified Control.Exception.Lifted as ELi
 
@@ -21,14 +23,22 @@ newtype Session a m r = Session (ReaderT (Aci.AcidState a) m r)
   deriving (Functor, Applicative, Monad, MonadIO, MonadTrans)
 
 
-runLocalSession :: 
+runLocalPersistentSession :: 
   (MonadIO m, MonadBaseControl IO m, Aci.IsAcidic a) => 
   FilePath -> a -> Session a m r -> m r
-runLocalSession dir initState (Session m) = ELi.bracket acquire release apply where
+runLocalPersistentSession dir initState (Session m) = ELi.bracket acquire release apply where
   acquire = liftIO $ Aci.openLocalStateFrom (Fil.encodeString dir) initState
   release s = liftIO $ do
     Aci.createCheckpoint s
     Aci.closeAcidState s
+  apply s = runReaderT m s
+
+runLocalNonpersistentSession :: 
+  (MonadIO m, MonadBaseControl IO m, Aci.IsAcidic a) => 
+  FilePath -> a -> Session a m r -> m r
+runLocalNonpersistentSession dir initState (Session m) = ELi.bracket acquire release apply where
+  acquire = liftIO $ Aci.openMemoryState initState
+  release s = liftIO $ Aci.closeAcidState s
   apply s = runReaderT m s
 
 runRemoteSession :: (MonadIO m) => Session a m r -> m r

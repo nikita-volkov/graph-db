@@ -94,6 +94,7 @@ init :: (MonadIO m) => P.Session m ()
 init = 
   P.runAction True $ P.execute_
     [P.sql|
+      SET client_min_messages = 'warning';
       DROP TABLE IF EXISTS "song_artist";
       DROP TABLE IF EXISTS "song_genre";
       DROP TABLE IF EXISTS "song";
