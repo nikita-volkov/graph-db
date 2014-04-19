@@ -11,54 +11,45 @@ import qualified Benchmarks.AcidState as Aci
 main = do
   gen <- Ran.newGen
   benchmark $ do
-    let session = populationSession 100
     standoff "Inserting" $ do
+      session <- Ran.runGenT gen $ do
+        list <- replicateM 1000 $ Ran.generateName
+        return $ forM_ list $ Mod.insertArtist . Mod.Artist
       subject "Postgres" $ do
         pause
-        Ran.runGenT gen $ Pos.runSession 1 $ do
+        Pos.runSession 1 $ do
           Pos.init
-          lift $ lift $ continue
+          lift $ continue
           Pos.interpretSession session
-          lift $ lift $ pause
+          lift $ pause
       group "AcidState" $ do
-        subject "Persistent" $ do
-          pause
-          liftIO $ Aci.initDir
-          Ran.runGenT gen $ Aci.runSession Aci.LocalPersistent $ do
-            lift $ lift $ continue
-            session
-            lift $ lift $ pause
         subject "Nonpersistent" $ do
           pause
           liftIO $ Aci.initDir
-          Ran.runGenT gen $ Aci.runSession Aci.LocalNonpersistent $ do
-            lift $ lift $ continue
+          r <- Aci.runSession Aci.LocalNonpersistent $ do
+            lift $ continue
+            !r <- session
+            lift $ pause
+          nfIO $ return r
+        subject "Persistent" $ do
+          pause
+          liftIO $ Aci.initDir
+          Aci.runSession Aci.LocalPersistent $ do
+            lift $ continue
             session
-            lift $ lift $ pause
+            lift $ pause
       group "GraphDB" $ do
         subject "Persistent" $ do
           pause
           liftIO $ Gra.initDir
-          Ran.runGenT gen $ Gra.runPersistentSession $ do
-            lift $ lift $ continue
+          Gra.runPersistentSession $ do
+            lift $ continue
             Gra.interpretSession session
-            lift $ lift $ pause
+            lift $ pause
         subject "Nonpersistent" $ do
           pause
-          Ran.runGenT gen $ Gra.runNonpersistentSession $ do
-            lift $ lift $ continue
+          Gra.runNonpersistentSession $ do
+            lift $ continue
             Gra.interpretSession session
-            lift $ lift $ pause
+            lift $ pause
 
-
--- * Population
--------------------------
-
--- |
--- We insert only artists, 
--- so that results don't get skewed by lookups in some databases.
-populationSession :: (MonadIO m) => Int -> Mod.Session (Ran.GenT m) ()
-populationSession num = do
-  replicateM_ num $ do
-    name <- lift $ Ran.generateName
-    Mod.insertArtist $ Mod.Artist name
