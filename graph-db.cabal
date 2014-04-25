@@ -50,9 +50,9 @@ library
     GraphDB.Model.Union
     GraphDB.Model.Macros
     GraphDB.Service.Protocol
+    GraphDB.Graph
     GraphDB.Storage
     GraphDB.Storage.Rules
-    GraphDB.Graph
     GraphDB.Util.TH
     GraphDB.Util.TH.Q
     GraphDB.Util.TH.Type
