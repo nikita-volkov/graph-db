@@ -2,9 +2,6 @@ module Benchmarks.Prelude
   ( 
     module Exports,
 
-    LazyByteString,
-    LazyText,
-
     traceM,
     traceIO,
     traceIOWithTime,
@@ -101,6 +98,9 @@ import Data.Hashable as Exports (Hashable(..), hash)
 -- time
 import Data.Time.Clock as Exports
 
+-- string-conversions
+import Data.String.Conversions as Exports hiding (LT, ST)
+
 -- cereal-plus
 import CerealPlus.Serializable as Exports
 
@@ -118,10 +118,6 @@ import qualified Prelude
 import qualified Debug.Trace
 import qualified System.Locale
 import qualified Data.Time
-
-
-type LazyByteString = Data.ByteString.Lazy.ByteString
-type LazyText = Data.Text.Lazy.Text
 
 
 (|>) :: a -> (a -> b) -> b
