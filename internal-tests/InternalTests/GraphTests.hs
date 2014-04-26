@@ -101,6 +101,37 @@ instance Arbitrary Update where
 -- * Tests
 -------------------------
 
+test_remove = do
+  catalogue  <- new $ Catalogue ()
+  michael    <- new $ Artist 1 "Michael Jackson"
+  billieJean <- new $ Song "Billie Jean"
+  whoIsIt    <- new $ Song "Who is it?"
+  
+  addTarget catalogue  michael
+  addTarget catalogue  billieJean
+  addTarget catalogue  whoIsIt
+  addTarget billieJean michael
+  addTarget whoIsIt    michael
+
+  remove michael
+
+  assertEqual (3, 2, 2) =<< getStats catalogue
+  assertEqual 0 . length =<< getSources michael
+
+test_stats = do
+  catalogue  <- new $ Catalogue ()
+  michael    <- new $ Artist 1 "Michael Jackson"
+  billieJean <- new $ Song "Billie Jean"
+  whoIsIt    <- new $ Song "Who is it?"
+  
+  addTarget catalogue  michael
+  addTarget catalogue  billieJean
+  addTarget catalogue  whoIsIt
+  addTarget billieJean michael
+  addTarget whoIsIt    michael
+
+  assertEqual (4, 5, 6) =<< getStats catalogue
+
 test_addingANodeAffectsTheStats = do
   root <- new $ Catalogue ()
   addTarget root =<< do new $ Artist 1 "Michael Jackson"

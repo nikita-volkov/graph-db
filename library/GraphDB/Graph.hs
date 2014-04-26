@@ -117,6 +117,25 @@ getStats root = do
   (,,) <$> readIORef nodesCounter <*> readIORef edgesCounter <*> readIORef indexesCounter
 
 
+-- ** Higher level operations
+-------------------------
+
+remove :: (Setup s) => Node s -> IO ()
+remove node = traverseSources node $ \s -> removeTarget s node
+
+getTargetsByIndex :: (Setup s) => Node s -> Index s -> IO [Node s]
+getTargetsByIndex n i = do
+  l <- newIORef []
+  traverseTargetsByIndex n i $ \t -> modifyIORef l (t:)
+  readIORef l
+
+getSources :: (Setup s) => Node s -> IO [Node s]
+getSources n = do
+  l <- newIORef []
+  traverseSources n $ \s -> modifyIORef l (s:)
+  readIORef l
+
+
 -- * Serialization
 -------------------------
 
