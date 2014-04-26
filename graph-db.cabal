@@ -40,6 +40,8 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Client
+    GraphDB.Protocol
     GraphDB.Persistent
     GraphDB.Persistent.Log
     GraphDB.Nonpersistent

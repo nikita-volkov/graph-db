@@ -78,7 +78,7 @@ traverseTargets source f = do
 traverseSources :: (Setup s) => Node s -> (Node s -> IO ()) -> IO ()
 traverseSources target = H.traverse (refsSources $ HR.value $ target)
 
-getStats :: (Setup s) => Node s -> IO (Int, Int, Int)
+getStats :: (Setup s) => Node s -> IO Stats
 getStats root = do
   nodesCounter <- newIORef 0
   edgesCounter <- newIORef 0
@@ -115,6 +115,8 @@ getStats root = do
   loop
 
   (,,) <$> readIORef nodesCounter <*> readIORef edgesCounter <*> readIORef indexesCounter
+
+type Stats = (Int, Int, Int)
 
 
 -- ** Higher level operations
