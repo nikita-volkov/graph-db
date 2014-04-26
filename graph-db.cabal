@@ -40,6 +40,7 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Graph
     GraphDB.Storage
     GraphDB.Storage.Rules
     GraphDB.Util.TH
@@ -79,14 +80,13 @@ library
     SafeSemaphore == 0.9.*,
     monad-stm,
     -- data:
-    hashtables-plus == 0.1.*,
+    hashtables-plus == 0.2.*,
     hashable == 1.2.*,
     bytestring,
     text,
     containers,
     unordered-containers,
     vector,
-    hashtables == 1.1.*,
     time,
     old-locale,
     -- control:
@@ -189,15 +189,13 @@ test-suite internal-tests
     SafeSemaphore == 0.9.*,
     monad-stm,
     -- data:
-    string-conversions == 0.3.*,
-    hashtables-plus == 0.1.*,
+    hashtables-plus == 0.2.*,
     hashable == 1.2.*,
     bytestring,
     text,
     containers,
     unordered-containers,
     vector,
-    hashtables == 1.1.*,
     time,
     old-locale,
     -- control:
