@@ -40,6 +40,10 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Persistent
+    GraphDB.Persistent.Log
+    GraphDB.Nonpersistent
+    GraphDB.Action
     GraphDB.Graph
     GraphDB.Storage
     GraphDB.Storage.Rules
