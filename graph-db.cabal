@@ -40,6 +40,8 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Macros.Templates
+    GraphDB.Model
     GraphDB.Server
     GraphDB.Client
     GraphDB.Protocol
