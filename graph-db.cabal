@@ -41,6 +41,7 @@ library
     library
   other-modules:
     GraphDB.Macros
+    GraphDB.Macros.Analysis
     GraphDB.Macros.Templates
     GraphDB.Model
     GraphDB.Server
@@ -53,6 +54,7 @@ library
     GraphDB.Graph
     GraphDB.Storage
     GraphDB.Storage.Rules
+    GraphDB.Util.Par
     GraphDB.Util.TH
     GraphDB.Util.TH.Q
     GraphDB.Util.TH.Type
@@ -102,7 +104,6 @@ library
     old-locale,
     -- control:
     monad-par == 0.3.*,
-    foldl == 1.0.*,
     errors >= 1.4.6 && < 1.5,
     free >= 4.6 && < 5,
     monad-control == 0.3.*,
@@ -213,7 +214,6 @@ test-suite internal-tests
     old-locale,
     -- control:
     monad-par == 0.3.*,
-    foldl == 1.0.*,
     errors >= 1.4.6 && < 1.5,
     free >= 4.6 && < 5,
     monad-control == 0.3.*,
