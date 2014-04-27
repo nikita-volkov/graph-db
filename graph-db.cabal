@@ -89,7 +89,6 @@ library
     lifted-async == 0.1.*,
     stm,
     SafeSemaphore == 0.9.*,
-    monad-stm,
     -- data:
     hashtables-plus == 0.2.*,
     hashable == 1.2.*,
@@ -199,7 +198,6 @@ test-suite internal-tests
     lifted-async == 0.1.*,
     stm,
     SafeSemaphore == 0.9.*,
-    monad-stm,
     -- data:
     hashtables-plus == 0.2.*,
     hashable == 1.2.*,

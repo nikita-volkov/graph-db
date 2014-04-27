@@ -82,9 +82,6 @@ import Control.Monad.Free.TH as Exports
 -- stm
 import Control.Concurrent.STM as Exports
 
--- monad-stm
-import Control.Monad.STM.Class as Exports
-
 -- lifted-async
 import Control.Concurrent.Async.Lifted as Exports
 
