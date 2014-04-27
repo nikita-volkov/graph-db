@@ -40,6 +40,7 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Macros
     GraphDB.Macros.Templates
     GraphDB.Model
     GraphDB.Server
@@ -100,6 +101,8 @@ library
     time,
     old-locale,
     -- control:
+    monad-par == 0.3.*,
+    foldl == 1.0.*,
     errors >= 1.4.6 && < 1.5,
     free >= 4.6 && < 5,
     monad-control == 0.3.*,
@@ -209,6 +212,8 @@ test-suite internal-tests
     time,
     old-locale,
     -- control:
+    monad-par == 0.3.*,
+    foldl == 1.0.*,
     errors >= 1.4.6 && < 1.5,
     free >= 4.6 && < 5,
     monad-control == 0.3.*,

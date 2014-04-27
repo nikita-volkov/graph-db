@@ -7,17 +7,32 @@ import qualified GraphDB.Model as M
 
 
 
+data Decs =
+  Decs {
+    hashableInstances :: [Type],
+    serializableInstances :: [Type],
+    setupInstance :: SetupInstance
+  }
+
+decs :: Decs -> [Dec]
+decs s = 
+  renderSetupInstance (setupInstance s) :
+  map renderHashableInstance (hashableInstances s) ++
+  map renderSerializableInstance (serializableInstances s)
+
+
+
 data SetupInstance =
   SetupInstance {
     setup :: Type,
     algorithm :: Type,
-    indexes :: [(Name, Type)],
-    values :: [(Name, Type)],
+    indexes :: [SumConstructor],
+    values :: [SumConstructor],
     indexesFunctionClauses :: [IndexesClause]
   }
 
-setupInstance :: SetupInstance -> Dec
-setupInstance settings = 
+renderSetupInstance :: SetupInstance -> Dec
+renderSetupInstance settings = 
   InstanceD
     []
     (AppT (ConT ''G.Setup) (setup settings))
@@ -35,8 +50,12 @@ setupInstance settings =
           return $ NormalC n [(NotStrict, t)]
         derivations = [''Eq, ''Generic]
         in DataInstD [] ''G.Value [setup settings] constructors derivations,
-      FunD 'G.indexes (map indexesClause (indexesFunctionClauses settings))
+      FunD 'G.indexes (map renderIndexesClause (indexesFunctionClauses settings))
     ]
+
+
+
+type SumConstructor = (Name, Type)
 
 
 
@@ -47,8 +66,8 @@ data IndexesClause =
     sourceConstructor :: Name
   }
 
-indexesClause :: IndexesClause -> Clause
-indexesClause settings = 
+renderIndexesClause :: IndexesClause -> Clause
+renderIndexesClause settings = 
   Clause 
     [
       ConP (targetConstructor settings) [VarP var1],
@@ -62,11 +81,11 @@ indexesClause settings =
 
 
 
-hashableInstance :: Type -> Dec
-hashableInstance t = head $ purify [d| instance Hashable $(return t) |]
+renderHashableInstance :: Type -> Dec
+renderHashableInstance t = head $ purify [d| instance Hashable $(return t) |]
 
 
 
-serializableInstance :: Type -> Dec
-serializableInstance t = head $ purify [d| instance Serializable m $(return t) |]
+renderSerializableInstance :: Type -> Dec
+renderSerializableInstance t = head $ purify [d| instance Serializable m $(return t) |]
 
