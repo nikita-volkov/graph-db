@@ -58,6 +58,7 @@ library
     GraphDB.Util.DIOVector
     GraphDB.Util.IOQueue
     GraphDB.Util.Prelude
+    GraphDB.Util.Prelude.TH
   exposed-modules:
   build-depends:
     -- parsing:
@@ -66,6 +67,7 @@ library
     -- template-haskell:
     template-haskell,
     th-expand-syns,
+    th-instance-reification > 0.1.0 && < 0.2,
     -- networking:
     remotion == 0.1.*,
     network == 2.4.*,
@@ -175,6 +177,7 @@ test-suite internal-tests
     -- template-haskell:
     template-haskell,
     th-expand-syns,
+    th-instance-reification > 0.1.0 && < 0.2,
     -- networking:
     remotion == 0.1.*,
     network == 2.4.*,
