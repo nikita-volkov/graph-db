@@ -43,7 +43,7 @@ renderSetupInstance (setup, indexes, values, indexesFunctionClauses) =
     (AppT (ConT ''G.Setup) (setup))
     [
       TySynInstD ''G.Algorithm [setup] (ConT ''G.Linear),
-      renderSumData ''G.Index setup IsStrict values,
+      renderSumData ''G.Index setup IsStrict indexes,
       renderSumData ''G.Value setup NotStrict values,
       FunD 'G.indexes (map renderIndexesClause indexesFunctionClauses)
     ]
@@ -63,13 +63,13 @@ renderSumData name setup strict constructorsData =
 
 
 
-type IndexesClause = (IndexConstructor, TargetConstructor, SourceConstructor)
+type IndexesClause = (IndexConstructor, SourceConstructor, TargetConstructor)
 type IndexConstructor = Name
 type TargetConstructor = Name
 type SourceConstructor = Name
 
 renderIndexesClause :: IndexesClause -> Clause
-renderIndexesClause (indexConstructor, targetConstructor, sourceConstructor) = 
+renderIndexesClause (indexConstructor, sourceConstructor, targetConstructor) = 
   Clause 
     [
       ConP targetConstructor [VarP var1],
