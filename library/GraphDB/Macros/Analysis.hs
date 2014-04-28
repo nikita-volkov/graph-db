@@ -54,6 +54,7 @@ decs root infos = do
         Par.get indexesFunctionClausesI
     )
 
+-- | An association of an index, source and target.
 type ConAssoc = (T.SumConstructor, T.SumConstructor, T.SumConstructor)
 
 edgeInfosToConAssoc :: Root -> [EdgeInfo] -> [ConAssoc]

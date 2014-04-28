@@ -3,10 +3,11 @@ module GraphDB.Macros where
 import GraphDB.Util.Prelude
 import GraphDB.Util.Prelude.TH
 import qualified GraphDB.Util.TH as THU
+import qualified GraphDB.Util.Par as Par
 import qualified GraphDB.Graph as G
 import qualified GraphDB.Model as M
 import qualified GraphDB.Macros.Templates as T
-import qualified Control.Monad.Par as Pa
+import qualified GraphDB.Macros.Analysis as A
 
 
 -- |
@@ -22,7 +23,9 @@ deriveSetup root = do
   -- Such strategy allows to separate the concerns and
   -- exploit parallelism in the last two phases.
   edgePairs <- reifyEdgePairs
-  $notImplemented
+  return $ Par.runPar $ A.decs rootType edgePairs >>= T.renderDecs
+  where
+    rootType = ConT root
 
 -- |
 -- Scan the current module for instance declarations of 'M.Edge' and
@@ -34,7 +37,3 @@ reifyEdgePairs = do
     (n, tl) <- instances
     guard $ n == ''M.Edge
     case tl of [a, b] -> return (a, b)
-
-deriveTemplatesSettings :: Type -> [(Type, Type)] -> Pa.Par T.Decs
-deriveTemplatesSettings root = do
-  $notImplemented
