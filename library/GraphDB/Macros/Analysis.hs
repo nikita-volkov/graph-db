@@ -17,7 +17,7 @@ type EdgeInfo = (Type, Type)
 decs :: Root -> [EdgeInfo] -> T.Decs
 decs root infos =
   let
-    assocs = edgeInfosToConAssoc root infos
+    assocs = edgeInfosToConAssocs root infos
     indexes = map conAssocToIndex assocs
     values = nub $ concatMap conAssocToValues assocs
     indexesFunctionClauses = map conAssocToIndexesClause assocs
@@ -54,8 +54,8 @@ decs root infos =
 -- | An association of an index, source and target.
 type ConAssoc = (T.SumConstructor, T.SumConstructor, T.SumConstructor)
 
-edgeInfosToConAssoc :: Root -> [EdgeInfo] -> [ConAssoc]
-edgeInfosToConAssoc root infos = 
+edgeInfosToConAssocs :: Root -> [EdgeInfo] -> [ConAssoc]
+edgeInfosToConAssocs root infos = 
   runST $ do
     regIndexType <- regType <$> pure indexPrefix <*> newSTRef 0 <*> newSTRef []
     regValueType <- regType <$> pure valuePrefix <*> newSTRef 0 <*> newSTRef []
