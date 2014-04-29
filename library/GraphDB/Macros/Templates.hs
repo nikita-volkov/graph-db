@@ -17,12 +17,15 @@ type Decs =
   )
 
 renderDecs :: Decs -> [Dec]
-renderDecs (_1, _2, _3, _4, _5) =
-  renderSetupInstance _5 :
-  map renderPolyIndexInstance _1 ++
-  map renderPolyValueInstance _2 ++
-  map renderHashableInstance _3 ++
-  map renderSerializableInstance _4
+renderDecs (a, b, c, d, e) =
+  let
+    a' = map renderPolyIndexInstance a
+    b' = map renderPolyValueInstance b
+    c' = map renderHashableInstance c
+    d' = map renderSerializableInstance d
+    e' = renderSetupInstance e
+    in 
+      e' : a' ++ b' ++ c' ++ d' 
 
 
 
