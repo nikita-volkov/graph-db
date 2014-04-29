@@ -155,10 +155,10 @@ test-suite internal-tests
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    internal-tests
+    executables
     library
   main-is:          
-    Main.hs
+    InternalTests.hs
   ghc-options:
     -threaded
     "-with-rtsopts=-N"
@@ -264,9 +264,9 @@ test-suite api-tests
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    api-tests
+    executables
   main-is:          
-    Main.hs
+    APITests.hs
   ghc-options:
     -threaded
     "-with-rtsopts=-N"
@@ -345,13 +345,13 @@ test-suite api-tests
     Haskell2010
 
 
-benchmark competition
+benchmark competition-bench
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    benchmarks
+    executables
   main-is:      
-    Competition.hs
+    CompetitionBench.hs
   ghc-options:
     -threaded
     "-with-rtsopts=-N"
@@ -432,13 +432,13 @@ benchmark competition
     Haskell2010
 
 
-benchmark nonpersistent
+benchmark nonpersistent-bench
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    benchmarks
+    executables
   main-is:      
-    Nonpersistent.hs
+    NonpersistentBench.hs
   ghc-options:
     -O2
     -threaded
