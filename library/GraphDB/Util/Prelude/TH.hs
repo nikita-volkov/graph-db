@@ -4,6 +4,7 @@ module GraphDB.Util.Prelude.TH
 
   purify,
   tryToReify,
+  isInstance',
   isProperInstance',
 )
 where
@@ -19,6 +20,9 @@ purify = unsafePerformIO . runQ
 
 tryToReify :: Name -> Q (Maybe Info)
 tryToReify n = recover (return Nothing) (fmap Just $ reify n) 
+
+isInstance' :: Name -> [Type] -> Q Bool
+isInstance' name types = recover (return False) (isInstance name types)
 
 isProperInstance' :: Name -> [Type] -> Q Bool
 isProperInstance' name types = recover (return False) (isProperInstance name types)

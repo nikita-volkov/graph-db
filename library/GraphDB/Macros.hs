@@ -23,10 +23,10 @@ deriveSetup root = do
   -- exploit parallelism in the last two phases.
   edgePairs <- reifyEdgePairs
   let (polyIndexS, polyValueS, hashableS, serializableS, setupS) = A.decs (ConT root) edgePairs
-  hashableS' <- filterM (fmap not . isProperInstance' ''Hashable . (:[])) hashableS
+  hashableS' <- filterM (fmap not . isInstance' ''Hashable . (:[])) hashableS
   serializableS' <- 
     filterM 
-      (fmap not . isProperInstance' ''Serializable . (\t -> [VarT $ mkName "m", t]))
+      (fmap not . isInstance' ''Serializable . (\t -> [ConT ''IO, t]))
       serializableS
 
   return $ T.renderDecs (polyIndexS, polyValueS, hashableS', serializableS', setupS)
