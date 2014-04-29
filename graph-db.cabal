@@ -40,6 +40,10 @@ library
   hs-source-dirs:
     library
   other-modules:
+    GraphDB.Macros
+    GraphDB.Macros.Analysis
+    GraphDB.Macros.Templates
+    GraphDB.Model
     GraphDB.Server
     GraphDB.Client
     GraphDB.Protocol
@@ -58,6 +62,7 @@ library
     GraphDB.Util.DIOVector
     GraphDB.Util.IOQueue
     GraphDB.Util.Prelude
+    GraphDB.Util.Prelude.TH
   exposed-modules:
   build-depends:
     -- parsing:
@@ -66,6 +71,7 @@ library
     -- template-haskell:
     template-haskell,
     th-expand-syns,
+    th-instance-reification > 0.1.0 && < 0.2,
     -- networking:
     remotion == 0.1.*,
     network == 2.4.*,
@@ -85,7 +91,6 @@ library
     lifted-async == 0.1.*,
     stm,
     SafeSemaphore == 0.9.*,
-    monad-stm,
     -- data:
     hashtables-plus == 0.2.*,
     hashable == 1.2.*,
@@ -175,6 +180,7 @@ test-suite internal-tests
     -- template-haskell:
     template-haskell,
     th-expand-syns,
+    th-instance-reification > 0.1.0 && < 0.2,
     -- networking:
     remotion == 0.1.*,
     network == 2.4.*,
@@ -194,7 +200,6 @@ test-suite internal-tests
     lifted-async == 0.1.*,
     stm,
     SafeSemaphore == 0.9.*,
-    monad-stm,
     -- data:
     hashtables-plus == 0.2.*,
     hashable == 1.2.*,
