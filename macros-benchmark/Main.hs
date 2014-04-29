@@ -1,7 +1,7 @@
 
 import GraphDB.Util.Prelude
 import qualified GraphDB.Util.Prelude.TH as T
-import qualified CriterionPlus as C
+import qualified Criterion.Main as C
 import qualified GraphDB.Macros.Analysis as A
 
 
@@ -20,19 +20,18 @@ data Identified a = Identified {-# UNPACK #-} !(UID a) !a deriving (Show, Eq, Or
 -- * Benchmark
 -------------------------
 
-main = do
-  C.benchmark $ do
-    C.standoff "" $ do
-      C.subject "" $ do
-        C.whnfIO $ return analyse
-
-analyse = 
-  A.decs 
-    (T.ConT ''Catalogue)
+main = 
+  C.defaultMain
     [
-      (T.ConT ''Catalogue, T.ConT ''Artist),
-      (T.ConT ''Catalogue, T.ConT ''Genre),
-      (T.ConT ''Catalogue, T.ConT ''Song),
-      (T.ConT ''Genre, T.ConT ''Song),
-      (T.ConT ''Song, T.ConT ''Artist)
+      C.bench "" $ C.whnf (A.decs root) edges
     ]
+
+root = T.ConT ''Catalogue
+edges = 
+  [
+    (T.ConT ''Catalogue, T.ConT ''Artist),
+    (T.ConT ''Catalogue, T.ConT ''Genre),
+    (T.ConT ''Catalogue, T.ConT ''Song),
+    (T.ConT ''Genre, T.ConT ''Song),
+    (T.ConT ''Song, T.ConT ''Artist)
+  ]

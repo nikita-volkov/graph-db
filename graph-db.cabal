@@ -275,7 +275,7 @@ benchmark macros-benchmark
     -threaded
     "-with-rtsopts=-N"
   build-depends:
-    criterion-plus == 0.1.*,
+    criterion == 0.8.*,
     -- parsing:
     parsec,
     attoparsec,
