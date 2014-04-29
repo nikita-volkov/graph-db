@@ -12,7 +12,8 @@ type Basic = H.Basic
 type Cuckoo = H.Cuckoo
 type Linear = H.Linear
 
-class (H.Algorithm (Algorithm s), H.Key (Index s), Serializable IO (Value s)) => Setup s where
+class (H.Algorithm (Algorithm s), H.Key (Index s), 
+       Serializable IO (Value s), Serializable IO (Index s)) => Setup s where
   -- |
   -- Any of the "hashtables-plus" algorithms:
   -- 'H.Basic', 'H.Cuckoo', 'H.Linear'.

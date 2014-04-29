@@ -64,6 +64,7 @@ library
     GraphDB.Util.Prelude
     GraphDB.Util.Prelude.TH
   exposed-modules:
+    GraphDB
   build-depends:
     -- parsing:
     parsec,
