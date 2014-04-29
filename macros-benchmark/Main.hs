@@ -24,9 +24,9 @@ data Identified a = Identified {-# UNPACK #-} !(UID a) !a deriving (Show, Eq, Or
 main = 
   C.defaultMain
     [
-      C.bench "Analysis" $ C.whnf (MA.decs root) edges,
-      C.bench "Rendering" $ C.whnf (MT.renderDecs) decs,
-      C.bench "Analysis and rendering" $ C.whnf (MT.renderDecs . MA.decs root) edges
+      C.bench "Analysis" $ C.nf (show . MA.decs root) edges,
+      C.bench "Rendering" $ C.nf (show . MT.renderDecs) decs,
+      C.bench "Analysis and rendering" $ C.nf (show . MT.renderDecs . MA.decs root) edges
     ]
 
 root = T.ConT ''Catalogue
