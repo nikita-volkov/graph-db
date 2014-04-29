@@ -6,21 +6,6 @@ import qualified GraphDB.Macros.Analysis as MA
 import qualified GraphDB.Macros.Templates as MT
 
 
--- * Model
--------------------------
-
-type Catalogue = (UID Artist, UID Genre, UID Song)
-newtype UID a = UID Int deriving (Show, Eq, Ord, Generic, Data, Typeable, Enum, Num, Real, Integral)
-data Artist = Artist Name deriving (Show, Eq, Ord, Generic, Data, Typeable)
-data Genre = Genre Name deriving (Show, Eq, Ord, Generic, Data, Typeable)
-data Song = Song Name deriving (Show, Eq, Ord, Generic, Data, Typeable)
-type Name = Text
-data Identified a = Identified {-# UNPACK #-} !(UID a) !a deriving (Show, Eq, Ord, Generic, Data, Typeable)
-
-
--- * Benchmark
--------------------------
-
 main = 
   C.defaultMain
     [
@@ -29,13 +14,11 @@ main =
       C.bench "Analysis and rendering" $ C.nf (MT.renderDecs . MA.decs root) edges
     ]
 
-root = T.ConT ''Catalogue
+root = T.ConT ''Int
 edges = 
-  [
-    (T.ConT ''Catalogue, T.ConT ''Artist),
-    (T.ConT ''Catalogue, T.ConT ''Genre),
-    (T.ConT ''Catalogue, T.ConT ''Song),
-    (T.ConT ''Genre, T.ConT ''Song),
-    (T.ConT ''Song, T.ConT ''Artist)
-  ]
+  -- Some random types
+  let types = [ ''Int, ''Int8, ''Int16, ''Int32, ''Int64, ''Integer, 
+                ''Word, ''Word8, ''Word16, ''Word32, ''Word64,
+                ''Bool, ''Char, ''String, ''Text, ''ByteString ]
+      in [(T.ConT a, T.ConT b) | a <- types, b <- types]
 decs = MA.decs root edges
