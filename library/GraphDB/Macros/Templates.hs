@@ -19,11 +19,11 @@ type Decs =
 
 renderDecs :: Decs -> Par.Par [Dec]
 renderDecs (_1, _2, _3, _4, _5) = do
-  i1 <- Par.spawn_ $ Par.parMap_ renderPolyIndexInstance _1
-  i2 <- Par.spawn_ $ Par.parMap_ renderPolyValueInstance _2
-  i3 <- Par.spawn_ $ Par.parMap_ renderHashableInstance _3
-  i4 <- Par.spawn_ $ Par.parMap_ renderSerializableInstance _4
-  i5 <- Par.spawn_ $ return $ [renderSetupInstance _5]
+  i1 <- Par.spawn $ Par.parMap renderPolyIndexInstance _1
+  i2 <- Par.spawn $ Par.parMap renderPolyValueInstance _2
+  i3 <- Par.spawn $ Par.parMap renderHashableInstance _3
+  i4 <- Par.spawn $ Par.parMap renderSerializableInstance _4
+  i5 <- Par.spawn $ return $ [renderSetupInstance _5]
   fmap concat $ mapM Par.get [i5, i1, i2, i3, i4]
 
 

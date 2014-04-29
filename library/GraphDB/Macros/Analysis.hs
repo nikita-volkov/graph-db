@@ -18,17 +18,17 @@ type EdgeInfo = (Type, Type)
 decs :: Root -> [EdgeInfo] -> Par.Par T.Decs
 decs root infos = do
 
-  assocsI                 <- Par.spawn_ $ return $ edgeInfosToConAssoc root infos
-  indexesI                <- Par.spawn_ $ Par.get assocsI |$> map conAssocToIndex
-  valuesI                 <- Par.spawn_ $ Par.get assocsI |$> concatMap conAssocToValues |$> nub
-  indexesFunctionClausesI <- Par.spawn_ $ Par.get assocsI |$> map conAssocToIndexesClause
-  polyIndexInstancesI     <- Par.spawn_ $ Par.get indexesI |$> map (\(c, t) -> (root, c, t))
-  polyValueInstancesI     <- Par.spawn_ $ Par.get valuesI |$> map (\(c, t) -> (root, c, t))
-  hashableInstancesI      <- Par.spawn_ $ do
-    indexTypesI <- Par.spawn_ $ Par.get indexesI |$> map sumConType
-    valueTypesI <- Par.spawn_ $ Par.get valuesI |$> map sumConType
+  assocsI                 <- Par.spawnP $ edgeInfosToConAssoc root infos
+  indexesI                <- Par.spawn $ Par.get assocsI |$> map conAssocToIndex
+  valuesI                 <- Par.spawn $ Par.get assocsI |$> concatMap conAssocToValues |$> nub
+  indexesFunctionClausesI <- Par.spawn $ Par.get assocsI |$> map conAssocToIndexesClause
+  polyIndexInstancesI     <- Par.spawn $ Par.get indexesI |$> map (\(c, t) -> (root, c, t))
+  polyValueInstancesI     <- Par.spawn $ Par.get valuesI |$> map (\(c, t) -> (root, c, t))
+  hashableInstancesI      <- Par.spawn $ do
+    indexTypesI <- Par.spawn $ Par.get indexesI |$> map sumConType
+    valueTypesI <- Par.spawn $ Par.get valuesI |$> map sumConType
     values      <- Par.get valueTypesI
-    leafTypes   <- Par.parMap_ TH.monoTypes values
+    leafTypes   <- Par.parMap TH.monoTypes values
     indexes     <- Par.get indexTypesI
     return $
       nub $ concat $
@@ -39,7 +39,7 @@ decs root infos = do
         indexes :
         values :
         leafTypes
-  serializableInstancesI  <- Par.spawn_ $ Par.get hashableInstancesI
+  serializableInstancesI  <- Par.spawn $ Par.get hashableInstancesI
 
   (,,,,) <$> 
     Par.get polyIndexInstancesI <*> 
