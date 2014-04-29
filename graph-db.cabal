@@ -54,7 +54,6 @@ library
     GraphDB.Graph
     GraphDB.Storage
     GraphDB.Storage.Rules
-    GraphDB.Util.Par
     GraphDB.Util.TH
     GraphDB.Util.TH.Q
     GraphDB.Util.TH.Type
@@ -103,9 +102,6 @@ library
     time,
     old-locale,
     -- control:
-    deepseq == 1.3.*,
-    deepseq-th == 0.1.*,
-    monad-par == 0.3.*,
     errors >= 1.4.6 && < 1.5,
     free >= 4.6 && < 5,
     monad-control == 0.3.*,
@@ -215,9 +211,6 @@ test-suite internal-tests
     time,
     old-locale,
     -- control:
-    deepseq == 1.3.*,
-    deepseq-th == 0.1.*,
-    monad-par == 0.3.*,
     errors >= 1.4.6 && < 1.5,
     free >= 4.6 && < 5,
     monad-control == 0.3.*,

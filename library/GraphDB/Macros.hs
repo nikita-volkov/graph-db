@@ -3,7 +3,6 @@ module GraphDB.Macros where
 import GraphDB.Util.Prelude
 import GraphDB.Util.Prelude.TH
 import qualified GraphDB.Util.TH as THU
-import qualified GraphDB.Util.Par as Par
 import qualified GraphDB.Graph as G
 import qualified GraphDB.Model as M
 import qualified GraphDB.Macros.Templates as T
@@ -23,7 +22,7 @@ deriveSetup root = do
   -- Such strategy allows to separate the concerns and
   -- exploit parallelism in the last two phases.
   edgePairs <- reifyEdgePairs
-  return $ Par.runPar $ A.decs rootType edgePairs >>= T.renderDecs
+  return $ T.renderDecs $ A.decs rootType edgePairs
   where
     rootType = ConT root
 

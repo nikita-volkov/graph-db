@@ -5,7 +5,6 @@ module GraphDB.Macros.Analysis where
 import GraphDB.Util.Prelude
 import GraphDB.Util.Prelude.TH
 import qualified GraphDB.Util.TH.Type as TH
-import qualified GraphDB.Util.Par as Par
 import qualified GraphDB.Model as M
 import qualified GraphDB.Graph as G
 import qualified GraphDB.Macros.Templates as T
@@ -15,44 +14,42 @@ type Root = Type
 -- | A source and target type of an edge.
 type EdgeInfo = (Type, Type)
 
-decs :: Root -> [EdgeInfo] -> Par.Par T.Decs
-decs root infos = do
-
-  assocsI                 <- Par.spawnP $ edgeInfosToConAssoc root infos
-  indexesI                <- Par.spawn $ Par.get assocsI |$> map conAssocToIndex
-  valuesI                 <- Par.spawn $ Par.get assocsI |$> concatMap conAssocToValues |$> nub
-  indexesFunctionClausesI <- Par.spawn $ Par.get assocsI |$> map conAssocToIndexesClause
-  polyIndexInstancesI     <- Par.spawn $ Par.get indexesI |$> map (\(c, t) -> (root, c, t))
-  polyValueInstancesI     <- Par.spawn $ Par.get valuesI |$> map (\(c, t) -> (root, c, t))
-  hashableInstancesI      <- Par.spawn $ do
-    indexTypesI <- Par.spawn $ Par.get indexesI |$> map sumConType
-    valueTypesI <- Par.spawn $ Par.get valuesI |$> map sumConType
-    values      <- Par.get valueTypesI
-    leafTypes   <- Par.parMap TH.monoTypes values
-    indexes     <- Par.get indexTypesI
-    return $
+decs :: Root -> [EdgeInfo] -> T.Decs
+decs root infos =
+  let
+    assocs = edgeInfosToConAssoc root infos
+    indexes = map conAssocToIndex assocs
+    values = nub $ concatMap conAssocToValues assocs
+    indexesFunctionClauses = map conAssocToIndexesClause assocs
+    polyIndexInstances = map (\(c, t) -> (root, c, t)) indexes
+    polyValueInstances = map (\(c, t) -> (root, c, t)) values
+    hashableInstances = 
       nub $ concat $
         [
           ConT ''G.Index `AppT` root,
           ConT ''G.Value `AppT` root
         ] :
-        indexes :
-        values :
+        indexTypes :
+        valueTypes :
         leafTypes
-  serializableInstancesI  <- Par.spawn $ Par.get hashableInstancesI
-
-  (,,,,) <$> 
-    Par.get polyIndexInstancesI <*> 
-    Par.get polyValueInstancesI <*> 
-    Par.get hashableInstancesI <*> 
-    Par.get serializableInstancesI <*> 
-    (
-      (,,,) <$> 
-        pure root <*> 
-        Par.get indexesI <*> 
-        Par.get valuesI <*> 
-        Par.get indexesFunctionClausesI
-    )
+      where
+        indexTypes = indexes |> map sumConType
+        valueTypes = values |> map sumConType
+        leafTypes = map TH.monoTypes valueTypes
+    serializableInstances = hashableInstances
+    in 
+      (
+        polyIndexInstances,
+        polyValueInstances,
+        hashableInstances,
+        serializableInstances,
+        (
+          root,
+          indexes,
+          values,
+          indexesFunctionClauses
+        )
+      )
 
 -- | An association of an index, source and target.
 type ConAssoc = (T.SumConstructor, T.SumConstructor, T.SumConstructor)

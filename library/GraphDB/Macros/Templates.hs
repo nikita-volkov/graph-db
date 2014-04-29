@@ -4,7 +4,6 @@ import GraphDB.Util.Prelude
 import GraphDB.Util.Prelude.TH
 import qualified GraphDB.Graph as G
 import qualified GraphDB.Model as M
-import qualified GraphDB.Util.Par as Par
 
 
 
@@ -17,14 +16,16 @@ type Decs =
     SetupInstance
   )
 
-renderDecs :: Decs -> Par.Par [Dec]
-renderDecs (_1, _2, _3, _4, _5) = do
-  i1 <- Par.spawn $ Par.parMap renderPolyIndexInstance _1
-  i2 <- Par.spawn $ Par.parMap renderPolyValueInstance _2
-  i3 <- Par.spawn $ Par.parMap renderHashableInstance _3
-  i4 <- Par.spawn $ Par.parMap renderSerializableInstance _4
-  i5 <- Par.spawn $ return $ [renderSetupInstance _5]
-  fmap concat $ mapM Par.get [i5, i1, i2, i3, i4]
+renderDecs :: Decs -> [Dec]
+renderDecs (a, b, c, d, e) =
+  let
+    a' = map renderPolyIndexInstance a
+    b' = map renderPolyValueInstance b
+    c' = map renderHashableInstance c
+    d' = map renderSerializableInstance d
+    e' = renderSetupInstance e
+    in 
+      e' : a' ++ b' ++ c' ++ d' 
 
 
 
