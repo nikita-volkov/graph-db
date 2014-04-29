@@ -22,9 +22,14 @@ deriveSetup root = do
   -- Such strategy allows to separate the concerns and
   -- exploit parallelism in the last two phases.
   edgePairs <- reifyEdgePairs
-  return $ T.renderDecs $ A.decs rootType edgePairs
-  where
-    rootType = ConT root
+  let (polyIndexS, polyValueS, hashableS, serializableS, setupS) = A.decs (ConT root) edgePairs
+  hashableS' <- filterM (fmap not . isProperInstance' ''Hashable . (:[])) hashableS
+  serializableS' <- 
+    filterM 
+      (fmap not . isProperInstance' ''Serializable . (\t -> [VarT $ mkName "m", t]))
+      serializableS
+
+  return $ T.renderDecs (polyIndexS, polyValueS, hashableS', serializableS', setupS)
 
 -- |
 -- Scan the current module for instance declarations of 'M.Edge' and
