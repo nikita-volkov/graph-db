@@ -142,9 +142,9 @@ runAction = iterTM $ \case
     n <- runInner $ A.getRoot
     r <- newRef n
     c (n, r)
-  A.GetTargetsByIndex (n, r) i c -> do
-    record $ L.GetTargetsByIndex r i
-    rns <- runInner $ A.getTargetsByIndex n i
+  A.GetTargets (n, r) i c -> do
+    record $ L.GetTargets r i
+    rns <- runInner $ A.getTargets n i
     r <- forM rns $ \n -> liftM (n,) $ newRef n
     c r
   A.AddTarget (sn, sr) (tn, tr) c -> do

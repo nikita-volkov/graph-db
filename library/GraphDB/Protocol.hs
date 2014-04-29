@@ -20,7 +20,7 @@ data Action s =
   GetValue Node |
   SetValue Node (G.Value s) |
   GetRoot |
-  GetTargetsByIndex Node (G.Index s) |
+  GetTargets Node (G.Index s) |
   AddTarget Node Node |
   RemoveTarget Node Node |
   Remove Node |

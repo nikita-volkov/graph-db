@@ -89,8 +89,8 @@ runAction = iterTM $ \case
     case r of
       P.Node n -> c n
       _ -> $bug "Unexpected response"
-  A.GetTargetsByIndex n i c -> do
-    r <- req $ P.GetTargetsByIndex n i
+  A.GetTargets n i c -> do
+    r <- req $ P.GetTargets n i
     case r of
       P.NodeList nl -> c nl
       _ -> $bug "Unexpected response"

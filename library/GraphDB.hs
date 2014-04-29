@@ -56,7 +56,7 @@ module GraphDB
   getValue,
   setValue,
   getRoot,
-  getTargetsByIndex,
+  getTargets,
   addTarget,
   removeTarget,
   remove,
@@ -320,11 +320,11 @@ getRoot = fmap Node $ liftAction $ Action.getRoot
 
 -- |
 -- Get target nodes reachable by the provided index.
-getTargetsByIndex :: 
+getTargets :: 
   (Model.PolyIndex u i, i ~ Model.Index v v') => 
   Node s u t v -> i -> ReadOrWrite s u t [Node s u t v']
-getTargetsByIndex (Node n) i = 
-  fmap (map Node) $ liftAction $ Action.getTargetsByIndex n $ Model.packIndex i
+getTargets (Node n) i = 
+  fmap (map Node) $ liftAction $ Action.getTargets n $ Model.packIndex i
 
 -- |
 -- Add a link to the provided target node /v'/, 

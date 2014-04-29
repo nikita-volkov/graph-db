@@ -36,7 +36,7 @@ test_clientServer = do
         G.write $ insertArtist $ Artist "The Beatles"
       G.read $ 
         G.getRoot >>= 
-        flip G.getTargetsByIndex (Catalogue_Artist_Name "The Beatles") >>=
+        flip G.getTargets (Catalogue_Artist_Name "The Beatles") >>=
         mapM G.getValue
   where
     runNonpersistentSession = G.runNonpersistentSession initRoot

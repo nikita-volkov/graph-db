@@ -126,8 +126,8 @@ type Stats = (Int, Int, Int)
 remove :: (Setup s) => Node s -> IO ()
 remove node = traverseSources node $ \s -> removeTarget s node
 
-getTargetsByIndex :: (Setup s) => Node s -> Index s -> IO [Node s]
-getTargetsByIndex n i = do
+getTargets :: (Setup s) => Node s -> Index s -> IO [Node s]
+getTargets n i = do
   l <- newIORef []
   traverseTargetsByIndex n i $ \t -> modifyIORef l (t:)
   readIORef l

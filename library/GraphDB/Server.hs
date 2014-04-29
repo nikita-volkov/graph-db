@@ -43,9 +43,9 @@ runCommandProcessor (commandsChan, responseVar) = do
               n <- A.getRoot
               r <- newRef n
               respond $ P.Node r
-            P.GetTargetsByIndex r i -> do
+            P.GetTargets r i -> do
               n <- resolveRef r
-              nl <- A.getTargetsByIndex n i
+              nl <- A.getTargets n i
               rl <- mapM newRef nl
               respond $ P.NodeList rl
             P.AddTarget s t -> do

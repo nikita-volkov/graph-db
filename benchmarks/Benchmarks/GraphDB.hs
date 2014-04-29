@@ -84,20 +84,20 @@ interpretSession = iterTM $ \case
     
     lookupArtistByUID :: UID Artist -> G.Read s Catalogue t (Maybe (Identified Artist))
     lookupArtistByUID uid =
-      G.getRoot >>= flip G.getTargetsByIndex (Catalogue_Artist_UID uid) >>=
+      G.getRoot >>= flip G.getTargets (Catalogue_Artist_UID uid) >>=
       return . listToMaybe >>= mapM G.getValue
 
     lookupArtistsByName :: Text -> G.Read s Catalogue t [Identified Artist]
     lookupArtistsByName n = 
-      G.getRoot >>= flip G.getTargetsByIndex (Catalogue_Artist_Name n) >>= mapM G.getValue
+      G.getRoot >>= flip G.getTargets (Catalogue_Artist_Name n) >>= mapM G.getValue
 
     lookupArtistsBySongGenreName :: Text -> G.Read s Catalogue t [Identified Artist]
     lookupArtistsBySongGenreName n =
       G.getRoot >>= 
-      flip G.getTargetsByIndex (Catalogue_Genre_Name n) >>=
-      mapM (flip G.getTargetsByIndex Genre_Song) >>= 
+      flip G.getTargets (Catalogue_Genre_Name n) >>=
+      mapM (flip G.getTargets Genre_Song) >>= 
       return . concat >>=
-      mapM (flip G.getTargetsByIndex Song_Artist) >>=
+      mapM (flip G.getTargets Song_Artist) >>=
       return . concat >>=
       mapM G.getValue
 
@@ -123,11 +123,11 @@ interpretSession = iterTM $ \case
       uid <- updateNode root $ zoom _3 $ modify succ >> get
       node <- G.newNode (Identified uid value)
       forM_ genreUIDs $ \uid -> do
-        genres <- G.getTargetsByIndex root (Catalogue_Genre_UID uid)
+        genres <- G.getTargets root (Catalogue_Genre_UID uid)
         forM_ genres $ \genre -> do
           G.addTarget genre node
       forM_ artistUIDs $ \uid -> do
-        artists <- G.getTargetsByIndex root (Catalogue_Artist_UID uid)
+        artists <- G.getTargets root (Catalogue_Artist_UID uid)
         forM_ artists $ \artist -> do
           G.addTarget node artist
       return uid

@@ -78,20 +78,20 @@ instance G.Edge (Identified Song) (Identified Artist) where
 
 lookupArtistByUID :: UID Artist -> G.Read s Catalogue t (Maybe (Identified Artist))
 lookupArtistByUID uid =
-  G.getRoot >>= flip G.getTargetsByIndex (Catalogue_Artist_UID uid) >>=
+  G.getRoot >>= flip G.getTargets (Catalogue_Artist_UID uid) >>=
   return . listToMaybe >>= mapM G.getValue
 
 lookupArtistsByName :: Text -> G.Read s Catalogue t [Identified Artist]
 lookupArtistsByName n = 
-  G.getRoot >>= flip G.getTargetsByIndex (Catalogue_Artist_Name n) >>= mapM G.getValue
+  G.getRoot >>= flip G.getTargets (Catalogue_Artist_Name n) >>= mapM G.getValue
 
 lookupArtistsBySongGenreName :: Text -> G.Read s Catalogue t [Identified Artist]
 lookupArtistsBySongGenreName n =
   G.getRoot >>= 
-  flip G.getTargetsByIndex (Catalogue_Genre_Name n) >>=
-  mapM (flip G.getTargetsByIndex Genre_Song) >>= 
+  flip G.getTargets (Catalogue_Genre_Name n) >>=
+  mapM (flip G.getTargets Genre_Song) >>= 
   return . concat >>=
-  mapM (flip G.getTargetsByIndex Song_Artist) >>=
+  mapM (flip G.getTargets Song_Artist) >>=
   return . concat >>=
   mapM G.getValue
 
@@ -117,11 +117,11 @@ insertSong value genreUIDs artistUIDs = do
   uid <- updateNode root $ zoom _3 $ modify succ >> get
   node <- G.newNode (Identified uid value)
   forM_ genreUIDs $ \uid -> do
-    genres <- G.getTargetsByIndex root (Catalogue_Genre_UID uid)
+    genres <- G.getTargets root (Catalogue_Genre_UID uid)
     forM_ genres $ \genre -> do
       G.addTarget genre node
   forM_ artistUIDs $ \uid -> do
-    artists <- G.getTargetsByIndex root (Catalogue_Artist_UID uid)
+    artists <- G.getTargets root (Catalogue_Artist_UID uid)
     forM_ artists $ \artist -> do
       G.addTarget node artist
   return uid
@@ -169,7 +169,7 @@ instance Q.Arbitrary (Update s t) where
             G.addTarget genre song
         where
           chooseSomeSongs = do
-            list <- lift $ G.getRoot >>= flip G.getTargetsByIndex Catalogue_Song
+            list <- lift $ G.getRoot >>= flip G.getTargets Catalogue_Song
             let vec = V.fromList list
                 length = V.length vec
             amount <- if length > 0 
@@ -188,7 +188,7 @@ instance Q.Arbitrary (Update s t) where
             G.addTarget song artist
         where
           chooseSomeArtists = do
-            list <- lift $ G.getRoot >>= flip G.getTargetsByIndex Catalogue_Artist
+            list <- lift $ G.getRoot >>= flip G.getTargets Catalogue_Artist
             let vec = V.fromList list
                 length = V.length vec
             amount <- if length > 0 
@@ -197,15 +197,15 @@ instance Q.Arbitrary (Update s t) where
             replicateM amount $ Q.choose (0, length - 1) >>= return . V.unsafeIndex vec
       removeSomeArtist = do
         root <- lift $ G.getRoot
-        all <- lift $ G.getTargetsByIndex root Catalogue_Artist
+        all <- lift $ G.getTargets root Catalogue_Artist
         mapM_ (lift . G.remove) =<< Q.elementsMay all
       removeSomeSong = do
         root <- lift $ G.getRoot
-        all <- lift $ G.getTargetsByIndex root Catalogue_Song
+        all <- lift $ G.getTargets root Catalogue_Song
         mapM_ (lift . G.remove) =<< Q.elementsMay all
       removeSomeGenre = do
         root <- lift $ G.getRoot
-        all <- lift $ G.getTargetsByIndex root Catalogue_Genre
+        all <- lift $ G.getTargets root Catalogue_Genre
         mapM_ (lift . G.remove) =<< Q.elementsMay all
 
 

@@ -13,7 +13,7 @@ data ActionF n v i a =
   GetValue n (v -> a) |
   SetValue n v a |
   GetRoot (n -> a) |
-  GetTargetsByIndex n i ([n] -> a) |
+  GetTargets n i ([n] -> a) |
   AddTarget n n a |
   RemoveTarget n n a |
   Remove n a |

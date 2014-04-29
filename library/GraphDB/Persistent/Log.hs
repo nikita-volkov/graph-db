@@ -20,7 +20,7 @@ type Log s = [Entry s]
 data Entry s =
   GetRoot |
   NewNode (G.Value s) |
-  GetTargetsByIndex Node (G.Index s) |
+  GetTargets Node (G.Index s) |
   AddTarget Node Node |
   RemoveTarget Node Node |
   Remove Node |
@@ -44,7 +44,7 @@ toAction log = do
     applyEntry = \case
       GetRoot -> A.getRoot >>= appendRef
       NewNode v -> A.newNode v >>= appendRef
-      GetTargetsByIndex r i -> resolveRef r >>= flip A.getTargetsByIndex i >>= mapM_ appendRef
+      GetTargets r i -> resolveRef r >>= flip A.getTargets i >>= mapM_ appendRef
       AddTarget s t -> void $ join $ A.addTarget <$> resolveRef s <*> resolveRef t
       RemoveTarget s t -> void $ join $ A.removeTarget <$> resolveRef s <*> resolveRef t
       Remove r -> A.remove =<< resolveRef r

@@ -67,7 +67,7 @@ runAction = iterTM $ \case
   A.GetValue n c -> liftIO (G.getValue n) >>= c
   A.SetValue n v c -> liftIO (G.setValue n v) >> c
   A.GetRoot c -> NonpersistentSession ask >>= c
-  A.GetTargetsByIndex n i c -> liftIO (G.getTargetsByIndex n i) >>= c
+  A.GetTargets n i c -> liftIO (G.getTargets n i) >>= c
   A.AddTarget s t c -> liftIO (G.addTarget s t) >> c
   A.RemoveTarget s t c -> liftIO (G.removeTarget s t) >> c
   A.Remove n c -> liftIO (G.remove n) >> c
