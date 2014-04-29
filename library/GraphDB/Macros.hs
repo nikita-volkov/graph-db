@@ -23,7 +23,7 @@ deriveSetup root = do
   -- Such strategy allows to separate the concerns and
   -- exploit parallelism in the last two phases.
   edgePairs <- reifyEdgePairs
-  return $ Par.runPar $ T.renderDecs $ A.decs rootType edgePairs
+  return $ T.renderDecs $ A.decs rootType edgePairs
   where
     rootType = ConT root
 

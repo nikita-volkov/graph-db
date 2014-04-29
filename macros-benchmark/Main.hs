@@ -2,7 +2,8 @@
 import GraphDB.Util.Prelude
 import qualified GraphDB.Util.Prelude.TH as T
 import qualified Criterion.Main as C
-import qualified GraphDB.Macros.Analysis as A
+import qualified GraphDB.Macros.Analysis as MA
+import qualified GraphDB.Macros.Templates as MT
 
 
 -- * Model
@@ -23,7 +24,9 @@ data Identified a = Identified {-# UNPACK #-} !(UID a) !a deriving (Show, Eq, Or
 main = 
   C.defaultMain
     [
-      C.bench "" $ C.whnf (A.decs root) edges
+      C.bench "Analysis" $ C.whnf (MA.decs root) edges,
+      C.bench "Rendering" $ C.whnf (MT.renderDecs) decs,
+      C.bench "Analysis and rendering" $ C.whnf (MT.renderDecs . MA.decs root) edges
     ]
 
 root = T.ConT ''Catalogue
@@ -35,3 +38,4 @@ edges =
     (T.ConT ''Genre, T.ConT ''Song),
     (T.ConT ''Song, T.ConT ''Artist)
   ]
+decs = MA.decs root edges

@@ -5,7 +5,6 @@ module GraphDB.Macros.Analysis where
 import GraphDB.Util.Prelude
 import GraphDB.Util.Prelude.TH
 import qualified GraphDB.Util.TH.Type as TH
-import qualified GraphDB.Util.Par as Par
 import qualified GraphDB.Model as M
 import qualified GraphDB.Graph as G
 import qualified GraphDB.Macros.Templates as T
