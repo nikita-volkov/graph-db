@@ -9,20 +9,26 @@ import qualified Data.Vector as V
 import Test.QuickCheck.Instances ()
 
 
--- * Values
+
+-- * Model
 -------------------------
 
--- | Stores counters of UID generators.
+-- | 
+-- The root node. 
+-- For convenience it stores the counters of UID generators.
 type Catalogue = (UID Artist, UID Genre, UID Song)
-newtype UID a = UID Int deriving (Show, Eq, Generic, Ord, Enum, Num, Real, Integral)
-data Artist = Artist Name deriving (Show, Eq, Generic)
-data Genre = Genre Name deriving (Show, Eq, Generic)
-data Song = Song Name deriving (Show, Eq, Generic)
+newtype UID a = UID Int deriving (Show, Eq, Ord, Generic, Data, Typeable, Enum, Num, Real, Integral)
+data Artist = Artist Name deriving (Show, Eq, Ord, Generic, Data, Typeable)
+data Genre = Genre Name deriving (Show, Eq, Ord, Generic, Data, Typeable)
+data Song = Song Name deriving (Show, Eq, Ord, Generic, Data, Typeable)
 type Name = Text
-data Identified a = Identified {-# UNPACK #-} !(UID a) !a deriving (Show, Eq, Generic)
+data Identified a = Identified {-# UNPACK #-} !(UID a) !a deriving (Show, Eq, Ord, Generic, Data, Typeable)
 
-initRoot :: Catalogue
-initRoot = (UID 0, UID 0, UID 0)
+initRoot :: Catalogue = (0, 0, 0)
+
+instance Functor Identified where
+  fmap f (Identified (UID n) a) = Identified (UID n) (f a)
+
 
 -- * Edges
 -------------------------
@@ -30,26 +36,29 @@ initRoot = (UID 0, UID 0, UID 0)
 instance G.Edge Catalogue (Identified Artist) where
   data Index Catalogue (Identified Artist) =
     Catalogue_Artist_UID (UID Artist) |
-    Catalogue_Artist_Name Text
+    Catalogue_Artist_Name Text |
+    Catalogue_Artist
     deriving (Eq, Generic)
   indexes (Identified uid (Artist n)) = 
-    [Catalogue_Artist_UID uid, Catalogue_Artist_Name n]
+    [Catalogue_Artist_UID uid, Catalogue_Artist_Name n, Catalogue_Artist]
 
 instance G.Edge Catalogue (Identified Genre) where
   data Index Catalogue (Identified Genre) = 
     Catalogue_Genre_UID (UID Genre) |
-    Catalogue_Genre_Name Text
+    Catalogue_Genre_Name Text |
+    Catalogue_Genre
     deriving (Eq, Generic)
   indexes (Identified uid (Genre n)) = 
-    [Catalogue_Genre_UID uid, Catalogue_Genre_Name n]
+    [Catalogue_Genre_UID uid, Catalogue_Genre_Name n, Catalogue_Genre]
 
 instance G.Edge Catalogue (Identified Song) where
   data Index Catalogue (Identified Song) = 
     Catalogue_Song_UID (UID Song) |
-    Catalogue_Song_Name Text
+    Catalogue_Song_Name Text |
+    Catalogue_Song
     deriving (Eq, Generic)
   indexes (Identified uid (Song n)) = 
-    [Catalogue_Song_UID uid, Catalogue_Song_Name n]
+    [Catalogue_Song_UID uid, Catalogue_Song_Name n, Catalogue_Song]
 
 instance G.Edge (Identified Genre) (Identified Song) where
   data Index (Identified Genre) (Identified Song) =
@@ -64,28 +73,25 @@ instance G.Edge (Identified Song) (Identified Artist) where
   indexes _ = [Song_Artist]
 
 
--- * Transactions
+-- * Default Transactions
 -------------------------
 
--- | A query by UID.
 lookupArtistByUID :: UID Artist -> G.Read s Catalogue t (Maybe (Identified Artist))
 lookupArtistByUID uid =
-  G.getRoot >>= flip G.getTargetsByIndex (Catalogue_Artist_UID uid) >>=
+  G.getRoot >>= flip G.getTargets (Catalogue_Artist_UID uid) >>=
   return . listToMaybe >>= mapM G.getValue
 
--- | A simple query.
 lookupArtistsByName :: Text -> G.Read s Catalogue t [Identified Artist]
 lookupArtistsByName n = 
-  G.getRoot >>= flip G.getTargetsByIndex (Catalogue_Artist_Name n) >>= mapM G.getValue
+  G.getRoot >>= flip G.getTargets (Catalogue_Artist_Name n) >>= mapM G.getValue
 
--- | A deep query.
 lookupArtistsBySongGenreName :: Text -> G.Read s Catalogue t [Identified Artist]
 lookupArtistsBySongGenreName n =
   G.getRoot >>= 
-  flip G.getTargetsByIndex (Catalogue_Genre_Name n) >>=
-  mapM (flip G.getTargetsByIndex Genre_Song) >>= 
+  flip G.getTargets (Catalogue_Genre_Name n) >>=
+  mapM (flip G.getTargets Genre_Song) >>= 
   return . concat >>=
-  mapM (flip G.getTargetsByIndex Song_Artist) >>=
+  mapM (flip G.getTargets Song_Artist) >>=
   return . concat >>=
   mapM G.getValue
 
@@ -111,11 +117,11 @@ insertSong value genreUIDs artistUIDs = do
   uid <- updateNode root $ zoom _3 $ modify succ >> get
   node <- G.newNode (Identified uid value)
   forM_ genreUIDs $ \uid -> do
-    genres <- G.getTargetsByIndex root (Catalogue_Genre_UID uid)
+    genres <- G.getTargets root (Catalogue_Genre_UID uid)
     forM_ genres $ \genre -> do
       G.addTarget genre node
   forM_ artistUIDs $ \uid -> do
-    artists <- G.getTargetsByIndex root (Catalogue_Artist_UID uid)
+    artists <- G.getTargets root (Catalogue_Artist_UID uid)
     forM_ artists $ \artist -> do
       G.addTarget node artist
   return uid
@@ -163,7 +169,7 @@ instance Q.Arbitrary (Update s t) where
             G.addTarget genre song
         where
           chooseSomeSongs = do
-            list <- lift $ G.getRoot >>= flip G.getTargetsByType (undefined :: Identified Song)
+            list <- lift $ G.getRoot >>= flip G.getTargets Catalogue_Song
             let vec = V.fromList list
                 length = V.length vec
             amount <- if length > 0 
@@ -182,7 +188,7 @@ instance Q.Arbitrary (Update s t) where
             G.addTarget song artist
         where
           chooseSomeArtists = do
-            list <- lift $ G.getRoot >>= flip G.getTargetsByType (undefined :: Identified Artist)
+            list <- lift $ G.getRoot >>= flip G.getTargets Catalogue_Artist
             let vec = V.fromList list
                 length = V.length vec
             amount <- if length > 0 
@@ -191,25 +197,23 @@ instance Q.Arbitrary (Update s t) where
             replicateM amount $ Q.choose (0, length - 1) >>= return . V.unsafeIndex vec
       removeSomeArtist = do
         root <- lift $ G.getRoot
-        all <- lift $ G.getTargetsByType root (undefined :: Identified Artist)
+        all <- lift $ G.getTargets root Catalogue_Artist
         mapM_ (lift . G.remove) =<< Q.elementsMay all
       removeSomeSong = do
         root <- lift $ G.getRoot
-        all <- lift $ G.getTargetsByType root (undefined :: Identified Song)
+        all <- lift $ G.getTargets root Catalogue_Song
         mapM_ (lift . G.remove) =<< Q.elementsMay all
       removeSomeGenre = do
         root <- lift $ G.getRoot
-        all <- lift $ G.getTargetsByType root (undefined :: Identified Genre)
+        all <- lift $ G.getTargets root Catalogue_Genre
         mapM_ (lift . G.remove) =<< Q.elementsMay all
 
 
-
--- Boilerplate
+-- * Boilerplate
 -------------------------
 
-G.deriveUnion ''Catalogue
+G.deriveSetup ''Catalogue
 instance (Hashable a) => Hashable (UID a)
 instance (Serializable m a) => Serializable m (UID a)
-
 
 

@@ -7,8 +7,11 @@ import qualified Data.Vector.Mutable as IOVector
 newtype DIOVector a = DIOVector (IORef (IOVector.IOVector a, Int))
 
 new :: IO (DIOVector a)
-new = do
-  vector <- IOVector.new (2^8)
+new = newSized (2^8)
+
+newSized :: Int -> IO (DIOVector a)
+newSized size = do
+  vector <- IOVector.new size
   ref <- newIORef (vector, 0)
   return $ DIOVector ref
 
@@ -27,8 +30,8 @@ append (DIOVector ref) value = do
 
 lookup :: DIOVector a -> Int -> IO (Maybe a)
 lookup v i = do
-  size <- getSize v
-  if i < size && i >= 0
+  s <- size v
+  if i < s && i >= 0
     then Just <$> unsafeLookup v i
     else pure Nothing
 
@@ -37,6 +40,6 @@ unsafeLookup (DIOVector ref) i = do
   (vector, _) <- readIORef ref
   IOVector.read vector i
 
-getSize :: DIOVector a -> IO Int
-getSize (DIOVector ref) = readIORef ref >>= return . snd
+size :: DIOVector a -> IO Int
+size (DIOVector ref) = readIORef ref >>= return . snd
 

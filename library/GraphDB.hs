@@ -56,18 +56,17 @@ module GraphDB
   getValue,
   setValue,
   getRoot,
-  getTargetsByType,
-  getTargetsByIndex,
+  getTargets,
   addTarget,
   removeTarget,
   remove,
   getStats,
   -- * Modeling
-  Edge.Edge(..),
-  Union.Union,
-  Union.PolyValue,
-  Union.PolyIndex,
-  Macros.deriveUnion,
+  Model.Edge(..),
+  Graph.Setup,
+  Model.PolyValue,
+  Model.PolyIndex,
+  Macros.deriveSetup,
   -- * Server
   ServerSettings,
   ServerModelVersion,
@@ -86,9 +85,8 @@ module GraphDB
 where
 
 import GraphDB.Util.Prelude hiding (write, read, Write, Read, block)
-import qualified GraphDB.Model.Union as Union
-import qualified GraphDB.Model.Edge as Edge
-import qualified GraphDB.Model.Macros as Macros
+import qualified GraphDB.Model as Model
+import qualified GraphDB.Macros as Macros
 import qualified GraphDB.Action as Action
 import qualified GraphDB.Graph as Graph
 import qualified GraphDB.Client as Client
@@ -109,10 +107,10 @@ import qualified Remotion.Server as RemotionServer
 class Session s where
   type SessionNode s u
   runTransaction :: 
-    (MonadIO m, MonadBaseControl IO m, Union.Union u) => 
+    (MonadIO m, MonadBaseControl IO m, Graph.Setup u) => 
     Bool -> SessionAction s u m r -> s u m r
 
-type Action n u = Action.Action n (Union.Value u) (Union.Type u) (Union.Index u)
+type Action n u = Action.Action n (Graph.Value u) (Graph.Index u)
 type SessionAction s u = Action (SessionNode s u) u
 
 
@@ -127,9 +125,9 @@ instance Session Nonpersistent.NonpersistentSession where
 -- |
 -- Run a nonpersistent session, 
 -- while providing an initial value for the root node.
-runNonpersistentSession :: (Union.PolyValue u u, MonadIO m) => u -> Nonpersistent.NonpersistentSession u m r -> m r
+runNonpersistentSession :: (Model.PolyValue u u, MonadIO m) => u -> Nonpersistent.NonpersistentSession u m r -> m r
 runNonpersistentSession v s = do
-  n <- liftIO $ Graph.new $ snd $ Union.packValue $ v
+  n <- liftIO $ Graph.new $ Model.packValue $ v
   Nonpersistent.runSession n s
 
 
@@ -152,10 +150,10 @@ type PersistentSettings v = (v, Persistent.StoragePath, Persistent.PersistenceBu
 -- |
 -- Run a persistent session with settings.
 runPersistentSession :: 
-  (MonadIO m, MonadBaseControl IO m, Union.PolyValue u u) => 
+  (MonadIO m, MonadBaseControl IO m, Model.PolyValue u u) => 
   PersistentSettings u -> Persistent.PersistentSession u m r -> m (Either Persistent.PersistenceFailure r)
 runPersistentSession (v, p, e) s = do
-  Persistent.runSession (snd $ Union.packValue $ v, p, e) s
+  Persistent.runSession (Model.packValue $ v, p, e) s
 
 
 
@@ -212,7 +210,7 @@ data ClientFailure =
 -- |
 -- Run a client session with settings.
 runClientSession :: 
-  (MonadIO m, MonadBaseControl IO m, Union.Union u) =>
+  (MonadIO m, MonadBaseControl IO m, Graph.Setup u) =>
   ClientSettings -> Client.ClientSession u m r -> m (Either ClientFailure r)
 runClientSession (v, url) (ses) = 
   fmap (fmapL adaptRemotionFailure) $ Client.runSession (rv, rurl) $ ses
@@ -277,7 +275,7 @@ newtype Node s u t v = Node (SessionNode s u)
 -- Gets executed concurrently.
 -- 
 -- Concerning the \"forall\" part refer to 'Node'.
-read :: (Union.Union u, Session s, MonadBaseControl IO m, MonadIO m) => (forall t. Read s u t r) -> s u m r
+read :: (Graph.Setup u, Session s, MonadBaseControl IO m, MonadIO m) => (forall t. Read s u t r) -> s u m r
 read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
 
 -- |
@@ -287,7 +285,7 @@ read (Read a) = runTransaction False $ hoistFreeT (return . runIdentity) $ a
 -- so all concurrent transactions are put on hold for the time of execution.
 -- 
 -- Concerning the \"forall\" part refer to 'Node'.
-write :: (Union.Union u, Session s, MonadBaseControl IO m, MonadIO m) => (forall t. Write s u t r) -> s u m r
+write :: (Graph.Setup u, Session s, MonadBaseControl IO m, MonadIO m) => (forall t. Write s u t r) -> s u m r
 write (Write a) = runTransaction True $ hoistFreeT (return . runIdentity) $ a
 
 
@@ -300,20 +298,20 @@ write (Write a) = runTransaction True $ hoistFreeT (return . runIdentity) $ a
 -- 
 -- This node won't get stored if you don't insert at least a single edge 
 -- from another stored node to it.
-newNode :: (Union.PolyValue u v) => v -> Write s u t (Node s u t v)
-newNode v = fmap Node $ liftAction $ Action.newNode $ snd $ Union.packValue v
+newNode :: (Model.PolyValue u v) => v -> Write s u t (Node s u t v)
+newNode v = fmap Node $ liftAction $ Action.newNode $ Model.packValue v
 
 -- | 
 -- Get a value of the node.
-getValue :: (Union.PolyValue u v) => Node s u t v -> ReadOrWrite s u t v
+getValue :: (Model.PolyValue u v) => Node s u t v -> ReadOrWrite s u t v
 getValue (Node n) = 
-  fmap (fromMaybe ($bug "Unexpected packed value") . Union.unpackValue) $ 
+  fmap (fromMaybe ($bug "Unexpected packed value") . Model.unpackValue) $ 
   liftAction $ Action.getValue n
 
 -- | 
 -- Replace the value of the specified node.
-setValue :: (Union.PolyValue u v) => Node s u t v -> v -> Write s u t ()
-setValue (Node n) v = Write $ Action.setValue n (snd $ Union.packValue v)
+setValue :: (Model.PolyValue u v) => Node s u t v -> v -> Write s u t ()
+setValue (Node n) v = Write $ Action.setValue n (Model.packValue v)
 
 -- |
 -- Get the root node.
@@ -321,24 +319,12 @@ getRoot :: ReadOrWrite s u t (Node s u t u)
 getRoot = fmap Node $ liftAction $ Action.getRoot
 
 -- |
--- Get all linked nodes with values of the provided type.
--- Supposed to be used like this:
--- 
--- > getTargetsByType node (undefined :: Artist)
--- 
-getTargetsByType :: 
-  (Union.PolyValue u v') => 
-  Node s u t v -> v' -> ReadOrWrite s u t [Node s u t v']
-getTargetsByType (Node n) v =
-  fmap (map Node) $ liftAction $ Action.getTargetsByType n $ fst $ Union.packValue v
-
--- |
 -- Get target nodes reachable by the provided index.
-getTargetsByIndex :: 
-  (Union.PolyIndex u i, i ~ Edge.Index v v') => 
+getTargets :: 
+  (Model.PolyIndex u i, i ~ Model.Index v v') => 
   Node s u t v -> i -> ReadOrWrite s u t [Node s u t v']
-getTargetsByIndex (Node n) i = 
-  fmap (map Node) $ liftAction $ Action.getTargetsByIndex n $ Union.packIndex i
+getTargets (Node n) i = 
+  fmap (map Node) $ liftAction $ Action.getTargets n $ Model.packIndex i
 
 -- |
 -- Add a link to the provided target node /v'/, 
@@ -346,7 +332,7 @@ getTargetsByIndex (Node n) i =
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node is already there it will return 'False'.
-addTarget :: (Edge.Edge v v') => Node s u t v -> Node s u t v' -> Write s u t Bool
+addTarget :: (Model.Edge v v') => Node s u t v -> Node s u t v' -> Write s u t ()
 addTarget (Node s) (Node t) = Write $ Action.addTarget s t
 
 -- |
@@ -354,7 +340,7 @@ addTarget (Node s) (Node t) = Write $ Action.addTarget s t
 -- 
 -- The result signals, whether the operation has actually been performed.
 -- If the node is not found it will return 'False'.
-removeTarget :: (Edge.Edge v v') => Node s u t v -> Node s u t v' -> Write s u t Bool
+removeTarget :: (Model.Edge v v') => Node s u t v -> Node s u t v' -> Write s u t ()
 removeTarget (Node s) (Node t) = Write $ Action.removeTarget s t
 
 -- |
@@ -363,10 +349,10 @@ remove :: Node s u t v -> Write s u t ()
 remove (Node n) = Write $ Action.remove n
 
 -- |
--- Count the total amounts of distinct nodes and edges in the graph.
+-- Count the total amounts of distinct nodes, edges and indexes in the graph.
 -- 
 -- Requires a traversal of the whole graph, so beware.
-getStats :: ReadOrWrite s u t (Int, Int)
+getStats :: ReadOrWrite s u t (Int, Int, Int)
 getStats = liftAction $ Action.getStats
 
 
@@ -410,7 +396,7 @@ data ServerFailure =
 -- Run a server on this session.
 serve :: 
   (Session s, MonadIO (s u m), MonadBaseControl IO (s u m), MonadTrans (s u),
-   MonadBaseControl IO m, MonadIO m, Union.Union u) => 
+   MonadBaseControl IO m, MonadIO m, Graph.Setup u) => 
   ServerSettings -> Server.Serve m r -> s u m (Either ServerFailure r)
 serve (v, lm, to, mc, log) (Server.Serve rs) = do
   transactionsChan <- liftIO $ newChan

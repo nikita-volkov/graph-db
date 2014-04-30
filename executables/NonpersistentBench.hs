@@ -20,6 +20,8 @@ main = do
                 lift $ Cri.continue
                 Gra.interpretSession session
                 lift $ Cri.pause
+      subject 21000
+      subject 16000
       subject 11000
       subject 6000
       subject 1000

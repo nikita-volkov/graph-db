@@ -2,24 +2,24 @@ module GraphDB.Server where
 
 import GraphDB.Util.Prelude
 import qualified Remotion.Server as R
-import qualified GraphDB.Service.Protocol as P
-import qualified GraphDB.Util.DIOVector as DV
+import qualified GraphDB.Util.DIOVector as V
+import qualified GraphDB.Protocol as P
 import qualified GraphDB.Action as A
-import qualified GraphDB.Model.Union as U
+import qualified GraphDB.Graph as G
 
 
-type Action n u = A.Action n (U.Value u) (U.Type u) (U.Index u)
+type Action n s = A.Action n (G.Value s) (G.Index s)
 
-type Command u = Maybe (P.Action u)
+type Command s = Maybe (P.Action s)
 
-type Comm u = (Chan (Command u), MVar (P.Response u))
+type Comm s = (Chan (Command s), MVar (P.Response s))
 
-runCommandProcessor :: (MonadIO m) => Comm u -> Action n u m ()
+runCommandProcessor :: (MonadIO m) => Comm s -> Action n s m ()
 runCommandProcessor (commandsChan, responseVar) = do
-  refs <- liftIO $ DV.new
+  refs <- liftIO $ V.new
   let 
-    newRef = liftIO . DV.append refs
-    resolveRef = liftIO . DV.unsafeLookup refs
+    newRef = liftIO . V.append refs
+    resolveRef = liftIO . V.unsafeLookup refs
     respond = liftIO . putMVar responseVar
     loop = do 
       com <- liftIO $ readChan commandsChan
@@ -43,37 +43,32 @@ runCommandProcessor (commandsChan, responseVar) = do
               n <- A.getRoot
               r <- newRef n
               respond $ P.Node r
-            P.GetTargetsByType r t -> do
+            P.GetTargets r i -> do
               n <- resolveRef r
-              nl <- A.getTargetsByType n t
-              rl <- mapM newRef nl
-              respond $ P.NodeList rl
-            P.GetTargetsByIndex r i -> do
-              n <- resolveRef r
-              nl <- A.getTargetsByIndex n i
+              nl <- A.getTargets n i
               rl <- mapM newRef nl
               respond $ P.NodeList rl
             P.AddTarget s t -> do
               sn <- resolveRef s
               tn <- resolveRef t
-              r <- A.addTarget sn tn
-              respond $ P.Bool r
+              A.addTarget sn tn
+              respond $ P.Unit
             P.RemoveTarget s t -> do
               sn <- resolveRef s
               tn <- resolveRef t
-              r <- A.removeTarget sn tn
-              respond $ P.Bool r
+              A.removeTarget sn tn
+              respond $ P.Unit
             P.Remove r -> do
               n <- resolveRef r
               A.remove n
               respond $ P.Unit
             P.GetStats -> do
               r <- A.getStats
-              respond $ P.IntPair r
+              respond $ P.Stats r
           loop
     in loop
 
-processRequest :: Chan (Bool, Comm u) -> IORef (Maybe (Comm u)) -> P.Request u -> IO (P.Response u)
+processRequest :: Chan (Bool, Comm s) -> IORef (Maybe (Comm s)) -> P.Request s -> IO (P.Response s)
 processRequest transactionsChan stateRef req = do
   -- Initialize the state if needed and determine whether it's the final request.
   state <- readIORef stateRef

@@ -20,18 +20,29 @@ type Catalogue = (UID Artist, UID Genre, UID Song)
 instance G.Edge Catalogue (Identified Artist) where
   data Index Catalogue (Identified Artist) =
     Catalogue_Artist_UID (UID Artist) |
-    Catalogue_Artist_Name Text
+    Catalogue_Artist_Name Text |
+    Catalogue_Artist
     deriving (Eq, Generic)
   indexes (Identified uid (Artist n)) = 
-    [Catalogue_Artist_UID uid, Catalogue_Artist_Name n]
+    [Catalogue_Artist_UID uid, Catalogue_Artist_Name n, Catalogue_Artist]
 
 instance G.Edge Catalogue (Identified Genre) where
   data Index Catalogue (Identified Genre) = 
     Catalogue_Genre_UID (UID Genre) |
-    Catalogue_Genre_Name Text
+    Catalogue_Genre_Name Text |
+    Catalogue_Genre
     deriving (Eq, Generic)
   indexes (Identified uid (Genre n)) = 
-    [Catalogue_Genre_UID uid, Catalogue_Genre_Name n]
+    [Catalogue_Genre_UID uid, Catalogue_Genre_Name n, Catalogue_Genre]
+
+instance G.Edge Catalogue (Identified Song) where
+  data Index Catalogue (Identified Song) = 
+    Catalogue_Song_UID (UID Song) |
+    Catalogue_Song_Name Text |
+    Catalogue_Song
+    deriving (Eq, Generic)
+  indexes (Identified uid (Song n)) = 
+    [Catalogue_Song_UID uid, Catalogue_Song_Name n, Catalogue_Song]
 
 instance G.Edge (Identified Genre) (Identified Song) where
   data Index (Identified Genre) (Identified Song) =
@@ -49,12 +60,12 @@ instance G.Edge (Identified Song) (Identified Artist) where
 -- Boilerplate
 -------------------------
 
-G.deriveUnion ''Catalogue
+G.deriveSetup ''Catalogue
 instance (Hashable a) => Hashable (UID a)
 instance (Serializable m a) => Serializable m (UID a)
 
 
--- Transactions
+-- Interpreter
 -------------------------
 
 interpretSession :: 
@@ -70,25 +81,23 @@ interpretSession = iterTM $ \case
   LookupArtistsByName n c -> G.read (lookupArtistsByName n) >>= c
   LookupArtistsBySongGenreName n c -> G.read (lookupArtistsBySongGenreName n) >>= c
   where
-    -- | A query by UID.
+    
     lookupArtistByUID :: UID Artist -> G.Read s Catalogue t (Maybe (Identified Artist))
     lookupArtistByUID uid =
-      G.getRoot >>= flip G.getTargetsByIndex (Catalogue_Artist_UID uid) >>=
+      G.getRoot >>= flip G.getTargets (Catalogue_Artist_UID uid) >>=
       return . listToMaybe >>= mapM G.getValue
 
-    -- | A simple query.
     lookupArtistsByName :: Text -> G.Read s Catalogue t [Identified Artist]
     lookupArtistsByName n = 
-      G.getRoot >>= flip G.getTargetsByIndex (Catalogue_Artist_Name n) >>= mapM G.getValue
+      G.getRoot >>= flip G.getTargets (Catalogue_Artist_Name n) >>= mapM G.getValue
 
-    -- | A deep query.
     lookupArtistsBySongGenreName :: Text -> G.Read s Catalogue t [Identified Artist]
     lookupArtistsBySongGenreName n =
       G.getRoot >>= 
-      flip G.getTargetsByIndex (Catalogue_Genre_Name n) >>=
-      mapM (flip G.getTargetsByIndex Genre_Song) >>= 
+      flip G.getTargets (Catalogue_Genre_Name n) >>=
+      mapM (flip G.getTargets Genre_Song) >>= 
       return . concat >>=
-      mapM (flip G.getTargetsByIndex Song_Artist) >>=
+      mapM (flip G.getTargets Song_Artist) >>=
       return . concat >>=
       mapM G.getValue
 
@@ -114,17 +123,25 @@ interpretSession = iterTM $ \case
       uid <- updateNode root $ zoom _3 $ modify succ >> get
       node <- G.newNode (Identified uid value)
       forM_ genreUIDs $ \uid -> do
-        genres <- G.getTargetsByIndex root (Catalogue_Genre_UID uid)
+        genres <- G.getTargets root (Catalogue_Genre_UID uid)
         forM_ genres $ \genre -> do
           G.addTarget genre node
       forM_ artistUIDs $ \uid -> do
-        artists <- G.getTargetsByIndex root (Catalogue_Artist_UID uid)
+        artists <- G.getTargets root (Catalogue_Artist_UID uid)
         forM_ artists $ \artist -> do
           G.addTarget node artist
       return uid
 
-    updateNode :: G.Node s Catalogue t Catalogue -> State Catalogue r -> G.Write s Catalogue t r
+    generateUID :: Lens' Catalogue (UID a) -> G.Write s Catalogue t (UID a)
+    generateUID selector = do
+      root <- G.getRoot
+      updateNode root $ zoom selector $ modify succ >> get
+
+    updateNode :: 
+      (G.PolyValue Catalogue v) => 
+      G.Node s Catalogue t v -> State v r -> G.Write s Catalogue t r
     updateNode n u = G.getValue n >>= return . runState u >>= \(r, v') -> G.setValue n v' >> return r
+
 
 -- Setup
 -------------------------

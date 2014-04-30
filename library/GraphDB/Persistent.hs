@@ -1,15 +1,12 @@
 module GraphDB.Persistent where
 
 import GraphDB.Util.Prelude
-
 import qualified GraphDB.Action as A
-import qualified GraphDB.Model.Union as U
+import qualified GraphDB.Graph as G
 import qualified GraphDB.Util.FileSystem as FS
-import qualified GraphDB.Util.IOQueue as IOQueue
+import qualified GraphDB.Util.IOQueue as Q
 import qualified GraphDB.Storage as S
 import qualified GraphDB.Nonpersistent as NP
-import qualified GraphDB.Graph as Graph
-import qualified GraphDB.Util.DIOVector as DV
 import qualified GraphDB.Persistent.Log as L
 
 
@@ -18,15 +15,15 @@ import qualified GraphDB.Persistent.Log as L
 
 -- |
 -- A session of an in-memory graph datastructure with persistence.
-newtype PersistentSession u m r = 
-  PersistentSession (ReaderT (Storage u, IOQueue.IOQueue) (NP.NonpersistentSession u m) r)
+newtype PersistentSession s m r = 
+  PersistentSession (ReaderT (Storage s, Q.IOQueue) (NP.NonpersistentSession s m) r)
   deriving (Functor, Applicative, Monad, MonadIO)
 
-instance MonadTrans (PersistentSession u) where 
+instance MonadTrans (PersistentSession s) where 
   lift = PersistentSession . lift . lift
 
-instance MonadTransControl (PersistentSession u) where
-  newtype StT (PersistentSession u) r = SessionStT (StT (NP.NonpersistentSession u) r)
+instance MonadTransControl (PersistentSession s) where
+  newtype StT (PersistentSession s) r = SessionStT (StT (NP.NonpersistentSession s) r)
   liftWith runInInner = do
     env <- PersistentSession $ ask
     PersistentSession $ lift $ liftWith $ \runGraphSession -> runInInner $ \(PersistentSession s) ->
@@ -37,15 +34,15 @@ instance MonadTransControl (PersistentSession u) where
       SessionStT r <- lift inner
       restoreT $ return $ r
 
-instance (MonadBase IO m) => MonadBase IO (PersistentSession u m) where
+instance (MonadBase IO m) => MonadBase IO (PersistentSession s m) where
   liftBase = PersistentSession . liftBase
 
-instance (MonadBaseControl IO m) => MonadBaseControl IO (PersistentSession u m) where
-  newtype StM (PersistentSession u m) a = SessionStM { unSessionStM :: ComposeSt (PersistentSession u) m a }
+instance (MonadBaseControl IO m) => MonadBaseControl IO (PersistentSession s m) where
+  newtype StM (PersistentSession s m) a = SessionStM { unSessionStM :: ComposeSt (PersistentSession s) m a }
   liftBaseWith = defaultLiftBaseWith SessionStM
   restoreM = defaultRestoreM unSessionStM
 
-type Storage u = S.Storage (NP.Node u) (L.Log u)
+type Storage s = S.Storage (NP.Node s) (L.Log s)
 
 data PersistenceFailure = 
   -- | 
@@ -53,7 +50,7 @@ data PersistenceFailure =
   CorruptData Text
   deriving (Show)
 
-type Settings u = (U.Value u, StoragePath, PersistenceBuffering)
+type Settings s = (G.Value s, StoragePath, PersistenceBuffering)
 -- |
 -- A path to a directory, under which update-logs, checkpoints and archive 
 -- will be stored.
@@ -72,22 +69,22 @@ type StoragePath = FilePath
 type PersistenceBuffering = Int
 
 runSession :: 
-  (MonadIO m, MonadBaseControl IO m, U.Serializable IO u, U.Union u) => 
-  Settings u -> PersistentSession u m r -> m (Either PersistenceFailure r)
+  (MonadIO m, MonadBaseControl IO m, G.Setup s, Serializable IO (G.Index s)) => 
+  Settings s -> PersistentSession s m r -> m (Either PersistenceFailure r)
 runSession (v, p, buffering) (PersistentSession ses) = do
   r <- liftBaseWith $ \runInBase -> do
     let
       acquire = do
         paths <- S.pathsFromDirectory p
         (storage, graph) <- S.acquireAndLoad initGraph applyLog paths
-        queue <- IOQueue.start buffering
+        queue <- Q.start buffering
         return (storage, queue, graph)
         where
-          initGraph = Graph.new v
+          initGraph = G.new v
           applyLog graph log = do
             void $ runInBase $ NP.runSession graph $ NP.runAction $ L.toAction log
       release (storage, queue, graph) = do
-        IOQueue.finish queue
+        Q.finish queue
         S.checkpoint storage graph
         S.release storage
     try $ bracket acquire release $ \(s, q, g) -> do
@@ -101,30 +98,32 @@ runSession (v, p, buffering) (PersistentSession ses) = do
 -- * Transaction
 -------------------------
 
-newtype Tx u m r = 
-  Tx (StateT (L.Log u) (StateT Int (NP.NonpersistentSession u m)) r)
+newtype Tx s m r = 
+  Tx (StateT (L.Log s) (StateT Int (NP.NonpersistentSession s m)) r)
   deriving (Functor, Applicative, Monad, MonadIO)
 
-instance MonadTrans (Tx u) where 
+instance MonadTrans (Tx s) where 
   lift = Tx . lift . lift . lift
 
-runTransaction :: (MonadBaseControl IO m, U.Serializable IO u) => Bool -> Tx u m r -> PersistentSession u m r
+runTransaction :: 
+  (MonadBaseControl IO m, Serializable IO (G.Value s), Serializable IO (G.Index s)) => 
+  Bool -> Tx s m r -> PersistentSession s m r
 runTransaction write (Tx tx) = PersistentSession $ do
   (r, log) <- 
     lift $ NP.runTransaction write $ flip evalStateT 0 $ flip runStateT [] $ tx
   when write $ do
     (storage, ioq) <- ask
-    liftBase $ IOQueue.performAsync ioq $ S.persistEvent storage $ reverse log
+    liftBase $ Q.performAsync ioq $ S.persistEvent storage $ reverse log
   return r
 
 
 -- * Action
 -------------------------
 
-type Action u = A.Action (Node u) (U.Value u) (U.Type u) (U.Index u)
-type Node u = (U.Node u, Int)
+type Action s = A.Action (Node s) (G.Value s) (G.Index s)
+type Node s = (G.Node s, Int)
 
-runAction :: (MonadBase IO m, U.Union u) => Action u m r -> Tx u m r
+runAction :: (MonadIO m, G.Setup s) => Action s m r -> Tx s m r
 runAction = iterTM $ \case
   A.NewNode v c -> do
     record $ L.NewNode v
@@ -143,24 +142,19 @@ runAction = iterTM $ \case
     n <- runInner $ A.getRoot
     r <- newRef n
     c (n, r)
-  A.GetTargetsByType (n, r) t c -> do
-    record $ L.GetTargetsByType r t
-    rns <- runInner $ A.getTargetsByType n t
-    r <- forM rns $ \n -> (n,) <$> newRef n
-    c r
-  A.GetTargetsByIndex (n, r) i c -> do
-    record $ L.GetTargetsByIndex r i
-    rns <- runInner $ A.getTargetsByIndex n i
-    r <- forM rns $ \n -> (n,) <$> newRef n
+  A.GetTargets (n, r) i c -> do
+    record $ L.GetTargets r i
+    rns <- runInner $ A.getTargets n i
+    r <- forM rns $ \n -> liftM (n,) $ newRef n
     c r
   A.AddTarget (sn, sr) (tn, tr) c -> do
     record $ L.AddTarget sr tr
-    r <- runInner $ A.addTarget sn tn
-    c r
+    runInner $ A.addTarget sn tn
+    c
   A.RemoveTarget (sn, sr) (tn, tr) c -> do
     record $ L.RemoveTarget sr tr
-    r <- runInner $ A.removeTarget sn tn
-    c r
+    runInner $ A.removeTarget sn tn
+    c
   A.Remove (n, r) c -> do
     record $ L.Remove r
     runInner $ A.remove n

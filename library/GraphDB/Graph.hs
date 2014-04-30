@@ -1,283 +1,201 @@
+-- |
+-- A graph API over monomorphic values.
 module GraphDB.Graph where
 
-import GraphDB.Util.Prelude hiding (Any, traverse)
-import GHC.Exts (Any)
-import qualified GraphDB.Util.DIOVector as DIOVector; import GraphDB.Util.DIOVector (DIOVector)
-import qualified HashtablesPlus as HP
-import qualified HashtablesPlus.HashRef as HashRef
+import GraphDB.Util.Prelude
+import qualified GraphDB.Util.DIOVector as V
+import qualified HashtablesPlus as H
+import qualified HashtablesPlus.HashRef as HR
 
 
-type MT k v = HP.MultiTable HP.Linear k (HP.HashRefSet HP.Linear v)
-type SizedMT k v = HP.Sized (MT k v)
+type Basic = H.Basic
+type Cuckoo = H.Cuckoo
+type Linear = H.Linear
 
--- |
--- A public representation which all functions revolve around.
--- 
-data Node t = 
-  Node {
-    nodeValueType :: !t,
-    nodeRefs :: {-# UNPACK #-} !(HashRef.HashRef (Refs t))
-  }
+class (H.Algorithm (Algorithm s), H.Key (Index s), 
+       Serializable IO (Value s), Serializable IO (Index s)) => Setup s where
+  -- |
+  -- Any of the "hashtables-plus" algorithms:
+  -- 'H.Basic', 'H.Cuckoo', 'H.Linear'.
+  -- 
+  -- Affects performance and memory footprint of the graph.
+  type Algorithm s :: * -> * -> * -> *
+  data Index s
+  data Value s
+  indexes :: Value s -> Value s -> [Index s]
 
--- |
--- An internally used data structure for memory-efficient storage.
-data Refs t =
+data Refs s =
   Refs {
-    refsValueRef :: {-# UNPACK #-} !(IORef Any),
-    -- Targets by type.
-    refsTargetsByType :: {-# UNPACK #-} !(MT t (Refs t)),
-    -- Targets by index.
-    refsTargetsByIndex :: {-# UNPACK #-} !(MT (Index t) (Refs t)),
-    -- Source refs.
-    refsSourcesByType :: {-# UNPACK #-} !(SizedMT t (Refs t))
+    refsValue :: {-# UNPACK #-} !(IORef (Value s)),
+    refsTargets :: !(H.Multimap (Algorithm s) (Index s) (H.HashRefSet (Algorithm s) (Refs s))),
+    refsSources :: !(H.HashRefSet (Algorithm s) (Refs s))
   }
 
--- Accessors
+type Node s = HR.HashRef (Refs s)
+
+
+-- * Operations
 -------------------------
 
-nodeValueRef = refsValueRef . HashRef.value . nodeRefs
-nodeTargetsByType = refsTargetsByType . HashRef.value . nodeRefs
-nodeTargetsByIndex = refsTargetsByIndex . HashRef.value . nodeRefs
-nodeSourcesByType = refsSourcesByType . HashRef.value . nodeRefs
+new :: (Setup s) => Value s -> IO (Node s)
+new v = HR.new =<< Refs <$> newIORef v <*> H.new <*> H.new
 
--------------
+getValue :: Node s -> IO (Value s)
+getValue = readIORef . refsValue . HR.value
 
-class 
-  (HP.Key (Index t), HP.Key t, Serializable IO (Value t)) => 
-  Type t 
-  where
-    type Index t
-    type Value t
-    indexes :: Value t -> t -> [Index t]
-    decomposeValue :: Value t -> (t, Any)
-    composeValue :: t -> Any -> Value t
-    targetType :: Index t -> t
+setValue :: (Setup s) => Node s -> Value s -> IO ()
+setValue node newValue = do
+  oldValue <- getValue node
+  H.traverse (refsSources $ HR.value $ node) $ \source -> do
+    sourceValue <- getValue source
+    forM_ (indexes oldValue sourceValue) $ \i -> do
+      H.deleteFast (refsTargets $ HR.value $ source) (i, node)
+    forM_ (indexes newValue sourceValue) $ \i -> do
+      H.insertFast (refsTargets $ HR.value $ source) (i, node)
+  writeIORef (refsValue $ HR.value $ node) newValue
 
--------------
-
-new :: Type t => Value t -> IO (Node t)
-new uv = do
-  refs <- Refs <$> newIORef v <*> HP.new <*> HP.new <*> HP.new
-  refsHR <- HashRef.new refs
-  return $ Node t refsHR
-  where
-    (t, v) = decomposeValue uv
-
-getValue :: Type t => Node t -> IO (Value t)
-getValue n = 
-  composeValue <$> 
-    pure (nodeValueType n) 
-      <*> 
-    readIORef (nodeValueRef n)
-
-setValue :: Type t => Node t -> Value t -> IO ()
-setValue node newValue = 
-  if newValueType /= nodeValueType node 
-    then error "Attempt to set a value of a wrong type"
-    else do
-      oldValue <- getValue node
-      HP.forM_ (nodeSourcesByType node) $ \(sourceType, targetRefsHR) ->
-        let
-          oldIndexes = indexes oldValue sourceType
-          newIndexes = indexes newValue sourceType
-          targetRefs = HashRef.value targetRefsHR
-          targetTargetsByIndex = refsTargetsByIndex targetRefs
-          in do
-            forM_ oldIndexes $ \i -> 
-              HP.delete targetTargetsByIndex (i, (nodeRefs node)) >>= \case
-                True -> return ()
-                False -> $bug "Old index not found"
-            forM_ newIndexes $ \i -> 
-              HP.insert targetTargetsByIndex (i, (nodeRefs node)) >>= \case
-                True -> return ()
-                False -> $bug "New index collision"
-      writeIORef (nodeValueRef node) newValueAny
-  where
-    (newValueType, newValueAny) = decomposeValue newValue
-
-getSourcesByType :: Type t => Node t -> t -> IO [Node t]
-getSourcesByType (Node _ (HashRef.HashRef _ (Refs _ _ _ sourceRefsTable))) t =
-  map (Node t) <$> HP.lookupMulti sourceRefsTable t
-
-getTargetsByType :: Type t => Node t -> t -> IO [Node t]
-getTargetsByType (Node _ (HashRef.HashRef _ (Refs _ table _ _))) t =
-  map (Node t) <$> HP.lookupMulti table t
-
-getTargetsByIndex :: Type t => Node t -> Index t -> IO [Node t]
-getTargetsByIndex (Node _ (HashRef.HashRef _ (Refs _ _ table _))) index =
-  map (Node (targetType index)) <$> HP.lookupMulti table index
-
-addTarget :: Type t => Node t -> Node t -> IO Bool
+addTarget :: (Setup s) => Node s -> Node s -> IO ()
 addTarget source target = do
-  updateTarget >>= \case
-    False -> return False
-    True -> updateSource >> return True
-  where
-    updateSource = do
-      targetIndexes <- indexes <$> getValue target <*> pure (nodeValueType source)
-      forM_ targetIndexes $ \i -> 
-        HP.insert (nodeTargetsByIndex source) (i, nodeRefs target) >>= \case
-          True -> return ()
-          False -> $bug "Node already exists under provided index"
-      HP.insert (nodeTargetsByType source) (nodeValueType target, nodeRefs target) >>= \case
-        True -> return True
-        False -> $bug "Node already exists under provided type"
-    updateTarget = do
-      HP.insert (nodeSourcesByType target) (nodeValueType source, nodeRefs source)
+  il <- pure indexes <*> getValue target <*> getValue source
+  forM_ il $ \i -> H.insertFast (refsTargets . HR.value $ source) (i, target)
+  H.insertFast (refsSources $ HR.value $ target) source
 
-removeTarget :: Type t => Node t -> Node t -> IO Bool
+removeTarget :: (Setup s) => Node s -> Node s -> IO ()
 removeTarget source target = do
-  updateTarget >>= \case
-    False -> return False
-    True -> do
-      updateSource
-      maintain target
-      return True
-  where
-    updateTarget = HP.delete (nodeSourcesByType target) (nodeValueType source, nodeRefs source)
-    updateSource = do
-      indexes <- indexes <$> getValue target <*> pure (nodeValueType source)
-      forM_ indexes $ \i ->
-        HP.delete (nodeTargetsByIndex source) (i, nodeRefs target) >>= \case
-          True -> return ()
-          False -> $bug "Target not found by index"
-      HP.delete (nodeTargetsByType source) (nodeValueType target, nodeRefs target) >>= \case
-        True -> return ()
-        False -> $bug "Target not found by type"
+  il <- pure indexes <*> getValue target <*> getValue source
+  forM_ il $ \i -> H.deleteFast (refsTargets $ HR.value $ source) (i, target) 
+  H.deleteFast (refsSources $ HR.value $ target) source
 
--- |
--- If after being removed the target node has no edges to it left, 
--- it becomes unreachable. It however will not get garbage-collected
--- if it itself retains edges to other nodes, 
--- because this leaves back-references to it in them. 
--- That's why in this case we must delete all outgoing edges from it manually.
-maintain :: Type t => Node t -> IO ()
-maintain node = do
-  HP.null (nodeSourcesByType node) >>= \case
-    True -> return ()
-    False -> traverseTargets node $ void . removeTarget node
+traverseTargetsByIndex :: (Setup s) => Node s -> Index s -> (Node s -> IO ()) -> IO ()
+traverseTargetsByIndex source index = H.traverseMulti (refsTargets $ HR.value $ source) index
 
-remove :: Type t => Node t -> IO ()
-remove node = do
-  traverseSources node $ \s -> void $ removeTarget s node
+traverseTargets :: (Setup s) => Node s -> (Node s -> IO ()) -> IO ()
+traverseTargets source f = do
+  visited :: H.Set H.Basic (Node s) <- H.new
+  H.traverse (refsTargets $ HR.value $ source) $ \(i, target) -> do
+    notVisited <- H.insert visited target
+    when notVisited $ f target
 
-foldTargets :: (HP.Key t) => Node t -> z -> (z -> Node t -> IO z) -> IO z
-foldTargets node z f = HP.foldM (nodeTargetsByType node) z $ \z (t, refs) -> f z (Node t refs)
+traverseSources :: (Setup s) => Node s -> (Node s -> IO ()) -> IO ()
+traverseSources target = H.traverse (refsSources $ HR.value $ target)
 
-traverseTargets :: (HP.Key t) => Node t -> (Node t -> IO ()) -> IO ()
-traverseTargets node action = foldTargets node () $ \() -> action
-
-foldSources :: (HP.Key t) => Node t -> z -> (z -> Node t -> IO z) -> IO z
-foldSources node z f = HP.foldM (nodeSourcesByType node) z $ \z (t, refs) -> f z (Node t refs)
-
-traverseSources :: (HP.Key t) => Node t -> (Node t -> IO ()) -> IO ()
-traverseSources node action = foldSources node () $ \() -> action
-
-traverse :: (HP.Key t) => Node t -> (Node t -> IO (Node t -> IO ())) -> IO ()
-traverse root f = do
-  knownRefs :: HP.HashRefSet HP.Cuckoo (Refs t) <- HP.new
-  unvisitedNodes <- newIORef []
-  let
-    dequeue =
-      readIORef unvisitedNodes >>= \case
-        head : tail -> do
-          writeIORef unvisitedNodes tail
-          return $ Just head
-        [] -> return Nothing
-    enqueue node@(Node _ refsHR) = do
-      HP.elem knownRefs refsHR >>= \case
-        True -> return ()
-        False -> do
-          HP.insert knownRefs refsHR
-          modifyIORef unvisitedNodes (node:)
-    loop =
-      dequeue >>= \case
-        Nothing -> return ()
-        Just node -> do
-          f' <- f node
-          traverseTargets node $ \t -> do
-            f' t
-            enqueue t
-          loop
-  enqueue root
-  loop
-
-getStats :: (HP.Key t) => Node t -> IO (Int, Int)
+getStats :: (Setup s) => Node s -> IO Stats
 getStats root = do
   nodesCounter <- newIORef 0
   edgesCounter <- newIORef 0
-  traverse root $ 
-    const $ do
-      modifyIORef nodesCounter succ
-      return $ const $ modifyIORef edgesCounter succ 
-  (,) <$> readIORef nodesCounter <*> readIORef edgesCounter
+  indexesCounter <- newIORef 0
+  knownSet :: H.Set H.Basic (Node s) <- H.new
+  loopQueue <- newIORef []
+  let 
+    loop = do
+      dequeue >>= \case
+        Nothing -> return ()
+        Just node -> do
+          modifyIORef nodesCounter succ
+          do
+            targetsSet :: H.Set H.Basic (Node s) <- H.new
+            H.traverse (refsTargets $ HR.value $ node) $ \(i, target) -> do
+              notVisited <- H.insert targetsSet target
+              when notVisited $ do
+                modifyIORef edgesCounter succ
+                enqueue target
+              modifyIORef indexesCounter succ
+          loop
+    dequeue = do
+      readIORef loopQueue >>= \case
+        h : t -> writeIORef loopQueue t >> return (Just h)
+        [] -> return Nothing
+    enqueue node = do
+      H.elem knownSet node >>= \case
+        True -> return ()
+        False -> do
+          H.insertFast knownSet node
+          modifyIORef loopQueue (node:)
 
--------------
+  enqueue root
+  loop
 
-instance Eq (Node t) where
-  n == n' = nodeValueRef n == nodeValueRef n'
+  (,,) <$> readIORef nodesCounter <*> readIORef edgesCounter <*> readIORef indexesCounter
 
-instance (Type t) => Serializable IO (Node t) where
+type Stats = (Int, Int, Int)
+
+
+-- ** Higher level operations
+-------------------------
+
+remove :: (Setup s) => Node s -> IO ()
+remove node = traverseSources node $ \s -> removeTarget s node
+
+getTargets :: (Setup s) => Node s -> Index s -> IO [Node s]
+getTargets n i = do
+  l <- newIORef []
+  traverseTargetsByIndex n i $ \t -> modifyIORef l (t:)
+  readIORef l
+
+getSources :: (Setup s) => Node s -> IO [Node s]
+getSources n = do
+  l <- newIORef []
+  traverseSources n $ \s -> modifyIORef l (s:)
+  readIORef l
+
+
+-- * Serialization
+-------------------------
+
+instance (Setup s) => Serializable IO (Node s) where
 
   serialize root = do
-    knownRefs
-      :: HP.HashRefSet HP.Cuckoo (Refs t)
-      <- liftIO $ HP.new
-    unvisitedNodes <- liftIO $ newIORef []
-    indexTable 
-      :: HP.Table HP.Cuckoo (HashRef.HashRef (Refs t)) Int
-      <- liftIO $ HP.new
-    indexCounter <- liftIO $ newIORef 0
-
-    let
-      dequeueNode = do
-        readIORef unvisitedNodes >>= \case
-          head : tail -> do
-            writeIORef unvisitedNodes tail
-            return $ Just head
-          [] -> return Nothing
-      enqueueNode node@(Node _ refsHR) = do
-        HP.elem knownRefs refsHR >>= \case
-          True -> return ()
-          False -> do
-            HP.insert knownRefs refsHR
-            modifyIORef unvisitedNodes (node:)
+    loopQueue <- lift $ newIORef []
+    knownSet :: H.Set H.Basic (Node s) <- lift $ H.new
+    indexesMap :: H.Map H.Basic (Node s) Int <- lift $ H.new
+    indexCounter <- lift $ newIORef 0
+    let 
       loop = do
-        liftIO dequeueNode >>= \case
+        dequeue >>= \case
           Nothing -> return ()
           Just node -> do
-            (count, serializeTargets) <- 
-              liftIO $ foldTargets node (0 :: Int, return ()) $ \(count, serializeTargets) target -> do
-                let 
-                  -- ACHTUNG: order matters here!
-                  serializeTargets' = do
-                    serializeTargets
-                    void $ serializeNodeRef target
-                    liftIO $ enqueueNode target
-                return (succ count, serializeTargets')
+            (count, serializeTargets) <- liftIO $ do
+              count <- newIORef (0 :: Int)
+              serializeTargets <- newIORef (return ())
+              traverseTargets node $ \target -> do
+                modifyIORef count $ succ
+                modifyIORef serializeTargets $ \acc -> do
+                  acc
+                  serializeValue target
+                  enqueue target
+              (,) <$> readIORef count <*> readIORef serializeTargets
             serialize count
             serializeTargets
             loop
-      serializeNodeRef node@(Node _ refsHR) = do
-        (liftIO $ HP.lookup indexTable refsHR) >>= \case
+      serializeValue node = do
+        (liftIO $ H.lookup indexesMap node) >>= \case
           Just i -> do
             serialize True
             serialize i
-            return i
           Nothing -> do
             serialize False
-            serialize =<< (liftIO $ getValue node)
-            i <- liftIO $ readIORef indexCounter
-            liftIO $ HP.insert indexTable (refsHR, i)
-            liftIO $ writeIORef indexCounter (succ i)
-            return i
-
-    serializeNodeRef root
-    liftIO $ enqueueNode root
+            do
+              i <- liftIO $ readIORef indexCounter <* modifyIORef indexCounter succ
+              liftIO $ H.insertFast indexesMap (node, i)
+            serialize =<< do liftIO $ getValue node
+      enqueue node = liftIO $ do
+        H.elem knownSet node >>= \case
+          True -> return ()
+          False -> do
+            H.insertFast knownSet node
+            modifyIORef loopQueue (node:)
+      dequeue = liftIO $ do
+        readIORef loopQueue >>= \case
+          h : t -> do
+            writeIORef loopQueue t
+            return $ Just h
+          [] -> return Nothing
+    serializeValue root
+    enqueue root
     loop
-    
+
   deserialize = do
-    indexedNodes <- liftIO $ DIOVector.new
+    indexedNodes <- liftIO $ V.newSized $ 10^6
     unpopulatedNodes <- liftIO $ newIORef []
     let
       fetchUnpopulatedNode = 
@@ -288,10 +206,10 @@ instance (Type t) => Serializable IO (Node t) where
         liftIO $ modifyIORef unpopulatedNodes (node:)
       deserializeNode = do
         deserialize >>= \case
-          True -> liftIO . DIOVector.unsafeLookup indexedNodes =<< deserialize
+          True -> liftIO . V.unsafeLookup indexedNodes =<< deserialize
           False -> do
             newNode <- liftIO . new =<< deserialize
-            liftIO $ DIOVector.append indexedNodes newNode
+            liftIO $ V.append indexedNodes newNode
             enqueueUnpopulatedNode newNode
             return newNode
       loopAddTargets = do
@@ -308,3 +226,6 @@ instance (Type t) => Serializable IO (Node t) where
     loopAddTargets
     
     return node
+
+
+

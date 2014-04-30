@@ -18,7 +18,7 @@ generateName = do
   gen <- ask
   length <- liftIO $ MWC.uniformR lengthRange gen
   chars <- replicateM length $ generateChar
-  return $ packText chars
+  return $! packText chars
   where
     lengthRange = (1, 50)
 
@@ -34,7 +34,7 @@ generateChar = do
     4 -> lowerRange
     5 -> lowerRange
     6 -> numRange
-  return $ Char.chr ord
+  return $! Char.chr ord
   where
     upperRange = (Char.ord 'A', Char.ord 'Z')
     lowerRange = (Char.ord 'a', Char.ord 'z')
