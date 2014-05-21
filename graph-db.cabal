@@ -108,7 +108,7 @@ library
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,
-    mtl,
+    mtl >= 2.1 && < 2.3,
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
@@ -217,7 +217,7 @@ test-suite internal-tests
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,
-    mtl,
+    mtl >= 2.1 && < 2.3,
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
@@ -302,7 +302,7 @@ test-suite api-tests
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,
-    mtl,
+    mtl >= 2.1 && < 2.3,
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
@@ -389,7 +389,7 @@ benchmark competition-bench
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,
-    mtl,
+    mtl >= 2.1 && < 2.3,
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
@@ -470,7 +470,7 @@ benchmark nonpersistent-bench
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     transformers,
-    mtl,
+    mtl >= 2.1 && < 2.3,
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
