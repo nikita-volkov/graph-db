@@ -12,9 +12,9 @@ license:
 license-file:
   LICENSE
 homepage:
-  https://github.com/nikita-volkov/graph-db 
+  https://github.com/nikita-volkov/graph-db
 bug-reports:
-  https://github.com/nikita-volkov/graph-db/issues 
+  https://github.com/nikita-volkov/graph-db/issues
 author:
   Nikita Volkov <nikita.y.volkov@mail.ru>
 maintainer:
@@ -91,7 +91,7 @@ library
     async == 2.*,
     lifted-async == 0.1.*,
     stm,
-    SafeSemaphore == 0.9.*,
+    SafeSemaphore == 0.10.*,
     -- data:
     hashtables-plus == 0.2.*,
     hashable == 1.2.*,
@@ -112,7 +112,7 @@ library
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
-    -- 
+    --
     base >= 4.5 && < 5
   default-extensions:
     Arrows
@@ -152,12 +152,12 @@ library
 
 
 test-suite internal-tests
-  type:             
+  type:
     exitcode-stdio-1.0
-  hs-source-dirs:   
+  hs-source-dirs:
     executables
     library
-  main-is:          
+  main-is:
     InternalTests.hs
   ghc-options:
     -threaded
@@ -200,7 +200,7 @@ test-suite internal-tests
     async == 2.*,
     lifted-async == 0.1.*,
     stm,
-    SafeSemaphore == 0.9.*,
+    SafeSemaphore == 0.10.*,
     -- data:
     hashtables-plus == 0.2.*,
     hashable == 1.2.*,
@@ -221,7 +221,7 @@ test-suite internal-tests
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
-    -- 
+    --
     base >= 4.5 && < 5
   default-extensions:
     Arrows
@@ -261,11 +261,11 @@ test-suite internal-tests
 
 
 test-suite api-tests
-  type:             
+  type:
     exitcode-stdio-1.0
-  hs-source-dirs:   
+  hs-source-dirs:
     executables
-  main-is:          
+  main-is:
     APITests.hs
   ghc-options:
     -threaded
@@ -306,7 +306,7 @@ test-suite api-tests
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
-    -- 
+    --
     base >= 4.5 && < 5
   default-extensions:
     Arrows
@@ -346,11 +346,11 @@ test-suite api-tests
 
 
 benchmark competition-bench
-  type:             
+  type:
     exitcode-stdio-1.0
-  hs-source-dirs:   
+  hs-source-dirs:
     executables
-  main-is:      
+  main-is:
     CompetitionBench.hs
   ghc-options:
     -threaded
@@ -393,7 +393,7 @@ benchmark competition-bench
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
-    -- 
+    --
     base >= 4.5 && < 5
   default-extensions:
     Arrows
@@ -433,11 +433,11 @@ benchmark competition-bench
 
 
 benchmark nonpersistent-bench
-  type:             
+  type:
     exitcode-stdio-1.0
-  hs-source-dirs:   
+  hs-source-dirs:
     executables
-  main-is:      
+  main-is:
     NonpersistentBench.hs
   ghc-options:
     -O2
@@ -474,7 +474,7 @@ benchmark nonpersistent-bench
     -- debugging:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
-    -- 
+    --
     base >= 4.5 && < 5
   default-extensions:
     Arrows
@@ -514,9 +514,9 @@ benchmark nonpersistent-bench
 
 
 executable graph-db-demo
-  hs-source-dirs:   
+  hs-source-dirs:
     executables
-  main-is:      
+  main-is:
     Demo.hs
   ghc-options:
     -O2
