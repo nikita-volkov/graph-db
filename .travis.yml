@@ -10,5 +10,9 @@ matrix:
 
 install:
   - cabal install happy # haskell-src-exts implicit dependency workaround
-  - cabal install --only-dependencies --enable-tests --enable-benchmarks
+  - cabal install --only-dependencies 
+                  --enable-tests 
+                  --enable-benchmarks
+                  --reorder-goals
+                  --force-reinstalls
 
