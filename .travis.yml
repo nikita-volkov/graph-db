@@ -4,6 +4,10 @@ ghc:
   - 7.6
   - 7.8
 
+matrix:
+  allow_failures:
+    - ghc: 7.8
+
 install:
   - cabal install happy # haskell-src-exts implicit dependency workaround
   - cabal install --only-dependencies 
