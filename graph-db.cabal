@@ -185,12 +185,12 @@ test-suite internal-tests
     -- networking:
     remotion == 0.2.*,
     network == 2.4.*,
-    network-simple == 0.3.*,
+    network-simple == 0.4.*,
     pipes-network == 0.6.*,
     -- streaming:
     pipes >= 4.0 && < 4.2,
-    pipes-bytestring == 2.0.*,
-    pipes-cereal-plus == 0.3.*,
+    pipes-bytestring == 2.1.*,
+    pipes-cereal-plus == 0.4.*,
     -- file-system:
     directory == 1.2.*,
     filelock == 0.1.*,
@@ -365,7 +365,7 @@ benchmark competition-bench
     safecopy == 0.8.*,
     -- postgres:
     postgresql-simple == 0.4.*,
-    ex-pool == 0.1.*,
+    ex-pool == 0.2.*,
     -- benchmarking:
     criterion-plus == 0.1.*,
     -- concurrency:

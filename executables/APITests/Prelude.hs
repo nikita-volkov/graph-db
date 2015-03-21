@@ -27,7 +27,7 @@ import Control.Applicative as Exports
 import Control.Arrow as Exports hiding (left, right)
 import Control.Category as Exports
 import Data.Monoid as Exports
-import Data.Foldable as Exports
+import Data.Foldable as Exports hiding (toList)
 import Data.Traversable as Exports hiding (for)
 import Data.Maybe as Exports
 import Data.Either as Exports
