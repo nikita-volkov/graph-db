@@ -74,14 +74,14 @@ library
     th-expand-syns,
     th-instance-reification > 0.1.0 && < 0.2,
     -- networking:
-    remotion == 0.1.*,
+    remotion == 0.2.*,
     network == 2.4.*,
-    network-simple == 0.3.*,
+    network-simple == 0.4.*,
     pipes-network == 0.6.*,
     -- streaming:
     pipes >= 4.0 && < 4.2,
-    pipes-bytestring == 2.0.*,
-    pipes-cereal-plus == 0.3.*,
+    pipes-bytestring == 2.1.*,
+    pipes-cereal-plus == 0.4.*,
     -- file-system:
     directory == 1.2.*,
     filelock == 0.1.*,
@@ -183,7 +183,7 @@ test-suite internal-tests
     th-expand-syns,
     th-instance-reification > 0.1.0 && < 0.2,
     -- networking:
-    remotion == 0.1.*,
+    remotion == 0.2.*,
     network == 2.4.*,
     network-simple == 0.3.*,
     pipes-network == 0.6.*,
