@@ -43,7 +43,7 @@ renderSetupInstance (setup, indexes, values, indexesFunctionClauses) =
     []
     (AppT (ConT ''G.Setup) (setup))
     [
-      TySynInstD ''G.Algorithm [setup] (ConT ''G.Linear),
+      TySynInstD ''G.Algorithm (TySynEqn [setup] (ConT ''G.Linear)),
       renderSumData ''G.Index setup IsStrict indexes,
       renderSumData ''G.Value setup NotStrict values,
       FunD 'G.indexes (map renderIndexesClause indexesFunctionClauses)
