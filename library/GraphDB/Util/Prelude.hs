@@ -28,10 +28,10 @@ import Control.Applicative as Exports
 import Control.Arrow as Exports hiding (left, right)
 import Control.Category as Exports
 import Data.Monoid as Exports
-import Data.Foldable as Exports
+import Data.Foldable as Exports hiding (toList)
 import Data.Traversable as Exports hiding (for)
 import Data.Maybe as Exports
-import Data.Either as Exports
+import Data.Either as Exports hiding (isLeft, isRight)
 import Data.List as Exports hiding (concat, foldr, foldl1, maximum, minimum, product, sum, all, and, any, concatMap, elem, foldl, foldr1, notElem, or, find, maximumBy, minimumBy, mapAccumL, mapAccumR, foldl')
 import Data.Tuple as Exports
 import Data.Ord as Exports (Down(..))
@@ -41,7 +41,7 @@ import Data.Word as Exports
 import Data.Ratio as Exports
 import Data.Fixed as Exports
 import Data.Ix as Exports
-import Data.Data as Exports
+import Data.Data as Exports hiding (Proxy)
 import Text.Read as Exports (readMaybe, readEither)
 import Control.Exception as Exports hiding (tryJust, assert)
 import Control.Concurrent as Exports hiding (yield)
