@@ -27,7 +27,7 @@ import Control.Applicative as Exports
 import Control.Arrow as Exports hiding (left, right)
 import Control.Category as Exports
 import Data.Monoid as Exports
-import Data.Foldable as Exports hiding (toList)
+import Data.Foldable as Exports
 import Data.Traversable as Exports hiding (for)
 import Data.Maybe as Exports
 import Data.Either as Exports
@@ -51,7 +51,7 @@ import System.IO.Unsafe as Exports
 import System.IO as Exports (Handle, hClose)
 import System.IO.Error as Exports
 import Unsafe.Coerce as Exports
-import GHC.Exts as Exports hiding (Any, traceEvent)
+import GHC.Exts as Exports hiding (Any, traceEvent, toList)
 import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import Data.IORef as Exports
