@@ -48,7 +48,7 @@ import System.IO.Unsafe as Exports
 import System.IO as Exports (Handle, hClose)
 import System.IO.Error as Exports
 import Unsafe.Coerce as Exports
-import GHC.Exts as Exports hiding (Any, traceEvent)
+import GHC.Exts as Exports hiding (Any, traceEvent, toList)
 import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import Data.IORef as Exports

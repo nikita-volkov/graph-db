@@ -31,7 +31,7 @@ import Data.Monoid as Exports
 import Data.Foldable as Exports
 import Data.Traversable as Exports hiding (for)
 import Data.Maybe as Exports
-import Data.Either as Exports
+import Data.Either as Exports hiding (isLeft, isRight)
 import Data.List as Exports hiding (concat, foldr, foldl1, maximum, minimum, product, sum, all, and, any, concatMap, elem, foldl, foldr1, notElem, or, find, maximumBy, minimumBy, mapAccumL, mapAccumR, foldl')
 import Data.Tuple as Exports
 import Data.Ord as Exports (Down(..))
@@ -41,7 +41,7 @@ import Data.Word as Exports
 import Data.Ratio as Exports
 import Data.Fixed as Exports
 import Data.Ix as Exports
-import Data.Data as Exports
+import Data.Data as Exports hiding (Proxy)
 import Text.Read as Exports (readMaybe, readEither)
 import Control.Exception as Exports hiding (tryJust, assert)
 import Control.Concurrent as Exports hiding (yield)
@@ -52,7 +52,7 @@ import System.IO.Unsafe as Exports
 import System.IO as Exports (Handle, hClose)
 import System.IO.Error as Exports
 import Unsafe.Coerce as Exports
-import GHC.Exts as Exports hiding (Any, traceEvent)
+import GHC.Exts as Exports hiding (Any, traceEvent, toList)
 import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import Data.IORef as Exports

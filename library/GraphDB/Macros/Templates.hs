@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module GraphDB.Macros.Templates where
  
 import GraphDB.Util.Prelude
@@ -43,7 +44,11 @@ renderSetupInstance (setup, indexes, values, indexesFunctionClauses) =
     []
     (AppT (ConT ''G.Setup) (setup))
     [
+#if MIN_VERSION_template_haskell(2,9,0)
+      TySynInstD ''G.Algorithm (TySynEqn [setup] (ConT ''G.Linear)),
+#else
       TySynInstD ''G.Algorithm [setup] (ConT ''G.Linear),
+#endif
       renderSumData ''G.Index setup IsStrict indexes,
       renderSumData ''G.Value setup NotStrict values,
       FunD 'G.indexes (map renderIndexesClause indexesFunctionClauses)
