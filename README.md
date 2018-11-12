@@ -4,9 +4,9 @@ This library provides a mutable in-memory graph datastructure with complete ACID
 
 ## Project Status
 
-Not released yet and currently on hold.
+Unreleased and currently on hold.
 
-The project is perfectly compilable and the demos and tests execute just fine, so you can already get a feeling of what it's all about. The tutorials are coming after release.
+The project is compilable and the demos and tests execute fine, so you can get a feeling of what it's about.
 
 ---
 
